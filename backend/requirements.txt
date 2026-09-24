@@ -1,0 +1,13 @@
+Django>=5.0.0,<5.1.0
+djangorestframework>=3.14.0
+django-cors-headers>=4.3.0
+psycopg2-binary>=2.9.9
+redis>=5.0.1
+reportlab>=4.1.0
+langchain>=0.1.15
+langchain-google-genai>=1.0.1
+langgraph>=0.0.35
+python-dotenv>=1.0.1
+requests>=2.31.0
+pytest>=8.0.0
+pytest-django>=4.8.0
