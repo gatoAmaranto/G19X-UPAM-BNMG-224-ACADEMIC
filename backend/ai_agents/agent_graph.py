@@ -118,24 +118,38 @@ def procesar_mensaje_agente(mensaje_usuario, empleado):
             }
         }
 
-    # Intent con Google AI Studio Gemini API si la clave está presente
+    # Intent con Google AI Studio Gemini API (google-genai SDK) si la clave está presente
     if api_key:
+        prompt = (
+            f"Eres el Agente Conversacional de Recursos Humanos de PluriOne S.A. de C.V. (Develop Talent & Technology).\n"
+            f"Estás atendiendo al colaborador {empleado.user.get_full_name()} ({empleado.puesto}).\n"
+            f"Responde de forma amable, profesional y concisa a la siguiente duda:\n\n{mensaje_usuario}"
+        )
         try:
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
-            prompt = (
-                f"Eres el Agente Conversacional de Recursos Humanos de PluriOne S.A. de C.V. (Develop Talent & Technology).\n"
-                f"Estás atendiendo al colaborador {empleado.user.get_full_name()} ({empleado.puesto}).\n"
-                f"Responde de forma amable, profesional y concisa a la siguiente duda:\n\n{mensaje_usuario}"
+            from google import genai
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
             )
-            response = llm.invoke(prompt)
-            return {
-                'respuesta': response.content,
-                'tipo_accion': 'LLM_GEMINI',
-                'datos': {}
-            }
+            if response and response.text:
+                return {
+                    'respuesta': response.text,
+                    'tipo_accion': 'LLM_GEMINI',
+                    'datos': {}
+                }
         except Exception as e:
-            pass
+            try:
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
+                response = llm.invoke(prompt)
+                return {
+                    'respuesta': response.content,
+                    'tipo_accion': 'LLM_GEMINI',
+                    'datos': {}
+                }
+            except Exception:
+                pass
 
     # Mensaje por defecto cuando no se detecta intención ni API Key
     return {
