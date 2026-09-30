@@ -24,7 +24,9 @@ export default function ChatWidget({ onRefreshData }) {
   const chatEndRef = useRef(null)
 
   const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messages.length > 1 || loading) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
   }
 
   useEffect(() => {
