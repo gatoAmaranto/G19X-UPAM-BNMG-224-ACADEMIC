@@ -13,6 +13,9 @@ export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, onS
 
   if (!isOpen) return null
 
+  // Fecha actual en formato YYYY-MM-DD para la propiedad min
+  const todayStr = new Date().toISOString().split('T')[0]
+
   // Calcular número de días seleccionados
   const calcularDias = () => {
     if (!fechaInicio || !fechaFin) return 0
@@ -32,6 +35,11 @@ export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, onS
 
     if (!fechaInicio || !fechaFin) {
       setErrorMsg('Por favor selecciona una fecha de inicio y una fecha de fin.')
+      return
+    }
+
+    if (fechaInicio < todayStr) {
+      setErrorMsg('No es posible seleccionar una fecha de inicio anterior al día de hoy.')
       return
     }
 
@@ -121,6 +129,7 @@ export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, onS
               </label>
               <input
                 type="date"
+                min={todayStr}
                 value={fechaInicio}
                 onChange={(e) => setFechaInicio(e.target.value)}
                 required
@@ -142,6 +151,7 @@ export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, onS
               </label>
               <input
                 type="date"
+                min={fechaInicio || todayStr}
                 value={fechaFin}
                 onChange={(e) => setFechaFin(e.target.value)}
                 required
