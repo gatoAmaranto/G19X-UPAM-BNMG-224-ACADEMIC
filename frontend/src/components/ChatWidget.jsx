@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, Download, Calendar, Ticket, HelpCircle, Loader2 } from 'lucide-react'
 import axios from 'axios'
 import VacacionesModal from './VacacionesModal.jsx'
+import TicketModal from './TicketModal.jsx'
 
 const API_BASE = 'http://localhost:8000/api'
 
@@ -18,6 +19,7 @@ export default function ChatWidget({ onRefreshData }) {
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const [modalVacacionesOpen, setModalVacacionesOpen] = useState(false)
+  const [modalTicketOpen, setModalTicketOpen] = useState(false)
   const [saldoVacaciones, setSaldoVacaciones] = useState(10)
   const chatEndRef = useRef(null)
 
@@ -79,6 +81,8 @@ export default function ChatWidget({ onRefreshData }) {
           setSaldoVacaciones(data.datos.disponibles)
         }
         setModalVacacionesOpen(true)
+      } else if (data.tipo_accion === 'ABRIR_FORMULARIO_TICKET') {
+        setModalTicketOpen(true)
       }
 
       if (onRefreshData) onRefreshData()
@@ -115,6 +119,23 @@ export default function ChatWidget({ onRefreshData }) {
     if (onRefreshData) onRefreshData()
   }
 
+  const handleTicketSuccess = (ticketCreado) => {
+    const confirmMessage = {
+      id: Date.now(),
+      sender: 'bot',
+      text: `🎟️ **Ticket de Soporte Creado Exitosamente**\n\n` +
+            `• Folio: \`${ticketCreado.folio}\`\n` +
+            `• Asunto: ${ticketCreado.asunto}\n` +
+            `• Prioridad: ${ticketCreado.prioridad}\n` +
+            `• Estado: Abierto\n\n` +
+            `El equipo de Recursos Humanos ha sido notificado y responderá a tu solicitud a la brevedad.`,
+      actionType: 'TICKET_CONFIRMADO',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
+    setMessages(prev => [...prev, confirmMessage])
+    if (onRefreshData) onRefreshData()
+  }
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -124,12 +145,18 @@ export default function ChatWidget({ onRefreshData }) {
 
   return (
     <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', height: '620px', overflow: 'hidden' }}>
-      {/* Modal de Vacaciones */}
+      {/* Modales */}
       <VacacionesModal
         isOpen={modalVacacionesOpen}
         onClose={() => setModalVacacionesOpen(false)}
         saldoDisponibles={saldoVacaciones}
         onSuccess={handleVacacionesSuccess}
+      />
+
+      <TicketModal
+        isOpen={modalTicketOpen}
+        onClose={() => setModalTicketOpen(false)}
+        onSuccess={handleTicketSuccess}
       />
 
       {/* Chat Header */}
@@ -189,6 +216,19 @@ export default function ChatWidget({ onRefreshData }) {
                   >
                     <Calendar size={16} />
                     Seleccionar Fechas de Vacaciones
+                  </button>
+                </div>
+              )}
+
+              {msg.actionType === 'ABRIR_FORMULARIO_TICKET' && (
+                <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
+                  <button
+                    onClick={() => setModalTicketOpen(true)}
+                    className="btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}
+                  >
+                    <Ticket size={16} />
+                    Redactar Ticket de Soporte
                   </button>
                 </div>
               )}
@@ -265,7 +305,7 @@ export default function ChatWidget({ onRefreshData }) {
         </button>
 
         <button
-          onClick={() => handleSendMessage('Quiero levantar un ticket con RH')}
+          onClick={() => setModalTicketOpen(true)}
           className="btn-secondary"
           style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
         >

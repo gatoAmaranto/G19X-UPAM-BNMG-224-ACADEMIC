@@ -95,6 +95,11 @@ def procesar_mensaje_agente(mensaje_usuario, empleado):
                     tipo_accion = 'ABRIR_FORMULARIO_VACACIONES'
                     datos = {'disponibles': empleado.dias_vacaciones_disponibles}
 
+                # Detectar intención de ticket de soporte
+                elif any(w in mensaje_lc for w in ['crear ticket', 'abrir ticket', 'levantar ticket', 'nuevo ticket', 'reportar problema']):
+                    tipo_accion = 'ABRIR_FORMULARIO_TICKET'
+                    datos = {}
+
                 # Detectar generación de constancia
                 elif any(w in mensaje_lc for w in ['constancia', 'carta laboral', 'constancia de trabajo', 'carta patronal']):
                     try:

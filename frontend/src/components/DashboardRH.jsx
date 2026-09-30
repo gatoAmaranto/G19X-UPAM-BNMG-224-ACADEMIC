@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { User, Calendar, FileText, Ticket, Plus, CheckCircle, Clock } from 'lucide-react'
 import axios from 'axios'
 import VacacionesModal from './VacacionesModal.jsx'
+import TicketModal from './TicketModal.jsx'
 
 const API_BASE = 'http://localhost:8000/api'
 
@@ -11,6 +12,7 @@ export default function DashboardRH({ refreshTrigger }) {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalVacacionesOpen, setModalVacacionesOpen] = useState(false)
+  const [modalTicketOpen, setModalTicketOpen] = useState(false)
 
   const fetchData = async () => {
     try {
@@ -44,7 +46,7 @@ export default function DashboardRH({ refreshTrigger }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Modal de Vacaciones */}
+      {/* Modales */}
       {vacaciones && (
         <VacacionesModal
           isOpen={modalVacacionesOpen}
@@ -53,6 +55,12 @@ export default function DashboardRH({ refreshTrigger }) {
           onSuccess={fetchData}
         />
       )}
+
+      <TicketModal
+        isOpen={modalTicketOpen}
+        onClose={() => setModalTicketOpen(false)}
+        onSuccess={fetchData}
+      />
 
       {/* Employee Profile Card */}
       {perfil && (
@@ -141,10 +149,21 @@ export default function DashboardRH({ refreshTrigger }) {
 
       {/* Active Support Tickets */}
       <div className="glass-panel" style={{ padding: '1.25rem' }}>
-        <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Ticket size={18} style={{ color: 'var(--primary)' }} />
-          Mis Tickets de RH ({tickets.length})
-        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Ticket size={18} style={{ color: 'var(--primary)' }} />
+            Mis Tickets de RH ({tickets.length})
+          </h3>
+
+          <button
+            onClick={() => setModalTicketOpen(true)}
+            className="btn-secondary"
+            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+          >
+            <Plus size={14} />
+            <span>Nuevo Ticket</span>
+          </button>
+        </div>
 
         {tickets.length === 0 ? (
           <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>No tienes tickets de atención abiertos.</p>
