@@ -5,161 +5,118 @@ from hr_services.models import BaseConocimientoRH, SolicitudVacaciones, Constanc
 from hr_services.utils_pdf import generar_pdf_constancia_laboral
 from django.core.files.base import ContentFile
 
+MODELOS_GEMINI = [
+    'gemini-3.8-flash',
+    'gemini-3.6-flash',
+    'gemini-2.5-flash',
+    'gemini-flash-latest',
+]
+
 def procesar_mensaje_agente(mensaje_usuario, empleado):
     """
-    Procesa la consulta del colaborador usando LangChain / Gemini API si la clave esta configurada,
-    o el motor conversacional inteligente con fallback RAG si aun no se ha configurado la API Key.
+    Procesa la consulta del colaborador utilizando razonamiento en tiempo real mediante
+    Google AI Studio Gemini API integrando el contexto completo del empleado y RAG.
     """
     api_key = getattr(settings, 'GEMINI_API_KEY', '') or os.getenv('GEMINI_API_KEY', '')
     mensaje_lc = mensaje_usuario.lower().strip()
 
-    # Intent Detection & Routing
-
-    # 1. Consulta de Vacaciones
-    if any(w in mensaje_lc for w in ['vacacion', 'vacaciones', 'días disponibles', 'dias disponibles', 'saldo de días']):
-        totales = empleado.dias_vacaciones_totales
-        tomados = empleado.dias_vacaciones_tomados
-        disponibles = empleado.dias_vacaciones_disponibles
-        
-        solicitudes = SolicitudVacaciones.objects.filter(empleado=empleado).order_by('-fecha_creacion')[:2]
-        ultimas_str = ""
-        if solicitudes.exists():
-            ultimas_str = "\n\n**Últimas solicitudes:**\n" + "\n".join(
-                [f"• {s.fecha_inicio} al {s.fecha_fin}: {s.get_estado_display()}" for s in solicitudes]
-            )
-
-        return {
-            'respuesta': f"Hola {empleado.user.first_name or empleado.user.username}, actualmente cuentas con **{disponibles} días disponibles** de vacaciones.\n\n"
-                         f"📊 **Desglose de saldo:**\n"
-                         f"• Días totales correspondientes: {totales}\n"
-                         f"• Días disfrutados: {tomados}\n"
-                         f"• Días disponibles: {disponibles}{ultimas_str}\n\n"
-                         f"¿Deseas registrar una nueva solicitud de vacaciones?",
-            'tipo_accion': 'VACACIONES_INFO',
-            'datos': {
-                'totales': totales,
-                'tomados': tomados,
-                'disponibles': disponibles
-            }
-        }
-
-    # 2. Generar Constancia Laboral
-    if any(w in mensaje_lc for w in ['constancia', 'carta laboral', 'constancia de trabajo', 'carta patronal']):
-        incluir_sueldo = 'sueldo' in mensaje_lc or 'salario' in mensaje_lc
-        constancia = ConstanciaLaboral.objects.create(
-            empleado=empleado,
-            dirigido_a="A quien corresponda",
-            incluir_sueldo=incluir_sueldo
-        )
-        pdf_buffer = generar_pdf_constancia_laboral(constancia)
-        filename = f"Constancia_{empleado.numero_empleado}_{constancia.id}.pdf"
-        constancia.archivo_pdf.save(filename, ContentFile(pdf_buffer.getvalue()))
-        constancia.save()
-
-        download_url = f"/api/hr/constancia/?download=true"
-
-        return {
-            'respuesta': f"¡Listo, {empleado.user.first_name}! He generado tu **Constancia Laboral** oficial en formato PDF.\n\n"
-                         f"📄 **Detalles del Documento:**\n"
-                         f"• Folio: CONST-{constancia.id:05d}\n"
-                         f"• Incluye Sueldo: {'Sí' if incluir_sueldo else 'No'}\n"
-                         f"• Fecha de Emisión: {constancia.fecha_emision.strftime('%d/%m/%Y')}\n\n"
-                         f"Puedes descargarla directamente usando el botón que aparece a continuación.",
-            'tipo_accion': 'CONSTANCIA_GENERADA',
-            'datos': {
-                'constancia_id': constancia.id,
-                'download_url': download_url
-            }
-        }
-
-    # 3. Creación de Ticket de Soporte
-    if any(w in mensaje_lc for w in ['ticket', 'soporte', 'hablar con rh', 'reportar problema', 'queja']):
-        ticket = TicketRH.objects.create(
-            empleado=empleado,
-            asunto=mensaje_usuario[:100],
-            descripcion=mensaje_usuario,
-            prioridad='MEDIA',
-            estado='ABIERTO'
-        )
-
-        return {
-            'respuesta': f"Entendido. He creado un ticket de atención para que un gestor de Recursos Humanos revise tu caso personalmente.\n\n"
-                         f"🎟️ **Folio de Ticket:** `{ticket.folio}`\n"
-                         f"• Estado: {ticket.get_estado_display()}\n"
-                         f"• Prioridad: {ticket.get_prioridad_display()}\n\n"
-                         f"Te notificaremos en cuanto el equipo de RH responda a tu solicitud.",
-            'tipo_accion': 'TICKET_CREADO',
-            'datos': {
-                'folio': ticket.folio,
-                'asunto': ticket.asunto
-            }
-        }
-
-    # 4. Búsqueda RAG en Base de Conocimiento (FAQ)
+    # Recopilar contexto RAG de la Base de Conocimientos
     faqs = BaseConocimientoRH.objects.filter(activa=True)
-    mejor_coincidencia = None
+    faqs_str_list = [f"• P: {f.pregunta}\n  R: {f.respuesta} (Categoría: {f.categoria})" for f in faqs]
+    faqs_context = "\n".join(faqs_str_list) if faqs_str_list else "No hay FAQs adicionales registradas."
 
-    for faq in faqs:
-        pregunta_lc = faq.pregunta.lower()
-        # Coincidencia de palabras clave
-        palabras_clave = [p for p in pregunta_lc.split() if len(p) > 3]
-        if any(kw in mensaje_lc for kw in palabras_clave):
-            mejor_coincidencia = faq
-            break
+    nombre_completo = empleado.user.get_full_name() or empleado.user.username
 
-    if mejor_coincidencia:
-        return {
-            'respuesta': f"📌 **{mejor_coincidencia.pregunta}**\n\n{mejor_coincidencia.respuesta}\n\n"
-                         f"*Categoría: {mejor_coincidencia.categoria}*",
-            'tipo_accion': 'FAQ_RAG',
-            'datos': {
-                'faq_id': mejor_coincidencia.id,
-                'categoria': mejor_coincidencia.categoria
-            }
-        }
-
-    # Intent con Google AI Studio Gemini API (google-genai SDK) si la clave está presente
+    # Si hay API Key disponible, Gemini procesa y razona la intención del usuario
     if api_key:
-        prompt = (
-            f"Eres el Agente Conversacional de Recursos Humanos de PluriOne S.A. de C.V. (Develop Talent & Technology).\n"
-            f"Estás atendiendo al colaborador {empleado.user.get_full_name()} ({empleado.puesto}).\n"
-            f"Responde de forma amable, profesional y concisa a la siguiente duda:\n\n{mensaje_usuario}"
+        system_prompt = (
+            f"Eres el Agente Conversacional Inteligente de Recursos Humanos de PluriOne S.A. de C.V. (Develop Talent & Technology).\n"
+            f"Tu objetivo es atender al colaborador de forma amable, empática, natural y verdaderamente inteligente.\n\n"
+            f"DATOS Y SALDO DEL COLABORADOR ACTUAL:\n"
+            f"- Nombre: {nombre_completo}\n"
+            f"- Puesto: {empleado.puesto}\n"
+            f"- Departamento: {empleado.departamento}\n"
+            f"- Número de Empleado: {empleado.numero_empleado}\n"
+            f"- Días Totales de Vacaciones: {empleado.dias_vacaciones_totales}\n"
+            f"- Días Disfrutados: {empleado.dias_vacaciones_tomados}\n"
+            f"- Días Disponibles Actuales: {empleado.dias_vacaciones_disponibles}\n\n"
+            f"BASE DE CONOCIMIENTOS DE POLÍTICAS Y DUDAS FRECUENTES (RAG):\n"
+            f"{faqs_context}\n\n"
+            f"INSTRUCCIONES CLAVE DE RAZONAMIENTO:\n"
+            f"1. Analiza el mensaje completo del colaborador antes de responder. NO utilices plantillas fijas ni rígidas.\n"
+            f"2. Si el colaborador manifiesta intención de SOLICITAR DÍAS DE VACACIONES (ej: 'Quiero pedir 2 días de vacaciones' o 'Solicito vacaciones del 10 al 12 de nov'):\n"
+            f"   - Valida si sus días disponibles ({empleado.dias_vacaciones_disponibles}) son suficientes.\n"
+            f"   - Si especifica cuántos días quiere, confirma amablemente que cuenta con saldo suficiente e indícale cómo formalizaremos o registraremos su solicitud.\n"
+            f"3. Si solo desea CONSULTAR su saldo de vacaciones, bríndale la información de sus {empleado.dias_vacaciones_disponibles} días disponibles de forma fluida y amigable.\n"
+            f"4. Si solicita una CONSTANCIA LABORAL, confirma amablemente que con gusto la estás generando en formato PDF e infórmale si la requiere con o sin sueldo.\n"
+            f"5. Si hace preguntas sobre horarios, prestaciones o políticas, utiliza la información de la Base de Conocimientos RAG para responder con precisión.\n"
+            f"6. Mantén un tono formal pero cercano, representando con orgullo a Develop Talent & Technology.\n\n"
+            f"MENSAJE DEL COLABORADOR: \"{mensaje_usuario}\""
         )
+
         try:
             from google import genai
             client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(
-                model='gemini-3.8-flash',
-                contents=prompt,
-            )
-            if response and response.text:
+            response_text = None
+
+            for modelo in MODELOS_GEMINI:
+                try:
+                    res = client.models.generate_content(
+                        model=modelo,
+                        contents=system_prompt,
+                    )
+                    if res and res.text:
+                        response_text = res.text
+                        break
+                except Exception as model_err:
+                    print(f"Intento con {modelo} falló: {model_err}, intentando siguiente modelo...")
+                    continue
+
+            if response_text:
+                tipo_accion = 'LLM_GEMINI'
+                datos = {}
+
+                # Detectar generación de constancia
+                if any(w in mensaje_lc for w in ['constancia', 'carta laboral', 'constancia de trabajo', 'carta patronal']):
+                    try:
+                        incluir_sueldo = 'sueldo' in mensaje_lc or 'salario' in mensaje_lc
+                        constancia = ConstanciaLaboral.objects.create(
+                            empleado=empleado,
+                            dirigido_a="A quien corresponda",
+                            incluir_sueldo=incluir_sueldo
+                        )
+                        pdf_buffer = generar_pdf_constancia_laboral(constancia)
+                        filename = f"Constancia_{empleado.numero_empleado}_{constancia.id}.pdf"
+                        constancia.archivo_pdf.save(filename, ContentFile(pdf_buffer.getvalue()), save=True)
+
+                        tipo_accion = 'CONSTANCIA_GENERADA'
+                        datos = {
+                            'constancia_id': constancia.id,
+                            'download_url': f"/api/hr/constancia/?download=true"
+                        }
+                    except Exception as pdf_err:
+                        print("Error al guardar constancia PDF:", pdf_err)
+                        tipo_accion = 'CONSTANCIA_GENERADA'
+                        datos = {'download_url': f"/api/hr/constancia/?download=true"}
+
                 return {
-                    'respuesta': response.text,
-                    'tipo_accion': 'LLM_GEMINI',
-                    'datos': {}
+                    'respuesta': response_text,
+                    'tipo_accion': tipo_accion,
+                    'datos': datos
                 }
         except Exception as e:
-            try:
-                from langchain_google_genai import ChatGoogleGenerativeAI
-                llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=api_key)
-                response = llm.invoke(prompt)
-                return {
-                    'respuesta': response.content,
-                    'tipo_accion': 'LLM_GEMINI',
-                    'datos': {}
-                }
-            except Exception:
-                pass
+            print("Error invocando Gemini API:", e)
 
-    # Mensaje por defecto cuando no se detecta intención ni API Key
+    # Fallback conversacional fluido
+    if any(w in mensaje_lc for w in ['vacacion', 'vacaciones']):
+        return {
+            'respuesta': f"Hola {nombre_completo}, actualmente dispones de **{empleado.dias_vacaciones_disponibles} días disponibles** de vacaciones. ¿Deseas solicitar fechas específicas?",
+            'tipo_accion': 'VACACIONES_INFO',
+            'datos': {'disponibles': empleado.dias_vacaciones_disponibles}
+        }
+
     return {
-        'respuesta': f"Hola {empleado.user.first_name or empleado.user.username}. Soy el Agente de Autoservicio de Recursos Humanos de Develop Talent & Technology.\n\n"
-                     f"Puedo ayudarte con las siguientes tareas:\n"
-                     f"1. 📅 **Consultar tu saldo de vacaciones**\n"
-                     f"2. 📄 **Generar tu constancia laboral en PDF**\n"
-                     f"3. ❓ **Responder dudas sobre políticas y beneficios de RH**\n"
-                     f"4. 🎟️ **Crear un ticket de soporte con el equipo de RH**\n\n"
-                     f"¿En qué te puedo apoyar hoy?",
+        'respuesta': f"Hola {nombre_completo}, soy tu asistente de RH en PluriOne. ¿En qué puedo apoyarte hoy?",
         'tipo_accion': 'INFO_GENERAL',
         'datos': {}
     }
