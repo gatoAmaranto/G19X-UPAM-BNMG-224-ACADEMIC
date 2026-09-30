@@ -1,5 +1,7 @@
 import os
+import re
 import json
+from datetime import datetime
 from django.conf import settings
 from hr_services.models import BaseConocimientoRH, SolicitudVacaciones, ConstanciaLaboral, TicketRH
 from hr_services.utils_pdf import generar_pdf_constancia_laboral
@@ -27,6 +29,18 @@ def procesar_mensaje_agente(mensaje_usuario, empleado):
 
     nombre_completo = empleado.user.get_full_name() or empleado.user.username
 
+    # Si el usuario explícitamente solicita abrir el formulario de vacaciones
+    if any(w in mensaje_lc for w in ['abrir formulario', 'solicitar vacaciones', 'pedir vacaciones', 'nueva solicitud de vacaciones']):
+        return {
+            'respuesta': f"¡Con gusto, {nombre_completo}! Cuentas con **{empleado.dias_vacaciones_disponibles} días disponibles**.\n\n"
+                         f"He abierto el formulario interactivo para que selecciones las fechas de tu solicitud.",
+            'tipo_accion': 'ABRIR_FORMULARIO_VACACIONES',
+            'datos': {
+                'disponibles': empleado.dias_vacaciones_disponibles,
+                'totales': empleado.dias_vacaciones_totales
+            }
+        }
+
     # Si hay API Key disponible, Gemini procesa y razona la intención del usuario
     if api_key:
         system_prompt = (
@@ -46,7 +60,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado):
             f"1. Analiza el mensaje completo del colaborador antes de responder. NO utilices plantillas fijas ni rígidas.\n"
             f"2. Si el colaborador manifiesta intención de SOLICITAR DÍAS DE VACACIONES (ej: 'Quiero pedir 2 días de vacaciones' o 'Solicito vacaciones del 10 al 12 de nov'):\n"
             f"   - Valida si sus días disponibles ({empleado.dias_vacaciones_disponibles}) son suficientes.\n"
-            f"   - Si especifica cuántos días quiere, confirma amablemente que cuenta con saldo suficiente e indícale cómo formalizaremos o registraremos su solicitud.\n"
+            f"   - Si especifica cuántos días quiere, confirma amablemente que cuenta con saldo suficiente e indícale que puede presionar el botón 'Solicitar Vacaciones' o seleccionar las fechas exactas.\n"
             f"3. Si solo desea CONSULTAR su saldo de vacaciones, bríndale la información de sus {empleado.dias_vacaciones_disponibles} días disponibles de forma fluida y amigable.\n"
             f"4. Si solicita una CONSTANCIA LABORAL, confirma amablemente que con gusto la estás generando en formato PDF e infórmale si la requiere con o sin sueldo.\n"
             f"5. Si hace preguntas sobre horarios, prestaciones o políticas, utiliza la información de la Base de Conocimientos RAG para responder con precisión.\n"
@@ -76,8 +90,13 @@ def procesar_mensaje_agente(mensaje_usuario, empleado):
                 tipo_accion = 'LLM_GEMINI'
                 datos = {}
 
+                # Detectar intención de formulario de vacaciones
+                if any(w in mensaje_lc for w in ['pedir vacaciones', 'solicitar vacaciones', 'nueva solicitud']):
+                    tipo_accion = 'ABRIR_FORMULARIO_VACACIONES'
+                    datos = {'disponibles': empleado.dias_vacaciones_disponibles}
+
                 # Detectar generación de constancia
-                if any(w in mensaje_lc for w in ['constancia', 'carta laboral', 'constancia de trabajo', 'carta patronal']):
+                elif any(w in mensaje_lc for w in ['constancia', 'carta laboral', 'constancia de trabajo', 'carta patronal']):
                     try:
                         incluir_sueldo = 'sueldo' in mensaje_lc or 'salario' in mensaje_lc
                         constancia = ConstanciaLaboral.objects.create(
@@ -111,7 +130,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado):
     if any(w in mensaje_lc for w in ['vacacion', 'vacaciones']):
         return {
             'respuesta': f"Hola {nombre_completo}, actualmente dispones de **{empleado.dias_vacaciones_disponibles} días disponibles** de vacaciones. ¿Deseas solicitar fechas específicas?",
-            'tipo_accion': 'VACACIONES_INFO',
+            'tipo_accion': 'ABRIR_FORMULARIO_VACACIONES',
             'datos': {'disponibles': empleado.dias_vacaciones_disponibles}
         }
 

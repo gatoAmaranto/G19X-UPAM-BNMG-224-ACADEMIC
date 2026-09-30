@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, Download, Calendar, Ticket, HelpCircle, Loader2 } from 'lucide-react'
 import axios from 'axios'
+import VacacionesModal from './VacacionesModal.jsx'
 
 const API_BASE = 'http://localhost:8000/api'
 
@@ -16,6 +17,8 @@ export default function ChatWidget({ onRefreshData }) {
   ])
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
+  const [modalVacacionesOpen, setModalVacacionesOpen] = useState(false)
+  const [saldoVacaciones, setSaldoVacaciones] = useState(10)
   const chatEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -25,6 +28,21 @@ export default function ChatWidget({ onRefreshData }) {
   useEffect(() => {
     scrollToBottom()
   }, [messages, loading])
+
+  // Obtener saldo inicial de vacaciones
+  useEffect(() => {
+    const fetchSaldo = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/hr/vacaciones/`)
+        if (res.data && res.data.saldo) {
+          setSaldoVacaciones(res.data.saldo.disponibles)
+        }
+      } catch (err) {
+        console.error('Error al obtener saldo inicial:', err)
+      }
+    }
+    fetchSaldo()
+  }, [])
 
   const handleSendMessage = async (textToSend) => {
     const text = textToSend || inputText
@@ -55,6 +73,14 @@ export default function ChatWidget({ onRefreshData }) {
       }
 
       setMessages(prev => [...prev, botMessage])
+
+      if (data.tipo_accion === 'ABRIR_FORMULARIO_VACACIONES') {
+        if (data.datos && data.datos.disponibles !== undefined) {
+          setSaldoVacaciones(data.datos.disponibles)
+        }
+        setModalVacacionesOpen(true)
+      }
+
       if (onRefreshData) onRefreshData()
     } catch (error) {
       console.error('Error al enviar mensaje:', error)
@@ -73,6 +99,22 @@ export default function ChatWidget({ onRefreshData }) {
     }
   }
 
+  const handleVacacionesSuccess = (solicitudCreada) => {
+    const confirmMessage = {
+      id: Date.now(),
+      sender: 'bot',
+      text: `✅ **Solicitud de Vacaciones Registrada Exitosamente**\n\n` +
+            `• Período: ${solicitudCreada.fecha_inicio} al ${solicitudCreada.fecha_fin}\n` +
+            `• Días solicitados: ${solicitudCreada.dias_solicitados} días\n` +
+            `• Estado: Pendiente de aprobación por RH\n\n` +
+            `Se ha enviado una notificación al equipo de Recursos Humanos para su revisión en el Backoffice.`,
+      actionType: 'VACACIONES_CONFIRMADAS',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
+    setMessages(prev => [...prev, confirmMessage])
+    if (onRefreshData) onRefreshData()
+  }
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -82,6 +124,14 @@ export default function ChatWidget({ onRefreshData }) {
 
   return (
     <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', height: '620px', overflow: 'hidden' }}>
+      {/* Modal de Vacaciones */}
+      <VacacionesModal
+        isOpen={modalVacacionesOpen}
+        onClose={() => setModalVacacionesOpen(false)}
+        saldoDisponibles={saldoVacaciones}
+        onSuccess={handleVacacionesSuccess}
+      />
+
       {/* Chat Header */}
       <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--card)' }}>
         <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.4rem', borderRadius: 'var(--radius)', display: 'flex' }}>
@@ -130,6 +180,19 @@ export default function ChatWidget({ onRefreshData }) {
               <div>{msg.text}</div>
 
               {/* Bot Action Cards */}
+              {msg.actionType === 'ABRIR_FORMULARIO_VACACIONES' && (
+                <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
+                  <button
+                    onClick={() => setModalVacacionesOpen(true)}
+                    className="btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}
+                  >
+                    <Calendar size={16} />
+                    Seleccionar Fechas de Vacaciones
+                  </button>
+                </div>
+              )}
+
               {msg.actionType === 'CONSTANCIA_GENERADA' && msg.datos && (
                 <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
                   <a
@@ -175,12 +238,12 @@ export default function ChatWidget({ onRefreshData }) {
       {/* Quick Action Chips */}
       <div style={{ padding: '0.5rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--card)', display: 'flex', gap: '0.5rem', overflowX: 'auto' }}>
         <button
-          onClick={() => handleSendMessage('¿Cuántos días de vacaciones tengo disponibles?')}
+          onClick={() => setModalVacacionesOpen(true)}
           className="btn-secondary"
           style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
         >
           <Calendar size={14} />
-          Mis Vacaciones
+          Solicitar Vacaciones
         </button>
 
         <button

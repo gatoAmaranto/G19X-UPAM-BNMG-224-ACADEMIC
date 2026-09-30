@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { User, Calendar, FileText, Ticket, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+import { User, Calendar, FileText, Ticket, Plus, CheckCircle, Clock } from 'lucide-react'
 import axios from 'axios'
+import VacacionesModal from './VacacionesModal.jsx'
 
 const API_BASE = 'http://localhost:8000/api'
 
@@ -9,6 +10,7 @@ export default function DashboardRH({ refreshTrigger }) {
   const [vacaciones, setVacaciones] = useState(null)
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
+  const [modalVacacionesOpen, setModalVacacionesOpen] = useState(false)
 
   const fetchData = async () => {
     try {
@@ -42,6 +44,16 @@ export default function DashboardRH({ refreshTrigger }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Modal de Vacaciones */}
+      {vacaciones && (
+        <VacacionesModal
+          isOpen={modalVacacionesOpen}
+          onClose={() => setModalVacacionesOpen(false)}
+          saldoDisponibles={vacaciones.saldo.disponibles}
+          onSuccess={fetchData}
+        />
+      )}
+
       {/* Employee Profile Card */}
       {perfil && (
         <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -72,7 +84,7 @@ export default function DashboardRH({ refreshTrigger }) {
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', textAlign: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', textAlign: 'center', marginBottom: '1rem' }}>
             <div style={{ background: 'var(--muted)', padding: '0.6rem', borderRadius: 'var(--radius)' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', display: 'block' }}>Totales</span>
               <strong style={{ fontSize: '1rem' }}>{vacaciones.saldo.totales}</strong>
@@ -86,6 +98,44 @@ export default function DashboardRH({ refreshTrigger }) {
               <strong style={{ fontSize: '1rem' }}>{vacaciones.saldo.disponibles}</strong>
             </div>
           </div>
+
+          <button
+            onClick={() => setModalVacacionesOpen(true)}
+            className="btn-primary"
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.85rem', padding: '0.55rem' }}
+          >
+            <Plus size={16} />
+            <span>Solicitar Vacaciones</span>
+          </button>
+
+          {/* Historial de solicitudes */}
+          {vacaciones.solicitudes && vacaciones.solicitudes.length > 0 && (
+            <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '0.85rem' }}>
+              <h4 style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--muted-foreground)', marginBottom: '0.5rem' }}>
+                Historial de Solicitudes
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {vacaciones.solicitudes.map((sol) => (
+                  <div key={sol.id} style={{ background: 'var(--muted)', padding: '0.6rem 0.75rem', borderRadius: 'var(--radius)', fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{sol.fecha_inicio} al {sol.fecha_fin}</div>
+                      <div style={{ fontSize: '0.73rem', color: 'var(--muted-foreground)' }}>{sol.dias_solicitados} días</div>
+                    </div>
+                    <span style={{
+                      padding: '0.15rem 0.4rem',
+                      borderRadius: '4px',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      background: sol.estado === 'APROBADO' ? '#dcfce7' : sol.estado === 'RECHAZADO' ? '#fee2e2' : 'var(--accent)',
+                      color: sol.estado === 'APROBADO' ? '#15803d' : sol.estado === 'RECHAZADO' ? '#b91c1c' : 'var(--accent-foreground)'
+                    }}>
+                      {sol.estado}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
