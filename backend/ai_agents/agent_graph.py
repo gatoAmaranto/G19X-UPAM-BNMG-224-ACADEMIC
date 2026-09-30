@@ -8,10 +8,9 @@ from hr_services.utils_pdf import generar_pdf_constancia_laboral
 from django.core.files.base import ContentFile
 
 MODELOS_GEMINI = [
-    'gemini-3.8-flash',
     'gemini-3.6-flash',
-    'gemini-2.5-flash',
-    'gemini-flash-latest',
+    'gemini-3.8-flash',
+    'gemini-3.5-flash-lite',
 ]
 
 def procesar_mensaje_agente(mensaje_usuario, empleado):

@@ -99,6 +99,11 @@ class VacacionesView(views.APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+from django.views.decorators.clickjacking import xframe_options_exempt
+from django.utils.decorators import method_decorator
+
+
+@method_decorator(xframe_options_exempt, name='dispatch')
 class GenerarConstanciaView(views.APIView):
     permission_classes = [AllowAny]
 

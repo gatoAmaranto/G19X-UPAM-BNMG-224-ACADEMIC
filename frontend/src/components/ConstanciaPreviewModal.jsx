@@ -65,13 +65,26 @@ export default function ConstanciaPreviewModal({ isOpen, onClose }) {
           </div>
         </div>
 
-        {/* PDF Viewer Iframe */}
+        {/* PDF Viewer Object / Iframe */}
         <div style={{ flex: 1, background: 'var(--muted)', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-          <iframe
-            src={previewUrl}
-            title="Vista Previa de Constancia Laboral PDF"
-            style={{ width: '100%', height: '100%', border: 'none' }}
-          />
+          <object
+            data={previewUrl}
+            type="application/pdf"
+            style={{ width: '100%', height: '100%' }}
+          >
+            <iframe
+              src={previewUrl}
+              title="Vista Previa de Constancia Laboral PDF"
+              style={{ width: '100%', height: '100%', border: 'none' }}
+            >
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted-foreground)' }}>
+                <p>Tu navegador no admite la vista previa directa de archivos PDF.</p>
+                <a href={downloadUrl} target="_blank" rel="noreferrer" className="btn-primary" style={{ marginTop: '1rem', display: 'inline-flex' }}>
+                  Descargar Constancia en PDF
+                </a>
+              </div>
+            </iframe>
+          </object>
         </div>
       </div>
     </div>

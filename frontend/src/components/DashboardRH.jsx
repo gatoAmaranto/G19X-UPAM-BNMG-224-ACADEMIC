@@ -71,30 +71,18 @@ export default function DashboardRH({ refreshTrigger }) {
 
       {/* Employee Profile Card */}
       {perfil && (
-        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.85rem', borderRadius: '50%', display: 'flex' }}>
-              <User size={28} />
-            </div>
-            <div>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>
-                {perfil.user.first_name} {perfil.user.last_name}
-              </h2>
-              <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>
-                {perfil.puesto} — {perfil.departamento} ({perfil.numero_empleado})
-              </p>
-            </div>
+        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.85rem', borderRadius: '50%', display: 'flex' }}>
+            <User size={28} />
           </div>
-
-          <button
-            onClick={() => setModalConstanciaOpen(true)}
-            className="btn-secondary"
-            title="Vista Previa de Constancia Laboral"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', padding: '0.4rem 0.75rem' }}
-          >
-            <FileText size={15} />
-            <span>Constancia PDF</span>
-          </button>
+          <div>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>
+              {perfil.user.first_name} {perfil.user.last_name}
+            </h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>
+              {perfil.puesto} — {perfil.departamento} ({perfil.numero_empleado})
+            </p>
+          </div>
         </div>
       )}
 
