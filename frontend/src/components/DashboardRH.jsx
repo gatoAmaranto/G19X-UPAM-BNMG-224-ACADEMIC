@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { User, Calendar, FileText, Ticket, Plus, CheckCircle, Clock } from 'lucide-react'
+import { User, Calendar, FileText, Ticket, Plus, CheckCircle, Clock, Eye, Download } from 'lucide-react'
 import axios from 'axios'
 import VacacionesModal from './VacacionesModal.jsx'
 import TicketModal from './TicketModal.jsx'
+import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 
 const API_BASE = 'http://localhost:8000/api'
 
@@ -13,6 +14,7 @@ export default function DashboardRH({ refreshTrigger }) {
   const [loading, setLoading] = useState(true)
   const [modalVacacionesOpen, setModalVacacionesOpen] = useState(false)
   const [modalTicketOpen, setModalTicketOpen] = useState(false)
+  const [modalConstanciaOpen, setModalConstanciaOpen] = useState(false)
 
   const fetchData = async () => {
     try {
@@ -62,20 +64,37 @@ export default function DashboardRH({ refreshTrigger }) {
         onSuccess={fetchData}
       />
 
+      <ConstanciaPreviewModal
+        isOpen={modalConstanciaOpen}
+        onClose={() => setModalConstanciaOpen(false)}
+      />
+
       {/* Employee Profile Card */}
       {perfil && (
-        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.85rem', borderRadius: '50%', display: 'flex' }}>
-            <User size={28} />
+        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.85rem', borderRadius: '50%', display: 'flex' }}>
+              <User size={28} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                {perfil.user.first_name} {perfil.user.last_name}
+              </h2>
+              <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>
+                {perfil.puesto} — {perfil.departamento} ({perfil.numero_empleado})
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>
-              {perfil.user.first_name} {perfil.user.last_name}
-            </h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>
-              {perfil.puesto} — {perfil.departamento} ({perfil.numero_empleado})
-            </p>
-          </div>
+
+          <button
+            onClick={() => setModalConstanciaOpen(true)}
+            className="btn-secondary"
+            title="Vista Previa de Constancia Laboral"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', padding: '0.4rem 0.75rem' }}
+          >
+            <FileText size={15} />
+            <span>Constancia PDF</span>
+          </button>
         </div>
       )}
 

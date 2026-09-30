@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { CheckCircle, XCircle, MessageSquare, Plus, BookOpen, Calendar, Ticket, AlertCircle, RefreshCw } from 'lucide-react'
+import { CheckCircle, XCircle, MessageSquare, Plus, BookOpen, Calendar, Ticket, AlertCircle, RefreshCw, Upload, FileText } from 'lucide-react'
 import axios from 'axios'
 
 const API_BASE = 'http://localhost:8000/api/hr/admin'
@@ -15,6 +15,9 @@ export default function AdminDashboard() {
   const [nuevaFaq, setNuevaFaq] = useState({ categoria: 'Políticas Generales', pregunta: '', respuesta: '' })
   // Estado de respuesta de ticket
   const [ticketRespuesta, setTicketRespuesta] = useState({ id: null, respuesta_rh: '' })
+  // Estado de carga de documento PDF/TXT
+  const [subiendoDoc, setSubiendoDoc] = useState(false)
+  const [msgUpload, setMsgUpload] = useState('')
 
   const fetchAdminData = async () => {
     try {
@@ -37,6 +40,30 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchAdminData()
   }, [])
+
+  // Carga de Documentos PDF/TXT
+  const handleSubirDocumento = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('archivo', file)
+
+    try {
+      setSubiendoDoc(true)
+      setMsgUpload('Procesando e ingiriendo documento...')
+      const res = await axios.post(`${API_BASE}/faq/upload/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      setMsgUpload(`✅ ${res.data.mensaje} (${res.data.registros_creados} secciones creadas)`)
+      fetchAdminData()
+    } catch (err) {
+      console.error('Error al subir documento:', err)
+      setMsgUpload(`❌ ${err.response?.data?.error || 'Error al subir el documento.'}`)
+    } finally {
+      setSubiendoDoc(false)
+    }
+  }
 
   // Aprobar / Rechazar Vacaciones
   const handleAprobarRechazarVacaciones = async (id, nuevoEstado) => {
@@ -243,7 +270,34 @@ export default function AdminDashboard() {
       {/* Tab 3: Base de Conocimiento RAG (FAQ) */}
       {activeTab === 'faq' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Formulario Agregar FAQ */}
+          {/* Carga de Documentos PDF/TXT */}
+          <div style={{ background: 'var(--card)', padding: '1.25rem', borderRadius: 'var(--radius)', border: '1px dashed var(--primary)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <Upload size={20} style={{ color: 'var(--primary)' }} />
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 600 }}>Carga Masiva de Documentos RAG (.pdf, .txt, .md)</h4>
+                <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>Sube reglamentos de trabajo o políticas de RH para entrenar automáticamente al chatbot.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.25rem' }}>
+              <input
+                type="file"
+                accept=".pdf,.txt,.md"
+                onChange={handleSubirDocumento}
+                disabled={subiendoDoc}
+                style={{ fontSize: '0.85rem', color: 'var(--foreground)' }}
+              />
+            </div>
+
+            {msgUpload && (
+              <div style={{ fontSize: '0.82rem', marginTop: '0.4rem', fontWeight: 500 }}>
+                {msgUpload}
+              </div>
+            )}
+          </div>
+
+          {/* Formulario Agregar FAQ Manual */}
           <form onSubmit={handleCrearFaq} style={{ background: 'var(--muted)', padding: '1rem', borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <h4 style={{ fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <Plus size={16} /> Añadir Nueva Pregunta Frecuente al Motor RAG

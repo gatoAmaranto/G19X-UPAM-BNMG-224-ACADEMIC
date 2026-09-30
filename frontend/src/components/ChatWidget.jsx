@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Download, Calendar, Ticket, HelpCircle, Loader2 } from 'lucide-react'
+import { Send, Bot, User, Download, Calendar, Ticket, HelpCircle, Loader2, Eye } from 'lucide-react'
 import axios from 'axios'
 import VacacionesModal from './VacacionesModal.jsx'
 import TicketModal from './TicketModal.jsx'
+import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 
 const API_BASE = 'http://localhost:8000/api'
 
@@ -20,6 +21,7 @@ export default function ChatWidget({ onRefreshData }) {
   const [loading, setLoading] = useState(false)
   const [modalVacacionesOpen, setModalVacacionesOpen] = useState(false)
   const [modalTicketOpen, setModalTicketOpen] = useState(false)
+  const [modalConstanciaOpen, setModalConstanciaOpen] = useState(false)
   const [saldoVacaciones, setSaldoVacaciones] = useState(10)
   const chatEndRef = useRef(null)
 
@@ -85,6 +87,8 @@ export default function ChatWidget({ onRefreshData }) {
         setModalVacacionesOpen(true)
       } else if (data.tipo_accion === 'ABRIR_FORMULARIO_TICKET') {
         setModalTicketOpen(true)
+      } else if (data.tipo_accion === 'CONSTANCIA_GENERADA') {
+        setModalConstanciaOpen(true)
       }
 
       if (onRefreshData) onRefreshData()
@@ -161,6 +165,11 @@ export default function ChatWidget({ onRefreshData }) {
         onSuccess={handleTicketSuccess}
       />
 
+      <ConstanciaPreviewModal
+        isOpen={modalConstanciaOpen}
+        onClose={() => setModalConstanciaOpen(false)}
+      />
+
       {/* Chat Header */}
       <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--card)' }}>
         <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.4rem', borderRadius: 'var(--radius)', display: 'flex' }}>
@@ -235,17 +244,25 @@ export default function ChatWidget({ onRefreshData }) {
                 </div>
               )}
 
-              {msg.actionType === 'CONSTANCIA_GENERADA' && msg.datos && (
-                <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
+              {msg.actionType === 'CONSTANCIA_GENERADA' && (
+                <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setModalConstanciaOpen(true)}
+                    className="btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
+                  >
+                    <Eye size={16} />
+                    <span>Ver Vista Previa</span>
+                  </button>
                   <a
                     href={`http://localhost:8000/api/hr/constancia/?download=true`}
                     target="_blank"
                     rel="noreferrer"
-                    className="btn-primary"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}
+                    className="btn-secondary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
                   >
                     <Download size={16} />
-                    Descargar Constancia en PDF
+                    <span>Descargar PDF</span>
                   </a>
                 </div>
               )}

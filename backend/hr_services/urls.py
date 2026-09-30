@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     PerfilEmpleadoView, VacacionesView, GenerarConstanciaView,
     TicketsViewSet, BaseConocimientoViewSet,
-    AdminVacacionesView, AdminTicketsView, AdminFAQView
+    AdminVacacionesView, AdminTicketsView, AdminFAQView, AdminDocumentUploadView
 )
 
 router = DefaultRouter()
@@ -22,6 +22,7 @@ urlpatterns = [
     path('admin/tickets/<int:pk>/', AdminTicketsView.as_view(), name='admin-tickets-detail'),
     path('admin/faq/', AdminFAQView.as_view(), name='admin-faq'),
     path('admin/faq/<int:pk>/', AdminFAQView.as_view(), name='admin-faq-detail'),
+    path('admin/faq/upload/', AdminDocumentUploadView.as_view(), name='admin-faq-upload'),
 
     path('', include(router.urls)),
 ]

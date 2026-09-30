@@ -102,6 +102,23 @@ class VacacionesView(views.APIView):
 class GenerarConstanciaView(views.APIView):
     permission_classes = [AllowAny]
 
+    def get(self, request):
+        empleado = get_demo_or_current_empleado(request)
+        constancia = ConstanciaLaboral.objects.filter(empleado=empleado).last()
+        if not constancia:
+            constancia = ConstanciaLaboral.objects.create(
+                empleado=empleado,
+                dirigido_a="A quien corresponda",
+                incluir_sueldo=True
+            )
+        pdf_buffer = generar_pdf_constancia_laboral(constancia)
+        filename = f"Constancia_{empleado.numero_empleado}_{constancia.id}.pdf"
+        
+        disposition = 'attachment' if request.query_params.get('download') == 'true' else 'inline'
+        response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
+        return response
+
     def post(self, request):
         empleado = get_demo_or_current_empleado(request)
         dirigido_a = request.data.get('dirigido_a', 'A quien corresponda')
@@ -116,8 +133,10 @@ class GenerarConstanciaView(views.APIView):
         # Generar archivo PDF con ReportLab
         pdf_buffer = generar_pdf_constancia_laboral(constancia)
         filename = f"Constancia_{empleado.numero_empleado}_{constancia.id}.pdf"
-        constancia.archivo_pdf.save(filename, ContentFile(pdf_buffer.getvalue()))
-        constancia.save()
+        try:
+            constancia.archivo_pdf.save(filename, ContentFile(pdf_buffer.getvalue()), save=True)
+        except Exception:
+            pass
 
         # Si se solicita descarga directa
         if request.query_params.get('download') == 'true':
@@ -197,6 +216,9 @@ class AdminTicketsView(views.APIView):
         return Response(TicketRHSerializer(ticket).data, status=status.HTTP_200_OK)
 
 
+import io
+import pypdf
+
 class AdminFAQView(views.APIView):
     permission_classes = [AllowAny]
 
@@ -217,3 +239,69 @@ class AdminFAQView(views.APIView):
         faq.activa = not faq.activa
         faq.save()
         return Response({'id': faq.id, 'activa': faq.activa}, status=status.HTTP_200_OK)
+
+
+class AdminDocumentUploadView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        if 'archivo' not in request.FILES:
+            return Response({'error': 'No se adjuntó ningún archivo en la petición.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        uploaded_file = request.FILES['archivo']
+        filename = uploaded_file.name
+        ext = filename.split('.')[-1].lower()
+
+        extracted_text = ""
+        if ext == 'pdf':
+            try:
+                reader = pypdf.PdfReader(uploaded_file)
+                pages_text = []
+                for page in reader.pages:
+                    txt = page.extract_text()
+                    if txt:
+                        pages_text.append(txt)
+                extracted_text = "\n\n".join(pages_text)
+            except Exception as e:
+                return Response({'error': f'Error al leer el archivo PDF: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        elif ext in ['txt', 'md']:
+            try:
+                extracted_text = uploaded_file.read().decode('utf-8', errors='ignore')
+            except Exception as e:
+                return Response({'error': f'Error al procesar el archivo de texto: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'error': 'Formato no permitido. Solo se aceptan archivos .pdf, .txt o .md'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not extracted_text.strip():
+            return Response({'error': 'El documento está vacío o no contiene texto extraíble.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        paragraphs = [p.strip() for p in extracted_text.split('\n\n') if len(p.strip()) > 30]
+        doc_title = filename.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title()
+        nuevas_faqs = []
+
+        if len(paragraphs) <= 3:
+            faq = BaseConocimientoRH.objects.create(
+                categoria='Documentos Ingestados',
+                pregunta=f'Políticas: {doc_title}',
+                respuesta=extracted_text[:2000],
+                activa=True
+            )
+            nuevas_faqs.append(faq)
+        else:
+            for idx, i in enumerate(range(0, len(paragraphs), 2)):
+                chunk = "\n\n".join(paragraphs[i:i+2])
+                faq = BaseConocimientoRH.objects.create(
+                    categoria='Documentos Ingestados',
+                    pregunta=f'{doc_title} — Sección #{idx + 1}',
+                    respuesta=chunk[:1500],
+                    activa=True
+                )
+                nuevas_faqs.append(faq)
+
+        serializer = BaseConocimientoRHSerializer(nuevas_faqs, many=True)
+        return Response({
+            'mensaje': f'Se ingesto exitosamente el documento "{filename}" en la Base de Conocimiento RAG.',
+            'registros_creados': len(nuevas_faqs),
+            'datos': serializer.data
+        }, status=status.HTTP_201_CREATED)
+

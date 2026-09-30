@@ -91,3 +91,17 @@ class HRServicesTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(BaseConocimientoRH.objects.count(), 1)
+
+    def test_admin_upload_document(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        document_content = b"Reglamento Interno de Trabajo\n\nTodos los colaboradores deben registrar su asistencia a las 9:00 AM.\n\nEl vestuario recomendado es casual de negocios durante la jornada laboral."
+        uploaded_file = SimpleUploadedFile("reglamento.txt", document_content, content_type="text/plain")
+        
+        response = self.client.post(
+            '/api/hr/admin/faq/upload/',
+            data={'archivo': uploaded_file}
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertIn('registros_creados', response.json())
+        self.assertGreater(response.json()['registros_creados'], 0)
+
