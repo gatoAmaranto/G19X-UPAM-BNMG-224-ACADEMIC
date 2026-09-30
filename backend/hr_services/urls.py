@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     PerfilEmpleadoView, VacacionesView, GenerarConstanciaView,
-    TicketsViewSet, BaseConocimientoViewSet
+    TicketsViewSet, BaseConocimientoViewSet,
+    AdminVacacionesView, AdminTicketsView, AdminFAQView
 )
 
 router = DefaultRouter()
@@ -13,5 +14,14 @@ urlpatterns = [
     path('perfil/', PerfilEmpleadoView.as_view(), name='perfil-empleado'),
     path('vacaciones/', VacacionesView.as_view(), name='vacaciones'),
     path('constancia/', GenerarConstanciaView.as_view(), name='generar-constancia'),
+    
+    # Admin Backoffice Endpoints
+    path('admin/vacaciones/', AdminVacacionesView.as_view(), name='admin-vacaciones'),
+    path('admin/vacaciones/<int:pk>/', AdminVacacionesView.as_view(), name='admin-vacaciones-detail'),
+    path('admin/tickets/', AdminTicketsView.as_view(), name='admin-tickets'),
+    path('admin/tickets/<int:pk>/', AdminTicketsView.as_view(), name='admin-tickets-detail'),
+    path('admin/faq/', AdminFAQView.as_view(), name='admin-faq'),
+    path('admin/faq/<int:pk>/', AdminFAQView.as_view(), name='admin-faq-detail'),
+
     path('', include(router.urls)),
 ]

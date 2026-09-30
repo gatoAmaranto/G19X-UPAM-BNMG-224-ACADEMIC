@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
-import { Bot, Sun, Moon, Sparkles, Building2 } from 'lucide-react'
+import { Bot, Sun, Moon, Shield, UserCheck, Sparkles } from 'lucide-react'
 import ChatWidget from './components/ChatWidget.jsx'
 import DashboardRH from './components/DashboardRH.jsx'
+import AdminDashboard from './components/AdminDashboard.jsx'
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [viewMode, setViewMode] = useState('colaborador') // 'colaborador' | 'admin'
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const toggleDarkMode = () => {
@@ -35,25 +37,75 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button className="btn-secondary" onClick={toggleDarkMode} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+        {/* View Switcher & Theme Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', background: 'var(--muted)', padding: '0.2rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+            <button
+              onClick={() => setViewMode('colaborador')}
+              style={{
+                border: 'none',
+                background: viewMode === 'colaborador' ? 'var(--primary)' : 'transparent',
+                color: viewMode === 'colaborador' ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
+                padding: '0.35rem 0.75rem',
+                borderRadius: 'calc(var(--radius) - 2px)',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                transition: 'all 0.2s'
+              }}
+            >
+              <UserCheck size={14} />
+              <span>Colaborador</span>
+            </button>
+
+            <button
+              onClick={() => setViewMode('admin')}
+              style={{
+                border: 'none',
+                background: viewMode === 'admin' ? 'var(--primary)' : 'transparent',
+                color: viewMode === 'admin' ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
+                padding: '0.35rem 0.75rem',
+                borderRadius: 'calc(var(--radius) - 2px)',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Shield size={14} />
+              <span>Backoffice RH</span>
+            </button>
+          </div>
+
+          <button className="btn-secondary" onClick={toggleDarkMode} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-            <span>{isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}</span>
+            <span>{isDarkMode ? 'Claro' : 'Oscuro'}</span>
           </button>
         </div>
       </header>
 
-      {/* Main Two-Column Layout */}
-      <main style={{ flex: 1, padding: '1.5rem 2rem', maxWidth: '1350px', width: '100%', margin: '0 auto', display: 'grid', gridTemplateColumns: '340px 1fr', gap: '1.5rem' }}>
-        {/* Left Column: Dashboard & Quick Stats */}
-        <div>
-          <DashboardRH refreshTrigger={refreshTrigger} />
-        </div>
-
-        {/* Right Column: Conversational AI Agent Chat Widget */}
-        <div>
-          <ChatWidget onRefreshData={handleRefreshData} />
-        </div>
+      {/* Main Container */}
+      <main style={{ flex: 1, padding: '1.5rem 2rem', maxWidth: '1350px', width: '100%', margin: '0 auto' }}>
+        {viewMode === 'colaborador' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '1.5rem' }}>
+            <div>
+              <DashboardRH refreshTrigger={refreshTrigger} />
+            </div>
+            <div>
+              <ChatWidget onRefreshData={handleRefreshData} />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <AdminDashboard />
+          </div>
+        )}
       </main>
 
       {/* Footer */}

@@ -146,3 +146,74 @@ class BaseConocimientoViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
     serializer_class = BaseConocimientoRHSerializer
     queryset = BaseConocimientoRH.objects.filter(activa=True)
+
+
+# --- ADMIN BACKOFFICE VIEWS ---
+
+class AdminVacacionesView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        solicitudes = SolicitudVacaciones.objects.all().order_by('-fecha_creacion')
+        serializer = SolicitudVacacionesSerializer(solicitudes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, pk):
+        solicitud = get_object_or_404(SolicitudVacaciones, pk=pk)
+        nuevo_estado = request.data.get('estado')
+
+        if nuevo_estado in ['APROBADO', 'RECHAZADO']:
+            if nuevo_estado == 'APROBADO' and solicitud.estado != 'APROBADO':
+                # Descontar días del saldo del empleado
+                solicitud.empleado.dias_vacaciones_tomados += solicitud.dias_solicitados
+                solicitud.empleado.save()
+
+            solicitud.estado = nuevo_estado
+            solicitud.save()
+            return Response(SolicitudVacacionesSerializer(solicitud).data, status=status.HTTP_200_OK)
+
+        return Response({'error': 'Estado no válido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminTicketsView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        tickets = TicketRH.objects.all().order_by('-fecha_creacion')
+        serializer = TicketRHSerializer(tickets, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, pk):
+        ticket = get_object_or_404(TicketRH, pk=pk)
+        respuesta = request.data.get('respuesta_rh', '')
+        nuevo_estado = request.data.get('estado', 'RESUELTO')
+
+        if respuesta:
+            ticket.respuesta_rh = respuesta
+        if nuevo_estado:
+            ticket.estado = nuevo_estado
+
+        ticket.save()
+        return Response(TicketRHSerializer(ticket).data, status=status.HTTP_200_OK)
+
+
+class AdminFAQView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        faqs = BaseConocimientoRH.objects.all().order_by('-fecha_actualizacion')
+        serializer = BaseConocimientoRHSerializer(faqs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = BaseConocimientoRHSerializer(data=request.data)
+        if serializer.is_valid():
+            faq = serializer.save()
+            return Response(BaseConocimientoRHSerializer(faq).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        faq = get_object_or_404(BaseConocimientoRH, pk=pk)
+        faq.activa = not faq.activa
+        faq.save()
+        return Response({'id': faq.id, 'activa': faq.activa}, status=status.HTTP_200_OK)
