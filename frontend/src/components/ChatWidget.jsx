@@ -21,10 +21,15 @@ export default function ChatWidget({ onRefreshData }) {
   const [modalVacacionesOpen, setModalVacacionesOpen] = useState(false)
   const [modalTicketOpen, setModalTicketOpen] = useState(false)
   const [saldoVacaciones, setSaldoVacaciones] = useState(10)
-  const chatEndRef = useRef(null)
+  const messagesContainerRef = useRef(null)
 
   const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
   }
 
   useEffect(() => {
@@ -174,7 +179,7 @@ export default function ChatWidget({ onRefreshData }) {
       </div>
 
       {/* Messages Feed */}
-      <div style={{ flex: 1, padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div ref={messagesContainerRef} style={{ flex: 1, padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {messages.map((msg) => (
           <div
             key={msg.id}
