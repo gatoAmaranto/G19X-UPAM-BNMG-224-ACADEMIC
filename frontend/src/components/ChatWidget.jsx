@@ -113,7 +113,7 @@ export default function ChatWidget({ onRefreshData }) {
     const confirmMessage = {
       id: Date.now(),
       sender: 'bot',
-      text: `✅ **Solicitud de Vacaciones Registrada Exitosamente**\n\n` +
+      text: `**Solicitud de Vacaciones Registrada Exitosamente**\n\n` +
             `• Período: ${solicitudCreada.fecha_inicio} al ${solicitudCreada.fecha_fin}\n` +
             `• Días solicitados: ${solicitudCreada.dias_solicitados} días\n` +
             `• Estado: Pendiente de aprobación por RH\n\n` +
@@ -129,7 +129,7 @@ export default function ChatWidget({ onRefreshData }) {
     const confirmMessage = {
       id: Date.now(),
       sender: 'bot',
-      text: `🎟️ **Ticket de Soporte Creado Exitosamente**\n\n` +
+      text: `**Ticket de Soporte Creado Exitosamente**\n\n` +
             `• Folio: \`${ticketCreado.folio}\`\n` +
             `• Asunto: ${ticketCreado.asunto}\n` +
             `• Prioridad: ${ticketCreado.prioridad}\n` +

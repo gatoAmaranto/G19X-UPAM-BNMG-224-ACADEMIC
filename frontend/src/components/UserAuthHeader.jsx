@@ -109,7 +109,7 @@ export default function UserAuthHeader() {
             color: isRhAdmin ? 'var(--primary)' : 'var(--muted-foreground)',
             fontWeight: isRhAdmin ? 700 : 500
           }}>
-            {isRhAdmin ? '🛡️ Recursos Humanos' : '👤 Colaborador'}
+            {isRhAdmin ? 'Recursos Humanos' : 'Colaborador'}
           </span>
         </div>
       </div>

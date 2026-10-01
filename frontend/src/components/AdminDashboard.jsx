@@ -55,11 +55,11 @@ export default function AdminDashboard() {
       const res = await axios.post(`${API_BASE}/faq/upload/`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
-      setMsgUpload(`✅ ${res.data.mensaje} (${res.data.registros_creados} secciones creadas)`)
+      setMsgUpload(`${res.data.mensaje} (${res.data.registros_creados} secciones creadas)`)
       fetchAdminData()
     } catch (err) {
       console.error('Error al subir documento:', err)
-      setMsgUpload(`❌ ${err.response?.data?.error || 'Error al subir el documento.'}`)
+      setMsgUpload(`${err.response?.data?.error || 'Error al subir el documento.'}`)
     } finally {
       setSubiendoDoc(false)
     }

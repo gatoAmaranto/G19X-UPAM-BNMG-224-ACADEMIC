@@ -36,8 +36,22 @@ export default function App() {
       {/* Navbar Header */}
       <header className="glass-panel" style={{ padding: '0.85rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 0, borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.5rem', borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center' }}>
-            <Bot size={22} />
+          {/* Logo de la Empresa (guarda tu imagen como /frontend/public/logo.png o .svg) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img
+              src="/logo.png"
+              alt="Logo Develop Talent & Technology"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                if (e.currentTarget.nextSibling) {
+                  e.currentTarget.nextSibling.style.display = 'flex';
+                }
+              }}
+              style={{ maxHeight: '42px', maxWidth: '140px', objectFit: 'contain' }}
+            />
+            <div style={{ display: 'none', background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.5rem', borderRadius: 'var(--radius)', alignItems: 'center', justifyContent: 'center' }}>
+              <Bot size={22} />
+            </div>
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
