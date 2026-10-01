@@ -57,6 +57,9 @@ services:
       - "5173:5173"
     environment:
       - VITE_API_URL=http://localhost:8000
+      - VITE_AUTH0_DOMAIN=${VITE_AUTH0_DOMAIN:-dev-n4ra6mt0qf5e4h61.us.auth0.com}
+      - VITE_AUTH0_CLIENT_ID=${VITE_AUTH0_CLIENT_ID:-4x5X2AXgYvvSIzHYUS07FU8kvjHSX8uO}
+      - VITE_AUTH0_AUDIENCE=${VITE_AUTH0_AUDIENCE:-https://dev-n4ra6mt0qf5e4h61.us.auth0.com/api/v2/}
     depends_on:
       - backend
 

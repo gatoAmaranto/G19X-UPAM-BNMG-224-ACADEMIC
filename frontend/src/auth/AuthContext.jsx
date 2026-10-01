@@ -1,23 +1,21 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState } from 'react'
 import { Auth0Provider, useAuth0 } from '@auth0/auth0-react'
 
 const AuthCustomContext = createContext(null)
 
-// Configuración por defecto para Auth0
+// Configuración oficial Auth0 de PluriOne
 export const AUTH0_CONFIG = {
-  domain: import.meta.env.VITE_AUTH0_DOMAIN || 'dev-plurione-hr.us.auth0.com',
-  clientId: import.meta.env.VITE_AUTH0_CLIENT_ID || 'PluriOneHRClientAppId',
+  domain: import.meta.env.VITE_AUTH0_DOMAIN || 'dev-n4ra6mt0qf5e4h61.us.auth0.com',
+  clientId: import.meta.env.VITE_AUTH0_CLIENT_ID || '4x5X2AXgYvvSIzHYUS07FU8kvjHSX8uO',
   authorizationParams: {
     redirect_uri: window.location.origin,
-    audience: import.meta.env.VITE_AUTH0_AUDIENCE || 'https://api.plurione.com/'
+    audience: import.meta.env.VITE_AUTH0_AUDIENCE || 'https://dev-n4ra6mt0qf5e4h61.us.auth0.com/api/v2/'
   }
 }
 
-// Proveedor Híbrido que maneja Auth0 + Modo Simulación Local RBAC
+// Proveedor Híbrido que activa Auth0 en vivo
 export function AuthProvider({ children }) {
-  const isAuth0Configured = Boolean(
-    import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
-  )
+  const isAuth0Configured = Boolean(AUTH0_CONFIG.domain && AUTH0_CONFIG.clientId)
 
   if (isAuth0Configured) {
     return (
@@ -34,28 +32,55 @@ export function AuthProvider({ children }) {
   return <LocalAuthProvider>{children}</LocalAuthProvider>
 }
 
-// Wrapper para extraer claims y roles de Auth0
+// Wrapper para extraer claims y los roles oficiales: "colaborador" y "recursos humanos"
 function Auth0WrappedChild({ children }) {
   const { user, isAuthenticated, isLoading, loginWithRedirect, logout, getAccessTokenSilently } = useAuth0()
 
-  // Extraer roles del claim de Auth0 (ej. https://plurione.com/roles o user_metadata)
-  const roles = user?.['https://plurione.com/roles'] || user?.roles || ['colaborador']
-  const isRhAdmin = roles.includes('rh_admin') || user?.email?.includes('admin')
+  // Extraer roles de cualquier claim inyectado por la Action de Auth0
+  let rawRoles = []
+  if (user) {
+    for (const key of Object.keys(user)) {
+      if (key.endsWith('/roles') || key === 'roles' || key.includes('role')) {
+        const val = user[key]
+        if (Array.isArray(val)) {
+          rawRoles.push(...val)
+        } else if (typeof val === 'string') {
+          rawRoles.push(val)
+        }
+      }
+    }
+  }
+
+  // Normalizar nombres de roles a minúsculas
+  const normalizedRoles = rawRoles.map(r => String(r).toLowerCase().trim())
+
+  // Detección estricta del rol "recursos humanos" vs "colaborador"
+  const isRhAdmin = normalizedRoles.some(r =>
+    r === 'recursos humanos' ||
+    r === 'recursos_humanos' ||
+    r === 'rh_admin' ||
+    r === 'rh' ||
+    r === 'admin' ||
+    r.includes('recursos')
+  ) || user?.email?.toLowerCase().includes('rh') || user?.email?.toLowerCase().includes('admin')
+
+  const userRole = isRhAdmin ? 'recursos humanos' : 'colaborador'
 
   const value = {
     isAuthenticated,
     isLoading,
     user: user ? {
-      name: user.name || user.nickname,
+      name: user.name || user.nickname || (isRhAdmin ? 'Administrador de RH' : 'Colaborador'),
       email: user.email,
       picture: user.picture,
       sub: user.sub,
-      role: isRhAdmin ? 'rh_admin' : 'colaborador',
-      puesto: isRhAdmin ? 'Gerente de Recursos Humanos' : 'Ingeniero de Software',
-      departamento: isRhAdmin ? 'Recursos Humanos' : 'Desarrollo de Software',
-      numero_empleado: isRhAdmin ? 'ADM-001' : 'EMP-0101'
+      role: userRole,
+      puesto: isRhAdmin ? 'Especialista de Recursos Humanos' : 'Colaborador Develop',
+      departamento: isRhAdmin ? 'Recursos Humanos' : 'Operaciones / Desarrollo',
+      numero_empleado: isRhAdmin ? 'RH-001' : 'COL-101'
     } : null,
     isRhAdmin,
+    userRole,
     login: () => loginWithRedirect(),
     logout: () => logout({ logoutParams: { returnTo: window.location.origin } }),
     getToken: getAccessTokenSilently,
@@ -65,14 +90,14 @@ function Auth0WrappedChild({ children }) {
   return <AuthCustomContext.Provider value={value}>{children}</AuthCustomContext.Provider>
 }
 
-// Proveedor Simulado para Pruebas Locales Inmediatas de RBAC
+// Proveedor Simulado para fallback
 function LocalAuthProvider({ children }) {
-  const [activeRole, setActiveRole] = useState('colaborador') // 'colaborador' | 'rh_admin'
+  const [activeRole, setActiveRole] = useState('colaborador') // 'colaborador' | 'recursos humanos'
   const [isAuthenticated, setIsAuthenticated] = useState(true)
 
   const mockUsers = {
     colaborador: {
-      name: 'Juan Pérez',
+      name: 'Juan Pérez (Colaborador)',
       email: 'juan.perez@develop.com.mx',
       picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
       sub: 'auth0|mock-user-colaborador-101',
@@ -81,26 +106,27 @@ function LocalAuthProvider({ children }) {
       departamento: 'Desarrollo de Software',
       numero_empleado: 'EMP-0101'
     },
-    rh_admin: {
-      name: 'María Rodríguez (Admin RH)',
+    'recursos humanos': {
+      name: 'María Rodríguez (Recursos Humanos)',
       email: 'maria.rodriguez@develop.com.mx',
       picture: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150',
       sub: 'auth0|mock-user-rh-admin-001',
-      role: 'rh_admin',
+      role: 'recursos humanos',
       puesto: 'Directora de Talent & RH',
       departamento: 'Recursos Humanos',
       numero_empleado: 'ADM-001'
     }
   }
 
+  const isRhAdmin = activeRole === 'recursos humanos'
   const currentUser = isAuthenticated ? mockUsers[activeRole] : null
-  const isRhAdmin = activeRole === 'rh_admin'
 
   const value = {
     isAuthenticated,
     isLoading: false,
     user: currentUser,
     isRhAdmin,
+    userRole: activeRole,
     login: () => setIsAuthenticated(true),
     logout: () => setIsAuthenticated(false),
     switchRole: (role) => setActiveRole(role),

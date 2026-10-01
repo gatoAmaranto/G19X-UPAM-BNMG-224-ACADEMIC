@@ -1,5 +1,5 @@
 import React from 'react'
-import { LogIn, LogOut, Shield, UserCheck, Key, Sparkles, CheckCircle2 } from 'lucide-react'
+import { LogIn, LogOut, Shield, UserCheck, Key } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 
 export default function UserAuthHeader() {
@@ -22,7 +22,7 @@ export default function UserAuthHeader() {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-      {/* Auth0 Live Status Badge */}
+      {/* Auth0 Status Indicator */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -36,10 +36,10 @@ export default function UserAuthHeader() {
         fontWeight: 600
       }}>
         <Key size={12} />
-        <span>{isAuth0Live ? 'Auth0 Producción' : 'Auth0 RBAC Simulación'}</span>
+        <span>{isAuth0Live ? 'Auth0 Conectado' : 'Auth0 Simulación'}</span>
       </div>
 
-      {/* Role Switcher (For local testing & presentation) */}
+      {/* Switcher para pruebas locales si no está en vivo */}
       {!isAuth0Live && (
         <div style={{ display: 'flex', background: 'var(--muted)', padding: '0.2rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
           <button
@@ -60,11 +60,11 @@ export default function UserAuthHeader() {
             }}
           >
             <UserCheck size={13} />
-            <span>Vista Colaborador</span>
+            <span>Colaborador</span>
           </button>
 
           <button
-            onClick={() => switchRole('rh_admin')}
+            onClick={() => switchRole('recursos humanos')}
             style={{
               border: 'none',
               background: isRhAdmin ? 'var(--primary)' : 'transparent',
@@ -81,7 +81,7 @@ export default function UserAuthHeader() {
             }}
           >
             <Shield size={13} />
-            <span>Vista RH Admin</span>
+            <span>Recursos Humanos</span>
           </button>
         </div>
       )}
@@ -104,8 +104,12 @@ export default function UserAuthHeader() {
           <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--foreground)' }}>
             {user?.name}
           </span>
-          <span style={{ fontSize: '0.7rem', color: isRhAdmin ? 'var(--primary)' : 'var(--muted-foreground)', fontWeight: isRhAdmin ? 700 : 500 }}>
-            {isRhAdmin ? '🛡️ Administrator RH' : '👤 Colaborador'}
+          <span style={{
+            fontSize: '0.7rem',
+            color: isRhAdmin ? 'var(--primary)' : 'var(--muted-foreground)',
+            fontWeight: isRhAdmin ? 700 : 500
+          }}>
+            {isRhAdmin ? '🛡️ Recursos Humanos' : '👤 Colaborador'}
           </span>
         </div>
       </div>
