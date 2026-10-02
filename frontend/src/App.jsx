@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Bot, Sun, Moon, Shield, UserCheck, Sparkles, LogIn, Lock } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Bot, Sun, Moon, Shield, Lock, LogIn } from 'lucide-react'
 import ChatWidget from './components/ChatWidget.jsx'
 import DashboardRH from './components/DashboardRH.jsx'
 import AdminDashboard from './components/AdminDashboard.jsx'
@@ -7,13 +7,54 @@ import UserAuthHeader from './components/UserAuthHeader.jsx'
 import { useAuth } from './auth/AuthContext.jsx'
 
 export default function App() {
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  // 1. Detectar preferencia guardada en localStorage o la del sistema operativo por defecto
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('theme')
+    if (savedTheme) {
+      return savedTheme === 'dark'
+    }
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
+
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const { isAuthenticated, user, isRhAdmin, login, isLoading } = useAuth()
 
+  // Aplicar clase .dark en <html>
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [isDarkMode])
+
+  // Escuchar si el usuario cambia el tema del sistema operativo (si no ha fijado una preferencia manual)
+  useEffect(() => {
+    if (!window.matchMedia) return
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = (e) => {
+      const savedTheme = localStorage.getItem('theme')
+      if (!savedTheme) {
+        setIsDarkMode(e.matches)
+      }
+    }
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  // 2. Redirección automática a Auth0 si no está autenticado
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      login()
+    }
+  }, [isLoading, isAuthenticated, login])
+
   const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode)
-    document.documentElement.classList.toggle('dark')
+    setIsDarkMode(prev => {
+      const next = !prev
+      localStorage.setItem('theme', next ? 'dark' : 'light')
+      return next
+    })
   }
 
   const handleRefreshData = () => {
@@ -36,10 +77,10 @@ export default function App() {
       {/* Navbar Header */}
       <header className="glass-panel" style={{ padding: '0.85rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 0, borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          {/* Logo de la Empresa (guarda tu imagen como /frontend/public/logo.png o .svg) */}
+          {/* Logo de la Empresa */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <img
-              src="/logo.png"
+              src="/icon-512.png"
               alt="Logo Develop Talent & Technology"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
@@ -68,7 +109,12 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <UserAuthHeader />
 
-          <button className="btn-secondary" onClick={toggleDarkMode} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
+          <button
+            className="btn-secondary"
+            onClick={toggleDarkMode}
+            title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+          >
             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
             <span>{isDarkMode ? 'Claro' : 'Oscuro'}</span>
           </button>
@@ -78,23 +124,23 @@ export default function App() {
       {/* Main Container */}
       <main style={{ flex: 1, padding: '1.5rem 2rem', maxWidth: '1350px', width: '100%', margin: '0 auto' }}>
         {!isAuthenticated ? (
-          /* Landing Screen when unauthenticated */
+          /* Redirección automática hacia Auth0 */
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-            <div className="glass-panel" style={{ maxWidth: '480px', width: '100%', padding: '2.5rem', textAlign: 'center', borderRadius: 'var(--radius)' }}>
+            <div className="glass-panel" style={{ maxWidth: '420px', width: '100%', padding: '2.5rem', textAlign: 'center', borderRadius: 'var(--radius)' }}>
               <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', width: '54px', height: '54px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
                 <Lock size={26} />
               </div>
-              <h2 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '0.5rem' }}>Portal de Autoservicio de Recursos Humanos</h2>
-              <p style={{ fontSize: '0.88rem', color: 'var(--muted-foreground)', marginBottom: '1.75rem' }}>
-                Inicia sesión con tu cuenta corporativa para acceder a tu saldo de vacaciones, solicitar constancias laborales y consultar con el Agente de IA.
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Redirigiendo a Auth0...</h2>
+              <p style={{ fontSize: '0.88rem', color: 'var(--muted-foreground)', marginBottom: '1.25rem' }}>
+                Conectando con el inicio de sesión corporativo seguro.
               </p>
               <button
                 onClick={login}
                 className="btn-primary"
-                style={{ width: '100%', padding: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', fontSize: '0.95rem' }}
+                style={{ width: '100%', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', fontSize: '0.9rem' }}
               >
-                <LogIn size={18} />
-                <span>Ingresar con Auth0 Single Sign-On</span>
+                <LogIn size={16} />
+                <span>Continuar a Auth0</span>
               </button>
             </div>
           </div>
@@ -103,7 +149,7 @@ export default function App() {
           <div>
             <div style={{ marginBottom: '1rem', background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.65rem 1rem', borderRadius: 'var(--radius)', fontSize: '0.83rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Shield size={16} />
-              <span><strong>Rol Autenticado: Administrador de Recursos Humanos.</strong> Tienes acceso total al Backoffice de gestión y entrenamiento RAG.</span>
+              <span><strong>Rol Autenticado: Recursos Humanos.</strong> Tienes acceso al Backoffice institucional para aprobación de solicitudes, atención de tickets y entrenamiento del motor RAG.</span>
             </div>
             <AdminDashboard />
           </div>
