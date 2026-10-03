@@ -4,6 +4,8 @@ import axios from 'axios'
 import VacacionesModal from './VacacionesModal.jsx'
 import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
+import TicketDetalleModal from './TicketDetalleModal.jsx'
+
 
 const API_BASE = 'http://localhost:8000/api'
 
@@ -15,6 +17,8 @@ export default function DashboardRH({ refreshTrigger }) {
   const [modalVacacionesOpen, setModalVacacionesOpen] = useState(false)
   const [modalTicketOpen, setModalTicketOpen] = useState(false)
   const [modalConstanciaOpen, setModalConstanciaOpen] = useState(false)
+  const [ticketSeleccionado, setTicketSeleccionado] = useState(null)
+
 
   const fetchData = async () => {
     try {
@@ -68,6 +72,13 @@ export default function DashboardRH({ refreshTrigger }) {
         isOpen={modalConstanciaOpen}
         onClose={() => setModalConstanciaOpen(false)}
       />
+
+      <TicketDetalleModal
+        isOpen={Boolean(ticketSeleccionado)}
+        ticket={ticketSeleccionado}
+        onClose={() => setTicketSeleccionado(null)}
+      />
+
 
       {/* Employee Profile Card */}
       {perfil && (
@@ -175,25 +186,111 @@ export default function DashboardRH({ refreshTrigger }) {
         {tickets.length === 0 ? (
           <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>No tienes tickets de atención abiertos.</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-            {tickets.map((t) => (
-              <div key={t.id} style={{ background: 'var(--muted)', padding: '0.75rem', borderRadius: 'var(--radius)', fontSize: '0.85rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: '0.25rem' }}>
-                  <span>`{t.folio}`</span>
-                  <span style={{
-                    fontSize: '0.7rem',
-                    padding: '0.15rem 0.4rem',
-                    borderRadius: '4px',
-                    background: t.estado === 'ABIERTO' ? 'var(--accent)' : 'var(--secondary)',
-                    color: t.estado === 'ABIERTO' ? 'var(--accent-foreground)' : 'var(--secondary-foreground)'
-                  }}>
-                    {t.estado}
-                  </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            {tickets.map((t) => {
+              const isResuelto = t.estado === 'RESUELTO'
+              const isEnProceso = t.estado === 'EN_PROCESO'
+              const isCerrado = t.estado === 'CERRADO'
+              const badgeBg = isResuelto ? '#dcfce7' : isEnProceso ? '#fef3c7' : isCerrado ? 'var(--muted)' : 'var(--accent)'
+              const badgeColor = isResuelto ? '#15803d' : isEnProceso ? '#b45309' : isCerrado ? 'var(--muted-foreground)' : 'var(--accent-foreground)'
+
+              return (
+                <div
+                  key={t.id}
+                  style={{
+                    background: 'var(--muted)',
+                    padding: '0.85rem',
+                    borderRadius: 'var(--radius)',
+                    fontSize: '0.85rem',
+                    border: '1px solid var(--border)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600, marginBottom: '0.3rem' }}>
+                    <span style={{ fontFamily: 'monospace', color: 'var(--primary)', fontSize: '0.82rem' }}>{t.folio}</span>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      padding: '0.15rem 0.45rem',
+                      borderRadius: '4px',
+                      background: badgeBg,
+                      color: badgeColor,
+                      fontWeight: 600
+                    }}>
+                      {t.estado}
+                    </span>
+                  </div>
+
+                  <div style={{ color: 'var(--foreground)', fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.88rem' }}>
+                    {t.asunto}
+                  </div>
+
+                  <div style={{ fontSize: '0.74rem', color: 'var(--muted-foreground)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <span>{new Date(t.fecha_creacion).toLocaleDateString()}</span>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      color: t.prioridad === 'ALTA' ? '#dc2626' : t.prioridad === 'MEDIA' ? '#d97706' : '#2563eb',
+                      fontWeight: 600
+                    }}>
+                      Prioridad {t.prioridad}
+                    </span>
+                  </div>
+
+                  {/* Respuesta oficial de Recursos Humanos si ya fue resuelto/atendido */}
+                  {t.respuesta_rh ? (
+                    <div style={{
+                      marginTop: '0.5rem',
+                      padding: '0.55rem 0.7rem',
+                      borderRadius: 'var(--radius)',
+                      background: 'var(--card)',
+                      borderLeft: '3px solid #16a34a',
+                      fontSize: '0.78rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600, color: '#16a34a', marginBottom: '0.2rem' }}>
+                        <CheckCircle size={13} />
+                        <span>Respuesta de Recursos Humanos:</span>
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--foreground)', lineHeight: 1.45, whiteSpace: 'pre-line' }}>
+                        {t.respuesta_rh}
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{
+                      marginTop: '0.35rem',
+                      fontSize: '0.72rem',
+                      color: 'var(--muted-foreground)',
+                      fontStyle: 'italic',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.3rem'
+                    }}>
+                      <Clock size={12} />
+                      <span>En revisión por el equipo de RH...</span>
+                    </div>
+                  )}
+
+                  {/* Acción para ver detalle completo */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                    <button
+                      onClick={() => setTicketSeleccionado(t)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--primary)',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        padding: '0.15rem 0.3rem'
+                      }}
+                    >
+                      <Eye size={13} />
+                      <span>Ver detalle completo</span>
+                    </button>
+                  </div>
                 </div>
-                <div style={{ color: 'var(--foreground)', marginBottom: '0.2rem' }}>{t.asunto}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>{new Date(t.fecha_creacion).toLocaleDateString()}</div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

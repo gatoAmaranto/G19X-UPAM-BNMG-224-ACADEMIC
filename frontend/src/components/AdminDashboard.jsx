@@ -233,16 +233,29 @@ export default function AdminDashboard() {
             <div key={t.id} style={{ background: 'var(--muted)', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>`{t.folio}` — {t.empleado_nombre}</span>
-                <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
+                <span style={{
+                  fontSize: '0.75rem',
+                  padding: '0.2rem 0.55rem',
+                  borderRadius: '4px',
+                  fontWeight: 600,
+                  background: t.estado === 'RESUELTO' ? '#dcfce7' : t.estado === 'EN_PROCESO' ? '#fef3c7' : 'var(--accent)',
+                  color: t.estado === 'RESUELTO' ? '#15803d' : t.estado === 'EN_PROCESO' ? '#b45309' : 'var(--accent-foreground)'
+                }}>
                   {t.estado}
                 </span>
               </div>
               <p style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.3rem' }}>{t.asunto}</p>
-              <p style={{ fontSize: '0.82rem', color: 'var(--muted-foreground)', marginBottom: '0.75rem' }}>{t.descripcion}</p>
+              <p style={{ fontSize: '0.82rem', color: 'var(--muted-foreground)', marginBottom: '0.75rem', whiteSpace: 'pre-line' }}>{t.descripcion}</p>
 
               {t.respuesta_rh ? (
-                <div style={{ background: 'var(--card)', padding: '0.75rem', borderRadius: 'var(--radius)', borderLeft: '3px solid var(--primary)', fontSize: '0.85rem' }}>
-                  <strong>Respuesta de RH:</strong> {t.respuesta_rh}
+                <div style={{ background: 'var(--card)', padding: '0.85rem 1rem', borderRadius: 'var(--radius)', borderLeft: '4px solid #16a34a', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#16a34a', fontWeight: 600, marginBottom: '0.25rem' }}>
+                    <CheckCircle size={15} />
+                    <span>Respuesta enviada al colaborador:</span>
+                  </div>
+                  <p style={{ margin: 0, color: 'var(--foreground)', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+                    {t.respuesta_rh}
+                  </p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -251,14 +264,21 @@ export default function AdminDashboard() {
                     placeholder="Escribe la respuesta formal de RH..."
                     value={ticketRespuesta.id === t.id ? ticketRespuesta.respuesta_rh : ''}
                     onChange={(e) => setTicketRespuesta({ id: t.id, respuesta_rh: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleEnviarRespuestaTicket(t.id)
+                      }
+                    }}
                     style={{ flex: 1, padding: '0.4rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--input)', color: 'var(--foreground)', fontSize: '0.85rem' }}
                   />
                   <button
                     onClick={() => handleEnviarRespuestaTicket(t.id)}
                     className="btn-primary"
-                    style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem' }}
+                    style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                   >
-                    Responder & Resolver
+                    <CheckCircle size={14} />
+                    <span>Responder & Resolver</span>
                   </button>
                 </div>
               )}

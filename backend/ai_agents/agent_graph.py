@@ -42,6 +42,13 @@ def procesar_mensaje_agente(mensaje_usuario, empleado):
 
     # Si hay API Key disponible, Gemini procesa y razona la intención del usuario
     if api_key:
+        tickets_recientes = TicketRH.objects.filter(empleado=empleado).order_by('-fecha_creacion')[:5]
+        tickets_context = "\n".join([
+            f"- Folio: {t.folio} | Asunto: {t.asunto} | Estado: {t.estado} | Prioridad: {t.prioridad}"
+            + (f" | RESPUESTA OFICIAL DE RH: \"{t.respuesta_rh}\"" if t.respuesta_rh else " | (En espera de respuesta de RH)")
+            for t in tickets_recientes
+        ]) if tickets_recientes.exists() else "No tienes tickets registrados actualmente."
+
         system_prompt = (
             f"Eres el Agente Conversacional Inteligente de Recursos Humanos de PluriOne S.A. de C.V. (Develop Talent & Technology).\n"
             f"Tu objetivo es atender al colaborador de forma amable, empática, natural y verdaderamente inteligente.\n\n"
@@ -53,6 +60,8 @@ def procesar_mensaje_agente(mensaje_usuario, empleado):
             f"- Días Totales de Vacaciones: {empleado.dias_vacaciones_totales}\n"
             f"- Días Disfrutados: {empleado.dias_vacaciones_tomados}\n"
             f"- Días Disponibles Actuales: {empleado.dias_vacaciones_disponibles}\n\n"
+            f"TICKETS DE ATENCIÓN Y SOPORTE DEL COLABORADOR:\n"
+            f"{tickets_context}\n\n"
             f"BASE DE CONOCIMIENTOS DE POLÍTICAS Y DUDAS FRECUENTES (RAG):\n"
             f"{faqs_context}\n\n"
             f"INSTRUCCIONES CLAVE DE RAZONAMIENTO:\n"
@@ -63,7 +72,11 @@ def procesar_mensaje_agente(mensaje_usuario, empleado):
             f"3. Si solo desea CONSULTAR su saldo de vacaciones, bríndale la información de sus {empleado.dias_vacaciones_disponibles} días disponibles de forma fluida y amigable.\n"
             f"4. Si solicita una CONSTANCIA LABORAL, confirma amablemente que con gusto la estás generando en formato PDF e infórmale si la requiere con o sin sueldo.\n"
             f"5. Si hace preguntas sobre horarios, prestaciones o políticas, utiliza la información de la Base de Conocimientos RAG para responder con precisión.\n"
-            f"6. Mantén un tono formal pero cercano, representando con orgullo a Develop Talent & Technology.\n\n"
+            f"6. Si el colaborador pregunta por el estado o respuesta de sus tickets (ej: 'qué pasó con mi ticket', 'qué respondieron a mi ticket', 'estado de mis reportes'):\n"
+            f"   - Revisa la sección TICKETS DE ATENCIÓN Y SOPORTE DEL COLABORADOR.\n"
+            f"   - Si el ticket tiene 'RESPUESTA OFICIAL DE RH', indícale con claridad y calidez qué fue lo que Recursos Humanos dictaminó y resolvió.\n"
+            f"   - Si aún no tiene respuesta, infórmale con empatía que su ticket sigue abierto y en proceso de atención.\n"
+            f"7. Mantén un tono formal pero cercano, representando con orgullo a Develop Talent & Technology.\n\n"
             f"MENSAJE DEL COLABORADOR: \"{mensaje_usuario}\""
         )
 
@@ -131,12 +144,29 @@ def procesar_mensaje_agente(mensaje_usuario, empleado):
             print("Error invocando Gemini API:", e)
 
     # Fallback conversacional fluido
+    if any(w in mensaje_lc for w in ['ticket', 'tickets', 'soporte']):
+        tickets_rec = TicketRH.objects.filter(empleado=empleado).order_by('-fecha_creacion')[:3]
+        if tickets_rec.exists():
+            detalles = []
+            for tk in tickets_rec:
+                info = f"• Folio {tk.folio} ({tk.asunto}) — Estado: {tk.estado}"
+                if tk.respuesta_rh:
+                    info += f"\n  ↳ Respuesta de RH: {tk.respuesta_rh}"
+                detalles.append(info)
+            resumen_tickets = "\n\n".join(detalles)
+            return {
+                'respuesta': f"Hola {nombre_completo}, aquí tienes el estado de tus tickets de atención:\n\n{resumen_tickets}",
+                'tipo_accion': 'INFO_TICKETS',
+                'datos': {}
+            }
+
     if any(w in mensaje_lc for w in ['vacacion', 'vacaciones']):
         return {
             'respuesta': f"Hola {nombre_completo}, actualmente dispones de **{empleado.dias_vacaciones_disponibles} días disponibles** de vacaciones. ¿Deseas solicitar fechas específicas?",
             'tipo_accion': 'ABRIR_FORMULARIO_VACACIONES',
             'datos': {'disponibles': empleado.dias_vacaciones_disponibles}
         }
+
 
     return {
         'respuesta': f"Hola {nombre_completo}, soy tu asistente de RH en PluriOne. ¿En qué puedo apoyarte hoy?",
