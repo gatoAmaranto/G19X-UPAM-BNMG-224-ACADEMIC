@@ -1,13 +1,27 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { FileText, X, Download, Eye } from 'lucide-react'
+import { useAuth } from '../auth/AuthContext.jsx'
 
 const API_BASE = 'http://localhost:8000/api/hr'
 
 export default function ConstanciaPreviewModal({ isOpen, onClose }) {
+  const { getToken } = useAuth()
+  const [token, setToken] = useState('')
+
+  useEffect(() => {
+    if (isOpen && getToken) {
+      getToken().then(t => {
+        if (t) setToken(t)
+      }).catch(console.warn)
+    }
+  }, [isOpen, getToken])
+
   if (!isOpen) return null
 
-  const previewUrl = `${API_BASE}/constancia/`
-  const downloadUrl = `${API_BASE}/constancia/?download=true`
+  const tokenParam = token ? `&token=${encodeURIComponent(token)}` : ''
+  const previewUrl = `${API_BASE}/constancia/?preview=true${tokenParam}`
+  const downloadUrl = `${API_BASE}/constancia/?download=true${tokenParam}`
+
 
   return (
     <div style={{

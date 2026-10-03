@@ -13,6 +13,8 @@ from .serializers import (
     ConstanciaLaboralSerializer, TicketRHSerializer, BaseConocimientoRHSerializer
 )
 from .utils_pdf import generar_pdf_constancia_laboral
+from authentication.permissions import IsRecursosHumanos
+
 
 
 def get_demo_or_current_empleado(request):
@@ -175,7 +177,7 @@ class BaseConocimientoViewSet(viewsets.ReadOnlyModelViewSet):
 # --- ADMIN BACKOFFICE VIEWS ---
 
 class AdminVacacionesView(views.APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsRecursosHumanos]
 
     def get(self, request):
         solicitudes = SolicitudVacaciones.objects.all().order_by('-fecha_creacion')
@@ -200,7 +202,7 @@ class AdminVacacionesView(views.APIView):
 
 
 class AdminTicketsView(views.APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsRecursosHumanos]
 
     def get(self, request):
         tickets = TicketRH.objects.all().order_by('-fecha_creacion')
@@ -225,7 +227,7 @@ import io
 import pypdf
 
 class AdminFAQView(views.APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsRecursosHumanos]
 
     def get(self, request):
         faqs = BaseConocimientoRH.objects.all().order_by('-fecha_actualizacion')
@@ -247,7 +249,7 @@ class AdminFAQView(views.APIView):
 
 
 class AdminDocumentUploadView(views.APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsRecursosHumanos]
 
     def post(self, request):
         if 'archivo' not in request.FILES:

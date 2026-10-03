@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
 import { Auth0Provider, useAuth0 } from '@auth0/auth0-react'
+import { setAuthTokenGetter } from '../api/apiClient.js'
+
 
 const AuthCustomContext = createContext(null)
 
@@ -66,6 +68,30 @@ function Auth0WrappedChild({ children }) {
 
   const userRole = isRhAdmin ? 'recursos humanos' : 'colaborador'
 
+  // Configurar el interceptor de peticiones Axios para adjuntar el JWT Bearer
+  useEffect(() => {
+    if (isAuthenticated) {
+      setAuthTokenGetter(async () => {
+        try {
+          return await getAccessTokenSilently()
+        } catch (err) {
+          try {
+            return await getAccessTokenSilently({
+              authorizationParams: {
+                audience: AUTH0_CONFIG.authorizationParams.audience
+              }
+            })
+          } catch (innerErr) {
+            console.warn('Error al obtener token silencioso JWT de Auth0:', innerErr)
+            return null
+          }
+        }
+      })
+    } else {
+      setAuthTokenGetter(null)
+    }
+  }, [isAuthenticated, getAccessTokenSilently])
+
   const value = {
     isAuthenticated,
     isLoading,
@@ -120,6 +146,17 @@ function LocalAuthProvider({ children }) {
 
   const isRhAdmin = activeRole === 'recursos humanos'
   const currentUser = isAuthenticated ? mockUsers[activeRole] : null
+
+  // Configurar interceptor para simulación en desarrollo local
+  useEffect(() => {
+    if (isAuthenticated) {
+      setAuthTokenGetter(async () => {
+        return activeRole === 'recursos humanos' ? 'mock-jwt-token-plurione-rh' : 'mock-jwt-token-plurione'
+      })
+    } else {
+      setAuthTokenGetter(null)
+    }
+  }, [isAuthenticated, activeRole])
 
   const value = {
     isAuthenticated,

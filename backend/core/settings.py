@@ -136,10 +136,15 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'authentication.auth0.Auth0JSONWebTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ],
 }
+
+# Auth0 Configuration
+AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN', 'dev-n4ra6mt0qf5e4h61.us.auth0.com')
+AUTH0_AUDIENCE = os.getenv('AUTH0_AUDIENCE', 'https://dev-n4ra6mt0qf5e4h61.us.auth0.com/api/v2/')
 
 # Google AI Studio API Key Configuration
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
