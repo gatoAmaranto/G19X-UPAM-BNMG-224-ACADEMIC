@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { CheckCircle, XCircle, MessageSquare, Plus, BookOpen, Calendar, Ticket, AlertCircle, RefreshCw, Upload, FileText } from 'lucide-react'
+import { CheckCircle, XCircle, MessageSquare, Plus, BookOpen, Calendar, Ticket, AlertCircle, RefreshCw, Upload, FileText, Briefcase } from 'lucide-react'
 import axios from 'axios'
+
 
 const API_BASE = 'http://localhost:8000/api/hr/admin'
 
@@ -10,6 +11,10 @@ export default function AdminDashboard() {
   const [tickets, setTickets] = useState([])
   const [faqs, setFaqs] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const vacacionesPendientes = vacaciones.filter(v => v.estado === 'PENDIENTE')
+  const ticketsAbiertos = tickets.filter(t => t.estado !== 'RESUELTO')
+
 
   // Form para nueva FAQ
   const [nuevaFaq, setNuevaFaq] = useState({ categoria: 'Políticas Generales', pregunta: '', respuesta: '' })
@@ -114,53 +119,188 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* Admin Header & Tabs Navigation */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--foreground)' }}>
-            Panel Administrativo de Recursos Humanos (Backoffice)
-          </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>
-            Gestión centralizada de solicitudes de vacaciones, tickets de soporte y entrenamiento de la IA RAG.
-          </p>
+    <div style={{ display: 'grid', gridTemplateColumns: '270px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+      {/* Sidenavbar Lateral de Recursos Humanos */}
+      <aside
+        className="glass-panel"
+        style={{
+          padding: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          position: 'sticky',
+          top: '1rem'
+        }}
+      >
+        {/* Encabezado del Menú Lateral */}
+        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+            <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.4rem', borderRadius: 'var(--radius)', display: 'flex' }}>
+              <Briefcase size={18} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '0.96rem', fontWeight: 700, color: 'var(--foreground)' }}>Backoffice RH</h3>
+              <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)' }}>Gestión Institucional</span>
+            </div>
+          </div>
         </div>
 
-        <button className="btn-secondary" onClick={fetchAdminData} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
-          <RefreshCw size={16} className={loading ? 'spin' : ''} />
-          <span>Actualizar</span>
-        </button>
-      </div>
+        {/* Enlaces de Navegación del Sidenavbar */}
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+          {/* Opción 1: Vacaciones */}
+          <button
+            onClick={() => setActiveTab('vacaciones')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.7rem 0.85rem',
+              borderRadius: 'var(--radius)',
+              border: activeTab === 'vacaciones' ? '1px solid var(--primary)' : '1px solid transparent',
+              background: activeTab === 'vacaciones' ? 'var(--primary)' : 'transparent',
+              color: activeTab === 'vacaciones' ? 'var(--primary-foreground)' : 'var(--foreground)',
+              cursor: 'pointer',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'vacaciones' ? 600 : 500,
+              textAlign: 'left',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <Calendar size={18} />
+              <span>Vacaciones</span>
+            </div>
+            {vacacionesPendientes.length > 0 && (
+              <span style={{
+                fontSize: '0.7rem',
+                padding: '0.15rem 0.45rem',
+                borderRadius: '10px',
+                background: activeTab === 'vacaciones' ? 'var(--primary-foreground)' : '#fef3c7',
+                color: activeTab === 'vacaciones' ? 'var(--primary)' : '#b45309',
+                fontWeight: 700
+              }}>
+                {vacacionesPendientes.length}
+              </span>
+            )}
+          </button>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-        <button
-          className={activeTab === 'vacaciones' ? 'btn-primary' : 'btn-secondary'}
-          onClick={() => setActiveTab('vacaciones')}
-          style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Calendar size={16} />
-          <span>Vacaciones Pendientes ({vacaciones.filter(v => v.estado === 'PENDIENTE').length})</span>
-        </button>
+          {/* Opción 2: Tickets de Soporte */}
+          <button
+            onClick={() => setActiveTab('tickets')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.7rem 0.85rem',
+              borderRadius: 'var(--radius)',
+              border: activeTab === 'tickets' ? '1px solid var(--primary)' : '1px solid transparent',
+              background: activeTab === 'tickets' ? 'var(--primary)' : 'transparent',
+              color: activeTab === 'tickets' ? 'var(--primary-foreground)' : 'var(--foreground)',
+              cursor: 'pointer',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'tickets' ? 600 : 500,
+              textAlign: 'left',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <Ticket size={18} />
+              <span>Mesa de Tickets</span>
+            </div>
+            {ticketsAbiertos.length > 0 && (
+              <span style={{
+                fontSize: '0.7rem',
+                padding: '0.15rem 0.45rem',
+                borderRadius: '10px',
+                background: activeTab === 'tickets' ? 'var(--primary-foreground)' : '#dbeafe',
+                color: activeTab === 'tickets' ? 'var(--primary)' : '#1d4ed8',
+                fontWeight: 700
+              }}>
+                {ticketsAbiertos.length}
+              </span>
+            )}
+          </button>
 
-        <button
-          className={activeTab === 'tickets' ? 'btn-primary' : 'btn-secondary'}
-          onClick={() => setActiveTab('tickets')}
-          style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Ticket size={16} />
-          <span>Tickets de Soporte ({tickets.filter(t => t.estado === 'ABIERTO').length})</span>
-        </button>
+          {/* Opción 3: Base de Conocimiento RAG */}
+          <button
+            onClick={() => setActiveTab('faq')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.7rem 0.85rem',
+              borderRadius: 'var(--radius)',
+              border: activeTab === 'faq' ? '1px solid var(--primary)' : '1px solid transparent',
+              background: activeTab === 'faq' ? 'var(--primary)' : 'transparent',
+              color: activeTab === 'faq' ? 'var(--primary-foreground)' : 'var(--foreground)',
+              cursor: 'pointer',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'faq' ? 600 : 500,
+              textAlign: 'left',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <BookOpen size={18} />
+              <span>Base RAG & FAQs</span>
+            </div>
+            <span style={{
+              fontSize: '0.7rem',
+              padding: '0.15rem 0.45rem',
+              borderRadius: '10px',
+              background: activeTab === 'faq' ? 'var(--primary-foreground)' : 'var(--muted)',
+              color: activeTab === 'faq' ? 'var(--primary)' : 'var(--muted-foreground)',
+              fontWeight: 600
+            }}>
+              {faqs.length}
+            </span>
+          </button>
+        </nav>
 
-        <button
-          className={activeTab === 'faq' ? 'btn-primary' : 'btn-secondary'}
-          onClick={() => setActiveTab('faq')}
-          style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <BookOpen size={16} />
-          <span>Entrenamiento RAG FAQ ({faqs.length})</span>
-        </button>
-      </div>
+        {/* Resumen de Métricas / Estado */}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <div style={{ fontSize: '0.74rem', color: 'var(--muted-foreground)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+              <span>Pendientes de Revisión:</span>
+              <strong style={{ color: (vacacionesPendientes.length + ticketsAbiertos.length) > 0 ? '#b45309' : 'var(--foreground)' }}>
+                {vacacionesPendientes.length + ticketsAbiertos.length}
+              </strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Documentos RAG:</span>
+              <strong>{faqs.filter(f => f.activa).length} activos</strong>
+            </div>
+          </div>
+
+          <button
+            onClick={fetchAdminData}
+            className="btn-secondary"
+            style={{ width: '100%', padding: '0.45rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginTop: '0.3rem' }}
+          >
+            <RefreshCw size={13} className={loading ? 'spin' : ''} />
+            <span>Sincronizar datos</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Área Principal de Contenido a la derecha */}
+      <main className="glass-panel" style={{ padding: '1.5rem', minHeight: '620px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {/* Encabezado dinámico de la sección */}
+        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--foreground)' }}>
+              {activeTab === 'vacaciones' && 'Aprobación y Gestión de Vacaciones'}
+              {activeTab === 'tickets' && 'Mesa de Ayuda y Atención de Tickets'}
+              {activeTab === 'faq' && 'Entrenamiento de Base de Conocimiento RAG'}
+            </h2>
+            <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
+              {activeTab === 'vacaciones' && 'Revisa y dictamina las solicitudes de descanso vacacional enviadas por los colaboradores.'}
+              {activeTab === 'tickets' && 'Resuelve consultas y solicitudes especiales canalizadas por el agente conversacional.'}
+              {activeTab === 'faq' && 'Carga reglamentos y actualiza preguntas frecuentes para alimentar el modelo de IA.'}
+            </p>
+          </div>
+        </div>
+
 
       {/* Tab 1: Solicitudes de Vacaciones */}
       {activeTab === 'vacaciones' && (
@@ -376,6 +516,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+      </main>
     </div>
   )
 }
+

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Bot, Sun, Moon, Shield, Lock, LogIn } from 'lucide-react'
+import { Bot, Sun, Moon, Lock, LogIn } from 'lucide-react'
+
 import ChatWidget from './components/ChatWidget.jsx'
 import DashboardRH from './components/DashboardRH.jsx'
 import AdminDashboard from './components/AdminDashboard.jsx'
@@ -146,13 +147,7 @@ export default function App() {
           </div>
         ) : isRhAdmin ? (
           /* RH Admin View */
-          <div>
-            <div style={{ marginBottom: '1rem', background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.65rem 1rem', borderRadius: 'var(--radius)', fontSize: '0.83rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Shield size={16} />
-              <span><strong>Rol Autenticado: Recursos Humanos.</strong> Tienes acceso al Backoffice institucional para aprobación de solicitudes, atención de tickets y entrenamiento del motor RAG.</span>
-            </div>
-            <AdminDashboard />
-          </div>
+          <AdminDashboard />
         ) : (
           /* Colaborador View */
           <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '1.5rem' }}>
