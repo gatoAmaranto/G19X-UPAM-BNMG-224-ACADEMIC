@@ -1,22 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Download, Calendar, Ticket, HelpCircle, Loader2, Eye } from 'lucide-react'
+import { Send, Bot, User, Download, Calendar, Ticket, HelpCircle, Loader2, Eye, RotateCcw } from 'lucide-react'
 import axios from 'axios'
+
 import VacacionesModal from './VacacionesModal.jsx'
 import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 
 const API_BASE = 'http://localhost:8000/api'
 
+const MENSAJE_BIENVENIDA = {
+  id: 'welcome',
+  sender: 'bot',
+  text: '¡Hola! Soy el Agente de Autoservicio de Recursos Humanos de Develop Talent & Technology.\n\n¿En qué te puedo ayudar hoy? Puedes consultar tus días de vacaciones, generar tu constancia laboral o resolver dudas sobre políticas de la empresa.',
+  actionType: 'INFO_GENERAL',
+  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
 export default function ChatWidget({ onRefreshData }) {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      sender: 'bot',
-      text: '¡Hola! Soy el Agente de Autoservicio de Recursos Humanos de Develop Talent & Technology.\n\n¿En qué te puedo ayudar hoy? Puedes consultar tus días de vacaciones, generar tu constancia laboral o resolver dudas sobre políticas de la empresa.',
-      actionType: 'INFO_GENERAL',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-  ])
+  const [messages, setMessages] = useState([MENSAJE_BIENVENIDA])
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const [modalVacacionesOpen, setModalVacacionesOpen] = useState(false)
@@ -35,7 +36,30 @@ export default function ChatWidget({ onRefreshData }) {
     scrollToBottom()
   }, [messages, loading])
 
-  // Obtener saldo inicial de vacaciones
+  // 1. Cargar historial de conversación persistente desde la base de datos
+  useEffect(() => {
+    const fetchHistorial = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/agent/historial/`)
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          const formatted = res.data.map(m => ({
+            id: m.id,
+            sender: m.remitente,
+            text: m.texto,
+            actionType: m.tipo_accion,
+            datos: m.datos,
+            timestamp: m.timestamp || new Date(m.fecha_creacion).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }))
+          setMessages(formatted)
+        }
+      } catch (err) {
+        console.warn('No se pudo cargar el historial persistente de chat:', err)
+      }
+    }
+    fetchHistorial()
+  }, [])
+
+  // 2. Obtener saldo inicial de vacaciones
   useEffect(() => {
     const fetchSaldo = async () => {
       try {
@@ -49,6 +73,21 @@ export default function ChatWidget({ onRefreshData }) {
     }
     fetchSaldo()
   }, [])
+
+  // 3. Reiniciar y limpiar historial de conversación
+  const handleLimpiarHistorial = async () => {
+    if (messages.length <= 1 && messages[0]?.id === 'welcome') return
+    const confirmar = window.confirm('¿Deseas reiniciar la conversación y limpiar el historial de mensajes?')
+    if (!confirmar) return
+
+    try {
+      await axios.delete(`${API_BASE}/agent/historial/`)
+      setMessages([MENSAJE_BIENVENIDA])
+    } catch (err) {
+      console.error('Error al reiniciar el historial de chat:', err)
+    }
+  }
+
 
   const handleSendMessage = async (textToSend) => {
     const text = textToSend || inputText
@@ -171,17 +210,30 @@ export default function ChatWidget({ onRefreshData }) {
       />
 
       {/* Chat Header */}
-      <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--card)' }}>
-        <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.4rem', borderRadius: 'var(--radius)', display: 'flex' }}>
-          <Bot size={20} />
+      <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--card)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.4rem', borderRadius: 'var(--radius)', display: 'flex' }}>
+            <Bot size={20} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: '0.98rem', fontWeight: 600, color: 'var(--foreground)' }}>Agente de Autoservicio RH</h3>
+            <span style={{ fontSize: '0.74rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
+              En línea 24/7 (LangGraph + Gemini RAG)
+            </span>
+          </div>
         </div>
-        <div>
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--foreground)' }}>Agente de Autoservicio RH</h3>
-          <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
-            En línea 24/7 (LangGraph + Gemini RAG)
-          </span>
-        </div>
+
+        {/* Botón para reiniciar conversación */}
+        <button
+          onClick={handleLimpiarHistorial}
+          title="Reiniciar conversación y limpiar mensajes"
+          className="btn-secondary"
+          style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+        >
+          <RotateCcw size={13} />
+          <span>Reiniciar chat</span>
+        </button>
       </div>
 
       {/* Messages Feed */}
