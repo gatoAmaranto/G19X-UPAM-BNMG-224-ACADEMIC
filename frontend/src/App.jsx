@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Bot, Sun, Moon, Lock, LogIn } from 'lucide-react'
 
-import ChatWidget from './components/ChatWidget.jsx'
-import DashboardRH from './components/DashboardRH.jsx'
+import ColaboradorDashboard from './components/ColaboradorDashboard.jsx'
 import AdminDashboard from './components/AdminDashboard.jsx'
 import UserAuthHeader from './components/UserAuthHeader.jsx'
 import { useAuth } from './auth/AuthContext.jsx'
@@ -149,15 +148,8 @@ export default function App() {
           /* RH Admin View */
           <AdminDashboard />
         ) : (
-          /* Colaborador View */
-          <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '1.5rem' }}>
-            <div>
-              <DashboardRH refreshTrigger={refreshTrigger} />
-            </div>
-            <div>
-              <ChatWidget onRefreshData={handleRefreshData} />
-            </div>
-          </div>
+          /* Colaborador View con Sidenavbar */
+          <ColaboradorDashboard refreshTrigger={refreshTrigger} onRefreshData={handleRefreshData} />
         )}
       </main>
 
