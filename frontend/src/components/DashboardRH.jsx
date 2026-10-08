@@ -5,6 +5,7 @@ import VacacionesModal from './VacacionesModal.jsx'
 import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 import TicketDetalleModal from './TicketDetalleModal.jsx'
+import PerfilModal from './PerfilModal.jsx'
 
 
 const API_BASE = 'http://localhost:8000/api'
@@ -18,6 +19,7 @@ export default function DashboardRH({ refreshTrigger }) {
   const [modalTicketOpen, setModalTicketOpen] = useState(false)
   const [modalConstanciaOpen, setModalConstanciaOpen] = useState(false)
   const [ticketSeleccionado, setTicketSeleccionado] = useState(null)
+  const [modalPerfilOpen, setModalPerfilOpen] = useState(false)
 
 
   const fetchData = async () => {
@@ -79,21 +81,68 @@ export default function DashboardRH({ refreshTrigger }) {
         onClose={() => setTicketSeleccionado(null)}
       />
 
+      {perfil && (
+        <PerfilModal
+          isOpen={modalPerfilOpen}
+          onClose={() => setModalPerfilOpen(false)}
+          perfil={perfil}
+          onProfileUpdated={(updated) => setPerfil(updated)}
+        />
+      )}
 
       {/* Employee Profile Card */}
       {perfil && (
-        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.85rem', borderRadius: '50%', display: 'flex' }}>
-            <User size={28} />
+        <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div
+              onClick={() => setModalPerfilOpen(true)}
+              title="Click para ver expediente y cambiar foto"
+              style={{ cursor: 'pointer', position: 'relative' }}
+            >
+              {perfil.foto_perfil_url ? (
+                <img
+                  src={perfil.foto_perfil_url}
+                  alt={`${perfil.user.first_name} ${perfil.user.last_name}`}
+                  style={{
+                    width: '52px',
+                    height: '52px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid var(--primary)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
+                  }}
+                />
+              ) : (
+                <div style={{ background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.85rem', borderRadius: '50%', display: 'flex' }}>
+                  <User size={26} />
+                </div>
+              )}
+            </div>
+            <div>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                {perfil.user.first_name} {perfil.user.last_name}
+              </h2>
+              <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>
+                {perfil.puesto} — {perfil.departamento} ({perfil.numero_empleado})
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>
-              {perfil.user.first_name} {perfil.user.last_name}
-            </h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>
-              {perfil.puesto} — {perfil.departamento} ({perfil.numero_empleado})
-            </p>
-          </div>
+
+          <button
+            onClick={() => setModalPerfilOpen(true)}
+            className="btn-secondary"
+            style={{
+              padding: '0.45rem 0.85rem',
+              fontSize: '0.82rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <User size={15} />
+            <span>Ver expediente / Perfil</span>
+          </button>
         </div>
       )}
 

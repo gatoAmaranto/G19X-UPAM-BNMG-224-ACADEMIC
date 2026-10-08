@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import { CheckCircle, XCircle, MessageSquare, Plus, BookOpen, Calendar, Ticket, AlertCircle, RefreshCw, Upload, FileText, Briefcase } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import {
+  CheckCircle, XCircle, MessageSquare, Plus, BookOpen, Calendar,
+  Ticket, AlertCircle, RefreshCw, Upload, FileText, Briefcase,
+  User, Camera, Trash2, Shield, Mail, Award, Check
+} from 'lucide-react'
 import axios from 'axios'
 
 
@@ -10,6 +14,7 @@ export default function AdminDashboard() {
   const [vacaciones, setVacaciones] = useState([])
   const [tickets, setTickets] = useState([])
   const [faqs, setFaqs] = useState([])
+  const [perfilRH, setPerfilRH] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const vacacionesPendientes = vacaciones.filter(v => v.estado === 'PENDIENTE')
@@ -24,17 +29,28 @@ export default function AdminDashboard() {
   const [subiendoDoc, setSubiendoDoc] = useState(false)
   const [msgUpload, setMsgUpload] = useState('')
 
+  // Estado para gestión de foto de perfil RH
+  const [subiendoFotoRH, setSubiendoFotoRH] = useState(false)
+  const [msgFotoRH, setMsgFotoRH] = useState(null)
+  const [previewFotoRH, setPreviewFotoRH] = useState(null)
+  const [archivoFotoRH, setArchivoFotoRH] = useState(null)
+  const fileInputRefRH = useRef(null)
+
   const fetchAdminData = async () => {
     try {
       setLoading(true)
-      const [resVac, resTick, resFaq] = await Promise.all([
+      const [resVac, resTick, resFaq, resPerfil] = await Promise.all([
         axios.get(`${API_BASE}/vacaciones/`),
         axios.get(`${API_BASE}/tickets/`),
-        axios.get(`${API_BASE}/faq/`)
+        axios.get(`${API_BASE}/faq/`),
+        axios.get(`${API_BASE}/perfil/`).catch(() => null)
       ])
       setVacaciones(resVac.data)
       setTickets(resTick.data)
       setFaqs(resFaq.data)
+      if (resPerfil?.data) {
+        setPerfilRH(resPerfil.data)
+      }
     } catch (err) {
       console.error('Error al cargar datos administrativos:', err)
     } finally {
@@ -67,6 +83,88 @@ export default function AdminDashboard() {
       setMsgUpload(`${err.response?.data?.error || 'Error al subir el documento.'}`)
     } finally {
       setSubiendoDoc(false)
+    }
+  }
+
+  // Manejadores de Fotografía Institucional RH
+  const handleSelectFotoRH = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setMsgFotoRH({ type: 'error', text: 'Por favor selecciona un archivo de imagen válido (PNG, JPG o WebP).' })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMsgFotoRH({ type: 'error', text: 'La imagen excede el límite máximo de 5 MB.' })
+      return
+    }
+
+    setArchivoFotoRH(file)
+    setPreviewFotoRH(URL.createObjectURL(file))
+    setMsgFotoRH(null)
+  }
+
+  const handleUploadFotoRH = async () => {
+    if (!archivoFotoRH) return
+
+    const formData = new FormData()
+    formData.append('foto_perfil', archivoFotoRH)
+
+    try {
+      setSubiendoFotoRH(true)
+      setMsgFotoRH(null)
+
+      const res = await axios.post(`${API_BASE}/perfil/avatar/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      setPerfilRH(res.data)
+      setArchivoFotoRH(null)
+      setPreviewFotoRH(null)
+      setMsgFotoRH({ type: 'success', text: 'Fotografía de perfil RH actualizada exitosamente.' })
+      window.dispatchEvent(new CustomEvent('profile-updated', { detail: res.data }))
+    } catch (err) {
+      console.error('Error al subir foto RH:', err)
+      setMsgFotoRH({
+        type: 'error',
+        text: err.response?.data?.error || 'Error al guardar la fotografía institucional.'
+      })
+    } finally {
+      setSubiendoFotoRH(false)
+    }
+  }
+
+  const handleCancelFotoRH = () => {
+    setArchivoFotoRH(null)
+    if (previewFotoRH) {
+      URL.revokeObjectURL(previewFotoRH)
+      setPreviewFotoRH(null)
+    }
+    if (fileInputRefRH.current) {
+      fileInputRefRH.current.value = ''
+    }
+  }
+
+  const handleDeleteFotoRH = async () => {
+    if (!window.confirm('¿Deseas remover tu fotografía institucional de perfil?')) return
+
+    try {
+      setSubiendoFotoRH(true)
+      setMsgFotoRH(null)
+
+      const res = await axios.delete(`${API_BASE}/perfil/avatar/`)
+      setPerfilRH(res.data)
+      setArchivoFotoRH(null)
+      setPreviewFotoRH(null)
+      setMsgFotoRH({ type: 'success', text: 'Fotografía institucional removida.' })
+      window.dispatchEvent(new CustomEvent('profile-updated', { detail: res.data }))
+    } catch (err) {
+      console.error('Error al remover foto RH:', err)
+      setMsgFotoRH({ type: 'error', text: 'No se pudo remover la fotografía de perfil.' })
+    } finally {
+      setSubiendoFotoRH(false)
     }
   }
 
@@ -255,6 +353,55 @@ export default function AdminDashboard() {
               {faqs.length}
             </span>
           </button>
+
+          {/* Opción 4: Mi Perfil RH */}
+          <button
+            onClick={() => setActiveTab('perfil')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.7rem 0.85rem',
+              borderRadius: 'var(--radius)',
+              border: activeTab === 'perfil' ? '1px solid var(--primary)' : '1px solid transparent',
+              background: activeTab === 'perfil' ? 'var(--primary)' : 'transparent',
+              color: activeTab === 'perfil' ? 'var(--primary-foreground)' : 'var(--foreground)',
+              cursor: 'pointer',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'perfil' ? 600 : 500,
+              textAlign: 'left',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <User size={18} />
+              <span>Mi Perfil RH</span>
+            </div>
+            {perfilRH?.foto_perfil_url ? (
+              <img
+                src={perfilRH.foto_perfil_url}
+                alt="Avatar RH"
+                style={{
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: activeTab === 'perfil' ? '1px solid var(--primary-foreground)' : '1px solid var(--border)'
+                }}
+              />
+            ) : (
+              <span style={{
+                fontSize: '0.68rem',
+                padding: '0.15rem 0.4rem',
+                borderRadius: '8px',
+                background: activeTab === 'perfil' ? 'var(--primary-foreground)' : 'var(--muted)',
+                color: activeTab === 'perfil' ? 'var(--primary)' : 'var(--muted-foreground)',
+                fontWeight: 600
+              }}>
+                RH
+              </span>
+            )}
+          </button>
         </nav>
 
         {/* Resumen de Métricas / Estado */}
@@ -292,11 +439,13 @@ export default function AdminDashboard() {
               {activeTab === 'vacaciones' && 'Aprobación y Gestión de Vacaciones'}
               {activeTab === 'tickets' && 'Mesa de Ayuda y Atención de Tickets'}
               {activeTab === 'faq' && 'Entrenamiento de Base de Conocimiento RAG'}
+              {activeTab === 'perfil' && 'Perfil Institucional y Credenciales de Recursos Humanos'}
             </h2>
             <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
               {activeTab === 'vacaciones' && 'Revisa y dictamina las solicitudes de descanso vacacional enviadas por los colaboradores.'}
               {activeTab === 'tickets' && 'Resuelve consultas y solicitudes especiales canalizadas por el agente conversacional.'}
               {activeTab === 'faq' && 'Carga reglamentos y actualiza preguntas frecuentes para alimentar el modelo de IA.'}
+              {activeTab === 'perfil' && 'Expediente del funcionario de RH, fotografía institucional y auditoría de permisos asignados.'}
             </p>
           </div>
         </div>
@@ -514,6 +663,341 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Tab 4: Mi Perfil RH */}
+      {activeTab === 'perfil' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {!perfilRH ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted-foreground)' }}>
+              Cargando perfil institucional de Recursos Humanos...
+            </div>
+          ) : (
+            <>
+              {/* Tarjeta de Identidad y Fotografía Institucional */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1.5rem',
+                  padding: '1.5rem',
+                  background: 'var(--muted)',
+                  borderRadius: 'var(--radius)',
+                  border: '1px solid var(--border)'
+                }}
+              >
+                {/* Avatar y Selector */}
+                <div style={{ position: 'relative', width: '96px', height: '96px', flexShrink: 0 }}>
+                  {previewFotoRH || perfilRH.foto_perfil_url ? (
+                    <img
+                      src={previewFotoRH || perfilRH.foto_perfil_url}
+                      alt={`${perfilRH.user.first_name} ${perfilRH.user.last_name}`}
+                      style={{
+                        width: '96px',
+                        height: '96px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: '3px solid var(--primary)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '96px',
+                        height: '96px',
+                        borderRadius: '50%',
+                        background: 'var(--primary)',
+                        color: 'var(--primary-foreground)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '2rem',
+                        fontWeight: 700,
+                        border: '3px solid var(--border)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                      }}
+                    >
+                      {perfilRH.user.first_name?.[0] || 'R'}
+                    </div>
+                  )}
+
+                  {/* Botón flotante para seleccionar foto */}
+                  <button
+                    onClick={() => fileInputRefRH.current?.click()}
+                    disabled={subiendoFotoRH}
+                    title="Actualizar fotografía institucional"
+                    style={{
+                      position: 'absolute',
+                      bottom: '2px',
+                      right: '2px',
+                      background: 'var(--primary)',
+                      color: 'var(--primary-foreground)',
+                      border: '2px solid var(--card)',
+                      borderRadius: '50%',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    <Camera size={15} />
+                  </button>
+
+                  <input
+                    type="file"
+                    ref={fileInputRefRH}
+                    accept="image/png, image/jpeg, image/webp"
+                    onChange={handleSelectFotoRH}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+
+                {/* Datos del Funcionario */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem' }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--foreground)' }}>
+                      {perfilRH.user.first_name} {perfilRH.user.last_name}
+                    </h3>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        fontSize: '0.72rem',
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '12px',
+                        background: 'var(--primary)',
+                        color: 'var(--primary-foreground)',
+                        fontWeight: 600
+                      }}
+                    >
+                      <Shield size={12} />
+                      Funcionario RH
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: '0.86rem', color: 'var(--primary)', fontWeight: 600, marginBottom: '0.25rem' }}>
+                    {perfilRH.puesto} — {perfilRH.departamento}
+                  </p>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
+                    Credencial oficial: <strong>{perfilRH.numero_empleado}</strong> • {perfilRH.user.email}
+                  </p>
+
+                  {/* Acciones al seleccionar archivo nuevo */}
+                  {archivoFotoRH && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.65rem' }}>
+                      <button
+                        onClick={handleUploadFotoRH}
+                        disabled={subiendoFotoRH}
+                        className="btn-primary"
+                        style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                      >
+                        {subiendoFotoRH ? <RefreshCw size={13} className="spin" /> : <CheckCircle size={13} />}
+                        <span>{subiendoFotoRH ? 'Subiendo...' : 'Confirmar nueva fotografía'}</span>
+                      </button>
+                      <button
+                        onClick={handleCancelFotoRH}
+                        disabled={subiendoFotoRH}
+                        className="btn-secondary"
+                        style={{ padding: '0.35rem 0.7rem', fontSize: '0.8rem' }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Opción de eliminar foto actual */}
+                  {!archivoFotoRH && perfilRH.foto_perfil_url && (
+                    <button
+                      onClick={handleDeleteFotoRH}
+                      disabled={subiendoFotoRH}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#ef4444',
+                        fontSize: '0.78rem',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.2rem 0',
+                        marginTop: '0.4rem'
+                      }}
+                    >
+                      <Trash2 size={13} />
+                      <span>Remover fotografía</span>
+                    </button>
+                  )}
+
+                  {/* Mensajes de feedback */}
+                  {msgFotoRH && (
+                    <div
+                      style={{
+                        padding: '0.35rem 0.65rem',
+                        borderRadius: 'var(--radius)',
+                        fontSize: '0.78rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        marginTop: '0.5rem',
+                        background: msgFotoRH.type === 'success' ? '#dcfce7' : '#fee2e2',
+                        color: msgFotoRH.type === 'success' ? '#15803d' : '#b91c1c',
+                        border: `1px solid ${msgFotoRH.type === 'success' ? '#86efac' : '#fca5a5'}`
+                      }}
+                    >
+                      {msgFotoRH.type === 'success' ? <CheckCircle size={13} /> : <AlertCircle size={13} />}
+                      <span>{msgFotoRH.text}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Expediente Institucional de RH */}
+              <div>
+                <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--foreground)', marginBottom: '0.65rem' }}>
+                  Ficha de Identificación Institucional
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.85rem' }}>
+                  <div style={{ background: 'var(--card)', padding: '0.75rem 0.9rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', display: 'block' }}>Nombre Completo</span>
+                    <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)' }}>
+                      {perfilRH.user.first_name} {perfilRH.user.last_name}
+                    </strong>
+                  </div>
+
+                  <div style={{ background: 'var(--card)', padding: '0.75rem 0.9rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', display: 'block' }}>Correo Electrónico RH</span>
+                    <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)' }}>
+                      {perfilRH.user.email}
+                    </strong>
+                  </div>
+
+                  <div style={{ background: 'var(--card)', padding: '0.75rem 0.9rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', display: 'block' }}>Número de Empleado / Clave</span>
+                    <strong style={{ fontSize: '0.88rem', color: 'var(--primary)' }}>
+                      {perfilRH.numero_empleado}
+                    </strong>
+                  </div>
+
+                  <div style={{ background: 'var(--card)', padding: '0.75rem 0.9rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', display: 'block' }}>Puesto Asignado</span>
+                    <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)' }}>
+                      {perfilRH.puesto}
+                    </strong>
+                  </div>
+
+                  <div style={{ background: 'var(--card)', padding: '0.75rem 0.9rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', display: 'block' }}>Departamento Operativo</span>
+                    <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)' }}>
+                      {perfilRH.departamento}
+                    </strong>
+                  </div>
+
+                  <div style={{ background: 'var(--card)', padding: '0.75rem 0.9rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', display: 'block' }}>Antigüedad Registrada</span>
+                    <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)' }}>
+                      {perfilRH.antiguedad_anios ?? 1} {Number(perfilRH.antiguedad_anios) === 1 ? 'año' : 'años'}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Matriz de Permisos y Autorizaciones Oficiales */}
+              <div>
+                <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--foreground)', marginBottom: '0.65rem' }}>
+                  Matriz de Autorizaciones y Permisos en el Backoffice
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                  <div style={{ background: 'var(--card)', padding: '0.85rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }}>
+                      <CheckCircle size={18} />
+                    </div>
+                    <div>
+                      <h5 style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                        Aprobación y Dictaminación de Vacaciones
+                      </h5>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', marginTop: '0.15rem' }}>
+                        Facultad para aprobar, rechazar y auditar solicitudes de descanso de todos los colaboradores.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'var(--card)', padding: '0.85rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }}>
+                      <CheckCircle size={18} />
+                    </div>
+                    <div>
+                      <h5 style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                        Mesa de Ayuda y Respuesta a Tickets
+                      </h5>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', marginTop: '0.15rem' }}>
+                        Atención directa a folios, registro de respuestas oficiales y cambio de estatus de incidencias.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'var(--card)', padding: '0.85rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }}>
+                      <CheckCircle size={18} />
+                    </div>
+                    <div>
+                      <h5 style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                        Ingesta y Entrenamiento RAG
+                      </h5>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', marginTop: '0.15rem' }}>
+                        Carga y vectorización de reglamentos en PDF/TXT y administración de FAQs del modelo conversacional.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'var(--card)', padding: '0.85rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }}>
+                      <CheckCircle size={18} />
+                    </div>
+                    <div>
+                      <h5 style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                        Emisión y Validación de Constancias
+                      </h5>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', marginTop: '0.15rem' }}>
+                        Autorización de plantillas oficiales en PDF generadas para el personal institucional.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Beneficio Vacacional Personal del Usuario RH */}
+              <div style={{ background: 'var(--muted)', padding: '0.85rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                    Beneficio Vacacional Personal (Como Colaborador)
+                  </span>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)' }}>
+                    {perfilRH.dias_vacaciones_disponibles} días disponibles
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+                  <div style={{ background: 'var(--card)', padding: '0.45rem', borderRadius: 'calc(var(--radius) - 2px)' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block' }}>Asignados</span>
+                    <strong style={{ fontSize: '0.9rem' }}>{perfilRH.dias_vacaciones_totales}</strong>
+                  </div>
+                  <div style={{ background: 'var(--card)', padding: '0.45rem', borderRadius: 'calc(var(--radius) - 2px)' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block' }}>Tomados</span>
+                    <strong style={{ fontSize: '0.9rem' }}>{perfilRH.dias_vacaciones_tomados}</strong>
+                  </div>
+                  <div style={{ background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.45rem', borderRadius: 'calc(var(--radius) - 2px)' }}>
+                    <span style={{ fontSize: '0.7rem', display: 'block' }}>Disponibles</span>
+                    <strong style={{ fontSize: '0.9rem' }}>{perfilRH.dias_vacaciones_disponibles}</strong>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
       </main>

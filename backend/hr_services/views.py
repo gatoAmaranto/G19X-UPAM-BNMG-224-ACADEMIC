@@ -23,16 +23,17 @@ def get_demo_or_current_empleado(request):
     or a default demo employee for testing purposes.
     """
     if request.user and request.user.is_authenticated:
+        is_rh = getattr(request.user, 'is_rh_admin', False) or request.user.is_staff or 'rh' in request.user.username.lower()
         empleado, _ = Empleado.objects.get_or_create(
             user=request.user,
             defaults={
-                'numero_empleado': f"EMP-{request.user.id:04d}",
-                'puesto': 'Consultor TI',
-                'departamento': 'Desarrollo de Software',
+                'numero_empleado': f"RH-{request.user.id:04d}" if is_rh else f"EMP-{request.user.id:04d}",
+                'puesto': 'Especialista de Recursos Humanos' if is_rh else 'Consultor TI',
+                'departamento': 'Recursos Humanos' if is_rh else 'Desarrollo de Software',
                 'fecha_ingreso': '2024-01-15',
-                'salario_mensual': 35000.00,
-                'dias_vacaciones_totales': 12,
-                'dias_vacaciones_tomados': 3
+                'salario_mensual': 45000.00 if is_rh else 35000.00,
+                'dias_vacaciones_totales': 14 if is_rh else 12,
+                'dias_vacaciones_tomados': 2 if is_rh else 3
             }
         )
         return empleado
@@ -66,7 +67,63 @@ class PerfilEmpleadoView(views.APIView):
 
     def get(self, request):
         empleado = get_demo_or_current_empleado(request)
-        serializer = EmpleadoSerializer(empleado)
+        serializer = EmpleadoSerializer(empleado, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        empleado = get_demo_or_current_empleado(request)
+        if 'foto_perfil' in request.FILES:
+            if empleado.foto_perfil:
+                try:
+                    empleado.foto_perfil.delete(save=False)
+                except Exception:
+                    pass
+            empleado.foto_perfil = request.FILES['foto_perfil']
+            empleado.save()
+
+        serializer = EmpleadoSerializer(empleado, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(EmpleadoSerializer(empleado, context={'request': request}).data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request):
+        return self.patch(request)
+
+
+class PerfilAvatarUploadView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        empleado = get_demo_or_current_empleado(request)
+        if 'foto_perfil' not in request.FILES:
+            return Response({'error': 'No se proporcionó ningún archivo de imagen.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        archivo = request.FILES['foto_perfil']
+        if not archivo.content_type.startswith('image/'):
+            return Response({'error': 'El archivo debe ser una imagen válida (JPG, PNG, GIF, WebP).'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if empleado.foto_perfil:
+            try:
+                empleado.foto_perfil.delete(save=False)
+            except Exception:
+                pass
+
+        empleado.foto_perfil = archivo
+        empleado.save()
+        serializer = EmpleadoSerializer(empleado, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        empleado = get_demo_or_current_empleado(request)
+        if empleado.foto_perfil:
+            try:
+                empleado.foto_perfil.delete(save=False)
+            except Exception:
+                pass
+            empleado.foto_perfil = None
+            empleado.save()
+        serializer = EmpleadoSerializer(empleado, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

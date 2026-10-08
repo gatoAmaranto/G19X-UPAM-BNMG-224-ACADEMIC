@@ -105,3 +105,23 @@ class HRServicesTestCase(TestCase):
         self.assertIn('registros_creados', response.json())
         self.assertGreater(response.json()['registros_creados'], 0)
 
+    def test_upload_and_delete_avatar(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        # 1x1 transparent GIF image
+        gif_bytes = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
+        avatar = SimpleUploadedFile("avatar_test.gif", gif_bytes, content_type="image/gif")
+
+        response = self.client.post(
+            '/api/hr/perfil/avatar/',
+            data={'foto_perfil': avatar}
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIsNotNone(data.get('foto_perfil_url'))
+        self.assertIn('avatar_test', data.get('foto_perfil_url'))
+
+        # Test deleting avatar
+        del_response = self.client.delete('/api/hr/perfil/avatar/')
+        self.assertEqual(del_response.status_code, 200)
+        self.assertIsNone(del_response.json().get('foto_perfil_url'))
+

@@ -11,10 +11,20 @@ class Empleado(models.Model):
     salario_mensual = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     dias_vacaciones_totales = models.PositiveIntegerField(default=12)
     dias_vacaciones_tomados = models.PositiveIntegerField(default=0)
+    foto_perfil = models.ImageField(upload_to='avatares/', null=True, blank=True, verbose_name="Foto de Perfil")
 
     @property
     def dias_vacaciones_disponibles(self):
         return max(0, self.dias_vacaciones_totales - self.dias_vacaciones_tomados)
+
+    @property
+    def antiguedad_anios(self):
+        if self.fecha_ingreso:
+            from datetime import date
+            today = date.today()
+            years = today.year - self.fecha_ingreso.year - ((today.month, today.day) < (self.fecha_ingreso.month, self.fecha_ingreso.day))
+            return max(0, years)
+        return 0
 
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} ({self.numero_empleado})"

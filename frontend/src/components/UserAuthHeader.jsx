@@ -4,6 +4,40 @@ import { useAuth } from '../auth/AuthContext.jsx'
 
 export default function UserAuthHeader() {
   const { isAuthenticated, user, isRhAdmin, login, logout, switchRole, isAuth0Live } = useAuth()
+  const [avatarCustomUrl, setAvatarCustomUrl] = React.useState(null)
+
+  React.useEffect(() => {
+    if (!isAuthenticated) return
+
+    // Cargar avatar personalizado del perfil si existe
+    const fetchAvatar = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/hr/perfil/')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.foto_perfil_url) {
+            setAvatarCustomUrl(data.foto_perfil_url)
+          } else {
+            setAvatarCustomUrl(null)
+          }
+        }
+      } catch (err) {
+        // Silencioso en caso de error de red
+      }
+    }
+
+    fetchAvatar()
+
+    // Escuchar actualizaciones dinámicas de perfil
+    const handleProfileUpdated = (e) => {
+      if (e.detail?.foto_perfil_url !== undefined) {
+        setAvatarCustomUrl(e.detail.foto_perfil_url)
+      }
+    }
+
+    window.addEventListener('profile-updated', handleProfileUpdated)
+    return () => window.removeEventListener('profile-updated', handleProfileUpdated)
+  }, [isAuthenticated, isRhAdmin])
 
   if (!isAuthenticated) {
     return (
@@ -19,6 +53,8 @@ export default function UserAuthHeader() {
       </div>
     )
   }
+
+  const displayAvatar = avatarCustomUrl || user?.picture
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -88,11 +124,11 @@ export default function UserAuthHeader() {
 
       {/* User Info Avatar Badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.25rem 0.6rem', borderRadius: 'var(--radius)', background: 'var(--card)', border: '1px solid var(--border)' }}>
-        {user?.picture ? (
+        {displayAvatar ? (
           <img
-            src={user.picture}
-            alt={user.name}
-            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
+            src={displayAvatar}
+            alt={user?.name || 'Usuario'}
+            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }}
           />
         ) : (
           <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', color: 'var(--primary-foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>
