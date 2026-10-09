@@ -71,10 +71,13 @@ graph TD
 
 ### **5.1. Alcance Incluido (In-Scope)**
 * **Agentes Conversacionales Inteligentes:** Interacción en lenguaje natural para resolución de dudas operativas y de políticas internas de RH.
+* **Persistencia del Historial Conversacional:** Almacenamiento continuo de mensajes en base de datos por colaborador, permitiendo continuidad entre sesiones y reinicio controlado.
 * **Consulta de Saldos e Historial de Vacaciones:** Interfaz conversacional y visual para consultar días disponibles, acumulados y tomados.
 * **Generación Automatizada de Documentos:** Expedición en formato PDF de constancias laborales, cartas patronales y certificaciones con firma/sello digitalizado.
-* **Seguimiento de Solicitudes y Tickets:** Creación, escalamiento y seguimiento del estado de solicitudes administrativas hacia el equipo de Recursos Humanos.
-* **Panel de Administración (Backoffice):** Dashboard para el personal de RH para gestionar flujos, revisar tickets escalados, auditar conversaciones y actualizar la base de conocimientos.
+* **Centro Individual y Seguimiento de Tickets:** Creación, escalamiento y vista individual de tickets con seguimiento histórico de resoluciones oficiales de RH.
+* **Panel de Administración (Backoffice) de RH:** Dashboard con navegación estructurada (Sidenavbar/Upnavbar), gestión de vacaciones y tickets agrupados por colaborador y administración RAG.
+* **Perfiles de Usuario y Gestión de Avatar:** Pantallas de perfil para Colaborador y Recursos Humanos con carga de fotografía de perfil y consulta de datos laborales.
+* **Horario y Calendario Laboral con Notas/Tareas:** Consulta del horario asignado, calendario interactivo y gestor personal de notas y tareas para el colaborador.
 * **Integración con Autenticación Corporativa:** Login único (SSO) mediante Auth0 garantizando la privacidad y control de accesos basado en roles (RBAC).
 
 ### **5.2. Alcance Excluido (Out-of-Scope)**
@@ -125,14 +128,20 @@ Desarrollar un sistema de autoservicio basado en agentes conversacionales para o
 
 | ID | Requerimiento Funcional | Descripción |
 | :--- | :--- | :--- |
-| **RF-01** | Autenticación Segura | El sistema debe permitir el inicio de sesión único (SSO) mediante Auth0 según el correo institucional del colaborador. |
+| **RF-01** | Autenticación Segura | El sistema debe permitir el inicio de sesión único (SSO) mediante Auth0 según el correo institucional del colaborador con control de accesos basado en roles (RBAC). |
 | **RF-02** | Chatbot de Consultas (FAQ RAG) | El agente conversacional debe responder preguntas frecuentes sobre políticas de la empresa, beneficios, horarios y reglamentos usando técnicas RAG (Retrieval-Augmented Generation). |
 | **RF-03** | Consulta de Vacaciones | El colaborador podrá consultar su saldo de días de vacaciones disponibles y el desglose de días disfrutados mediante el chat o widget. |
-| **RF-04** | Solicitud de Días de Descanso | El agente conversacional guiará al colaborador para ingresar una solicitud formal de vacaciones, registrando fechas y enviando notificación a su líder directo. |
-| **RF-05** | Generación de Constancias Laborales | El sistema generará automáticamente documentos PDF de constancia laboral con información del colaborador (puesto, antigüedad, sueldo si aplica). |
-| **RF-06** | Creación y Escalación de Tickets | Si el agente no puede resolver una solicitud, creará automáticamente un ticket de soporte dirigido al departamento de RH. |
-| **RF-07** | Dashboard Administrativo | El personal de RH dispondrá de una vista consolidada para gestionar tickets, monitorear métricas de uso y actualizar la base de conocimientos. |
-| **RF-08** | Historial de Conversación | Los colaboradores podrán visualizar el historial de sus interacciones pasadas con el agente conversacional. |
+| **RF-04** | Solicitud de Días de Descanso | El colaborador podrá registrar solicitudes de vacaciones mediante formulario interactivo o chat con validación de fechas pasadas y saldos disponibles. |
+| **RF-05** | Generación de Constancias Laborales | El sistema generará automáticamente documentos PDF de constancia laboral con visor previo en pantalla y descarga segura con membrete oficial. |
+| **RF-06** | Creación y Escalación de Tickets | Si el agente no puede resolver una solicitud o el colaborador requiere atención personalizada, creará un ticket con folio único dirigido a RH. |
+| **RF-07** | Dashboard Administrativo de RH | El personal de RH dispondrá de una vista consolidada para aprobar/rechazar vacaciones, responder y resolver tickets, y cargar documentos RAG. |
+| **RF-08** | Historial de Conversación Persistente | Los mensajes del chat se almacenarán en la base de datos por colaborador, permitiendo reanudar conversaciones previas o reiniciarlas a solicitud del usuario. |
+| **RF-09** | Pantalla de Perfil de Colaborador | Interfaz dedicada para que el colaborador consulte su expediente laboral completo y pueda subir/actualizar su fotografía de perfil. |
+| **RF-10** | Pantalla de Perfil de Recursos Humanos | Interfaz dedicada para que el personal de RH consulte su información institucional y actualice su fotografía de perfil. |
+| **RF-11** | Navegación Optimizada de Recursos Humanos | Menú de navegación estructurado (Sidenavbar o Upnavbar) que reemplace avisos informativos redundantes por accesos directos limpios y ágiles. |
+| **RF-12** | Gestión Backoffice Agrupada por Colaborador | Organización y agrupación de vacaciones pendientes y tickets en el panel de RH por colaborador en lugar de listados masivos. |
+| **RF-13** | Vista Individual de Tickets del Colaborador | Sección individual para el colaborador con filtros por estado, búsqueda de folios y detalle de la respuesta/dictamen oficial de RH. |
+| **RF-14** | Horario Laboral y Calendario Interactivo con Notas/Tareas | Consulta del horario y turno laboral asignado, vista de calendario interactivo y gestión personal de notas y tareas laborales. |
 
 ### **8.2. Requerimientos No Funcionales (RNF)**
 
