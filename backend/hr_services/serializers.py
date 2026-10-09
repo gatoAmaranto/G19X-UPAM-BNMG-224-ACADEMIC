@@ -34,15 +34,33 @@ class EmpleadoSerializer(serializers.ModelSerializer):
 
 
 class SolicitudVacacionesSerializer(serializers.ModelSerializer):
-    empleado_nombre = serializers.ReadOnlyField(source='empleado.user.get_full_name')
+    empleado_nombre = serializers.SerializerMethodField()
+    empleado_numero = serializers.ReadOnlyField(source='empleado.numero_empleado')
+    empleado_puesto = serializers.ReadOnlyField(source='empleado.puesto')
+    empleado_departamento = serializers.ReadOnlyField(source='empleado.departamento')
+    empleado_avatar = serializers.SerializerMethodField()
+    empleado_dias_disponibles = serializers.ReadOnlyField(source='empleado.dias_vacaciones_disponibles')
 
     class Meta:
         model = SolicitudVacaciones
         fields = [
-            'id', 'empleado', 'empleado_nombre', 'fecha_inicio',
-            'fecha_fin', 'dias_solicitados', 'motivo', 'estado', 'fecha_creacion'
+            'id', 'empleado', 'empleado_nombre', 'empleado_numero',
+            'empleado_puesto', 'empleado_departamento', 'empleado_avatar',
+            'empleado_dias_disponibles', 'fecha_inicio', 'fecha_fin',
+            'dias_solicitados', 'motivo', 'estado', 'fecha_creacion'
         ]
         read_only_fields = ['empleado', 'estado', 'fecha_creacion']
+
+    def get_empleado_nombre(self, obj):
+        return obj.empleado.user.get_full_name() or obj.empleado.user.username
+
+    def get_empleado_avatar(self, obj):
+        if obj.empleado.foto_perfil:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.empleado.foto_perfil.url)
+            return obj.empleado.foto_perfil.url
+        return None
 
 
 class ConstanciaLaboralSerializer(serializers.ModelSerializer):
@@ -58,16 +76,32 @@ class ConstanciaLaboralSerializer(serializers.ModelSerializer):
 
 
 class TicketRHSerializer(serializers.ModelSerializer):
-    empleado_nombre = serializers.ReadOnlyField(source='empleado.user.get_full_name')
+    empleado_nombre = serializers.SerializerMethodField()
+    empleado_numero = serializers.ReadOnlyField(source='empleado.numero_empleado')
+    empleado_puesto = serializers.ReadOnlyField(source='empleado.puesto')
+    empleado_departamento = serializers.ReadOnlyField(source='empleado.departamento')
+    empleado_avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = TicketRH
         fields = [
-            'id', 'folio', 'empleado', 'empleado_nombre', 'asunto',
-            'descripcion', 'prioridad', 'estado', 'respuesta_rh',
+            'id', 'folio', 'empleado', 'empleado_nombre', 'empleado_numero',
+            'empleado_puesto', 'empleado_departamento', 'empleado_avatar',
+            'asunto', 'descripcion', 'prioridad', 'estado', 'respuesta_rh',
             'fecha_creacion', 'fecha_actualizacion'
         ]
         read_only_fields = ['folio', 'empleado', 'estado', 'respuesta_rh', 'fecha_creacion', 'fecha_actualizacion']
+
+    def get_empleado_nombre(self, obj):
+        return obj.empleado.user.get_full_name() or obj.empleado.user.username
+
+    def get_empleado_avatar(self, obj):
+        if obj.empleado.foto_perfil:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.empleado.foto_perfil.url)
+            return obj.empleado.foto_perfil.url
+        return None
 
 
 class BaseConocimientoRHSerializer(serializers.ModelSerializer):

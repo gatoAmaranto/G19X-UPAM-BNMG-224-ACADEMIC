@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import {
   CheckCircle, XCircle, MessageSquare, Plus, BookOpen, Calendar,
   Ticket, AlertCircle, RefreshCw, Upload, FileText, Briefcase,
-  User, Camera, Trash2, Shield, Mail, Award, Check
+  User, Camera, Trash2, Shield, Mail, Award, Check,
+  ChevronDown, ChevronUp, Search, Filter, Users
 } from 'lucide-react'
 import axios from 'axios'
 
@@ -20,6 +21,15 @@ export default function AdminDashboard() {
   const vacacionesPendientes = vacaciones.filter(v => v.estado === 'PENDIENTE')
   const ticketsAbiertos = tickets.filter(t => t.estado !== 'RESUELTO')
 
+  // Estados de Agrupación, Búsqueda y Filtros de Vacaciones por Colaborador
+  const [filtroVacaciones, setFiltroVacaciones] = useState('todos') // 'todos' | 'pendientes'
+  const [busquedaVacaciones, setBusquedaVacaciones] = useState('')
+  const [expandidosVacaciones, setExpandidosVacaciones] = useState({})
+
+  // Estados de Agrupación, Búsqueda y Filtros de Tickets por Colaborador
+  const [filtroTickets, setFiltroTickets] = useState('todos') // 'todos' | 'pendientes'
+  const [busquedaTickets, setBusquedaTickets] = useState('')
+  const [expandidosTickets, setExpandidosTickets] = useState({})
 
   // Form para nueva FAQ
   const [nuevaFaq, setNuevaFaq] = useState({ categoria: 'Políticas Generales', pregunta: '', respuesta: '' })
@@ -61,6 +71,132 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchAdminData()
   }, [])
+
+  // Agrupación de Vacaciones por Colaborador
+  const colaboradoresVacaciones = useMemo(() => {
+    const map = new Map()
+    vacaciones.forEach((vac) => {
+      const empKey = vac.empleado || vac.empleado_numero || `emp-${vac.id}`
+      if (!map.has(empKey)) {
+        map.set(empKey, {
+          key: String(empKey),
+          id: vac.empleado,
+          nombre: vac.empleado_nombre || 'Colaborador',
+          numero: vac.empleado_numero || 'S/N',
+          puesto: vac.empleado_puesto || 'Puesto no asignado',
+          departamento: vac.empleado_departamento || 'General',
+          avatar: vac.empleado_avatar || null,
+          dias_disponibles: vac.empleado_dias_disponibles,
+          solicitudes: []
+        })
+      }
+      map.get(empKey).solicitudes.push(vac)
+    })
+
+    return Array.from(map.values()).map((colab) => {
+      const pendientes = colab.solicitudes.filter(s => s.estado === 'PENDIENTE').length
+      const totalDias = colab.solicitudes.reduce((acc, s) => acc + (Number(s.dias_solicitados) || 0), 0)
+      return {
+        ...colab,
+        pendientes_count: pendientes,
+        total_dias: totalDias
+      }
+    }).sort((a, b) => b.pendientes_count - a.pendientes_count || a.nombre.localeCompare(b.nombre))
+  }, [vacaciones])
+
+  // Filtrado de Colaboradores en Vacaciones
+  const colaboradoresVacacionesFiltrados = useMemo(() => {
+    return colaboradoresVacaciones.filter((c) => {
+      const cumpleFiltro = filtroVacaciones === 'todos' || c.pendientes_count > 0
+      const query = busquedaVacaciones.toLowerCase().trim()
+      const cumpleBusqueda = !query ||
+        c.nombre.toLowerCase().includes(query) ||
+        c.numero.toLowerCase().includes(query) ||
+        c.puesto.toLowerCase().includes(query) ||
+        c.departamento.toLowerCase().includes(query)
+      return cumpleFiltro && cumpleBusqueda
+    })
+  }, [colaboradoresVacaciones, filtroVacaciones, busquedaVacaciones])
+
+  const isVacacionExpandido = (key, pendientesCount) => {
+    if (expandidosVacaciones[key] !== undefined) return expandidosVacaciones[key]
+    return pendientesCount > 0
+  }
+
+  const toggleExpandirVacaciones = (key, pendientesCount) => {
+    const actual = isVacacionExpandido(key, pendientesCount)
+    setExpandidosVacaciones(prev => ({ ...prev, [key]: !actual }))
+  }
+
+  const toggleExpandirTodosVacaciones = (expandir) => {
+    const nuevo = {}
+    colaboradoresVacacionesFiltrados.forEach(c => {
+      nuevo[c.key] = expandir
+    })
+    setExpandidosVacaciones(nuevo)
+  }
+
+  // Agrupación de Tickets por Colaborador
+  const colaboradoresTickets = useMemo(() => {
+    const map = new Map()
+    tickets.forEach((t) => {
+      const empKey = t.empleado || t.empleado_numero || `emp-${t.id}`
+      if (!map.has(empKey)) {
+        map.set(empKey, {
+          key: String(empKey),
+          id: t.empleado,
+          nombre: t.empleado_nombre || 'Colaborador',
+          numero: t.empleado_numero || 'S/N',
+          puesto: t.empleado_puesto || 'Puesto no asignado',
+          departamento: t.empleado_departamento || 'General',
+          avatar: t.empleado_avatar || null,
+          tickets: []
+        })
+      }
+      map.get(empKey).tickets.push(t)
+    })
+
+    return Array.from(map.values()).map((colab) => {
+      const abiertos = colab.tickets.filter(t => t.estado !== 'RESUELTO').length
+      return {
+        ...colab,
+        abiertos_count: abiertos,
+        total_tickets: colab.tickets.length
+      }
+    }).sort((a, b) => b.abiertos_count - a.abiertos_count || a.nombre.localeCompare(b.nombre))
+  }, [tickets])
+
+  // Filtrado de Colaboradores en Tickets
+  const colaboradoresTicketsFiltrados = useMemo(() => {
+    return colaboradoresTickets.filter((c) => {
+      const cumpleFiltro = filtroTickets === 'todos' || c.abiertos_count > 0
+      const query = busquedaTickets.toLowerCase().trim()
+      const cumpleBusqueda = !query ||
+        c.nombre.toLowerCase().includes(query) ||
+        c.numero.toLowerCase().includes(query) ||
+        c.puesto.toLowerCase().includes(query) ||
+        c.tickets.some(t => t.folio.toLowerCase().includes(query) || t.asunto.toLowerCase().includes(query))
+      return cumpleFiltro && cumpleBusqueda
+    })
+  }, [colaboradoresTickets, filtroTickets, busquedaTickets])
+
+  const isTicketExpandido = (key, abiertosCount) => {
+    if (expandidosTickets[key] !== undefined) return expandidosTickets[key]
+    return abiertosCount > 0
+  }
+
+  const toggleExpandirTickets = (key, abiertosCount) => {
+    const actual = isTicketExpandido(key, abiertosCount)
+    setExpandidosTickets(prev => ({ ...prev, [key]: !actual }))
+  }
+
+  const toggleExpandirTodosTickets = (expandir) => {
+    const nuevo = {}
+    colaboradoresTicketsFiltrados.forEach(c => {
+      nuevo[c.key] = expandir
+    })
+    setExpandidosTickets(nuevo)
+  }
 
   // Carga de Documentos PDF/TXT
   const handleSubirDocumento = async (e) => {
@@ -451,128 +587,559 @@ export default function AdminDashboard() {
         </div>
 
 
-      {/* Tab 1: Solicitudes de Vacaciones */}
+      {/* Tab 1: Solicitudes de Vacaciones Agrupadas por Colaborador */}
       {activeTab === 'vacaciones' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {vacaciones.length === 0 ? (
-            <p style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>No hay solicitudes de vacaciones registradas.</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Barra de Búsqueda y Filtros */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--muted)', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '260px' }}>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
+                  <input
+                    type="text"
+                    placeholder="Buscar colaborador por nombre, puesto o número de empleado..."
+                    value={busquedaVacaciones}
+                    onChange={(e) => setBusquedaVacaciones(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.45rem 0.75rem 0.45rem 2.2rem',
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--input)',
+                      color: 'var(--foreground)',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Botones de expandir/contraer todos */}
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                <button
+                  onClick={() => toggleExpandirTodosVacaciones(true)}
+                  className="btn-secondary"
+                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
+                >
+                  Expandir todos
+                </button>
+                <button
+                  onClick={() => toggleExpandirTodosVacaciones(false)}
+                  className="btn-secondary"
+                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
+                >
+                  Contraer todos
+                </button>
+              </div>
+            </div>
+
+            {/* Chips de Filtro */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <Filter size={12} /> Filtro:
+              </span>
+              <button
+                onClick={() => setFiltroVacaciones('todos')}
+                style={{
+                  background: filtroVacaciones === 'todos' ? 'var(--primary)' : 'var(--card)',
+                  color: filtroVacaciones === 'todos' ? 'var(--primary-foreground)' : 'var(--foreground)',
+                  padding: '0.25rem 0.65rem',
+                  borderRadius: '12px',
+                  fontSize: '0.76rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: '1px solid var(--border)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Todos los colaboradores ({colaboradoresVacaciones.length})
+              </button>
+              <button
+                onClick={() => setFiltroVacaciones('pendientes')}
+                style={{
+                  background: filtroVacaciones === 'pendientes' ? 'var(--primary)' : 'var(--card)',
+                  color: filtroVacaciones === 'pendientes' ? 'var(--primary-foreground)' : 'var(--foreground)',
+                  padding: '0.25rem 0.65rem',
+                  borderRadius: '12px',
+                  fontSize: '0.76rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: '1px solid var(--border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>Con solicitudes pendientes</span>
+                <span style={{
+                  background: filtroVacaciones === 'pendientes' ? 'var(--primary-foreground)' : '#fef3c7',
+                  color: filtroVacaciones === 'pendientes' ? 'var(--primary)' : '#b45309',
+                  padding: '0.1rem 0.4rem',
+                  borderRadius: '8px',
+                  fontSize: '0.7rem'
+                }}>
+                  {colaboradoresVacaciones.filter(c => c.pendientes_count > 0).length}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Listado Agrupado de Colaboradores */}
+          {colaboradoresVacacionesFiltrados.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted-foreground)', background: 'var(--muted)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+              No se encontraron colaboradores que coincidan con el criterio de búsqueda o filtro seleccionado.
+            </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: 'var(--muted)', color: 'var(--muted-foreground)', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '0.75rem' }}>Colaborador</th>
-                    <th style={{ padding: '0.75rem' }}>Período Solicitado</th>
-                    <th style={{ padding: '0.75rem' }}>Días</th>
-                    <th style={{ padding: '0.75rem' }}>Estado</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vacaciones.map((vac) => (
-                    <tr key={vac.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.75rem', fontWeight: 600 }}>{vac.empleado_nombre || 'Colaborador'}</td>
-                      <td style={{ padding: '0.75rem' }}>{vac.fecha_inicio} al {vac.fecha_fin}</td>
-                      <td style={{ padding: '0.75rem' }}>{vac.dias_solicitados} días</td>
-                      <td style={{ padding: '0.75rem' }}>
-                        <span style={{
-                          padding: '0.2rem 0.5rem',
-                          borderRadius: '4px',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          background: vac.estado === 'APROBADO' ? '#dcfce7' : vac.estado === 'RECHAZADO' ? '#fee2e2' : 'var(--accent)',
-                          color: vac.estado === 'APROBADO' ? '#15803d' : vac.estado === 'RECHAZADO' ? '#b91c1c' : 'var(--accent-foreground)'
-                        }}>
-                          {vac.estado}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                        {vac.estado === 'PENDIENTE' && (
-                          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
-                            <button
-                              onClick={() => handleAprobarRechazarVacaciones(vac.id, 'APROBADO')}
-                              className="btn-primary"
-                              style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.2rem', background: '#16a34a' }}
-                            >
-                              <CheckCircle size={14} /> Aprobar
-                            </button>
-                            <button
-                              onClick={() => handleAprobarRechazarVacaciones(vac.id, 'RECHAZADO')}
-                              className="btn-secondary"
-                              style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.2rem', color: '#dc2626' }}
-                            >
-                              <XCircle size={14} /> Rechazar
-                            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {colaboradoresVacacionesFiltrados.map((colab) => {
+                const abierto = isVacacionExpandido(colab.key, colab.pendientes_count)
+                return (
+                  <div
+                    key={colab.key}
+                    style={{
+                      background: 'var(--card)',
+                      borderRadius: 'var(--radius)',
+                      border: colab.pendientes_count > 0 ? '1px solid var(--primary)' : '1px solid var(--border)',
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                    }}
+                  >
+                    {/* Fila Encabezado del Colaborador (Click para expandir/colapsar) */}
+                    <div
+                      onClick={() => toggleExpandirVacaciones(colab.key, colab.pendientes_count)}
+                      style={{
+                        padding: '0.85rem 1.15rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        background: abierto ? 'var(--muted)' : 'transparent',
+                        transition: 'background 0.15s ease',
+                        borderBottom: abierto ? '1px solid var(--border)' : 'none'
+                      }}
+                    >
+                      {/* Información de Identidad */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                        {colab.avatar ? (
+                          <img
+                            src={colab.avatar}
+                            alt={colab.nombre}
+                            style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }}
+                          />
+                        ) : (
+                          <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--primary)', color: 'var(--primary-foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.88rem' }}>
+                            {colab.nombre?.[0] || 'C'}
                           </div>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <h4 style={{ fontSize: '0.94rem', fontWeight: 700, color: 'var(--foreground)' }}>
+                              {colab.nombre}
+                            </h4>
+                            <span style={{ fontSize: '0.72rem', background: 'var(--muted)', color: 'var(--muted-foreground)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
+                              {colab.numero}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
+                            {colab.puesto} • {colab.departamento}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Métricas y Estado de Atención */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                        {colab.dias_disponibles !== null && colab.dias_disponibles !== undefined && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', display: 'none', mdDisplay: 'inline' }}>
+                            Saldo: <strong style={{ color: 'var(--foreground)' }}>{colab.dias_disponibles} días</strong>
+                          </span>
+                        )}
+
+                        <span style={{
+                          fontSize: '0.75rem',
+                          padding: '0.2rem 0.55rem',
+                          borderRadius: '12px',
+                          fontWeight: 700,
+                          background: colab.pendientes_count > 0 ? '#fef3c7' : '#dcfce7',
+                          color: colab.pendientes_count > 0 ? '#b45309' : '#15803d'
+                        }}>
+                          {colab.pendientes_count > 0 ? `${colab.pendientes_count} pendiente(s)` : 'Al corriente'}
+                        </span>
+
+                        <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', fontWeight: 500 }}>
+                          {colab.solicitudes.length} {colab.solicitudes.length === 1 ? 'solicitud' : 'solicitudes'} ({colab.total_dias}d)
+                        </span>
+
+                        <div style={{ color: 'var(--muted-foreground)' }}>
+                          {abierto ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contenido Expandido: Solicitudes del Colaborador */}
+                    {abierto && (
+                      <div style={{ padding: '0.85rem 1.15rem' }}>
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem', textAlign: 'left' }}>
+                            <thead>
+                              <tr style={{ background: 'var(--muted)', color: 'var(--muted-foreground)', borderBottom: '1px solid var(--border)' }}>
+                                <th style={{ padding: '0.65rem' }}>Período Solicitado</th>
+                                <th style={{ padding: '0.65rem' }}>Días</th>
+                                <th style={{ padding: '0.65rem' }}>Motivo</th>
+                                <th style={{ padding: '0.65rem' }}>Fecha Registro</th>
+                                <th style={{ padding: '0.65rem' }}>Estado</th>
+                                <th style={{ padding: '0.65rem', textAlign: 'right' }}>Dictamen</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {colab.solicitudes.map((sol) => (
+                                <tr key={sol.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <td style={{ padding: '0.65rem', fontWeight: 600 }}>
+                                    {sol.fecha_inicio} al {sol.fecha_fin}
+                                  </td>
+                                  <td style={{ padding: '0.65rem' }}>
+                                    {sol.dias_solicitados} días
+                                  </td>
+                                  <td style={{ padding: '0.65rem', color: 'var(--muted-foreground)' }}>
+                                    {sol.motivo || 'Sin especificar'}
+                                  </td>
+                                  <td style={{ padding: '0.65rem', fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
+                                    {new Date(sol.fecha_creacion).toLocaleDateString('es-MX')}
+                                  </td>
+                                  <td style={{ padding: '0.65rem' }}>
+                                    <span style={{
+                                      padding: '0.2rem 0.55rem',
+                                      borderRadius: '10px',
+                                      fontSize: '0.72rem',
+                                      fontWeight: 600,
+                                      background:
+                                        sol.estado === 'APROBADO' ? '#dcfce7' :
+                                        sol.estado === 'RECHAZADO' ? '#fee2e2' : '#fef3c7',
+                                      color:
+                                        sol.estado === 'APROBADO' ? '#15803d' :
+                                        sol.estado === 'RECHAZADO' ? '#b91c1c' : '#b45309'
+                                    }}>
+                                      {sol.estado}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '0.65rem', textAlign: 'right' }}>
+                                    {sol.estado === 'PENDIENTE' ? (
+                                      <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                                        <button
+                                          onClick={() => handleAprobarRechazarVacaciones(sol.id, 'APROBADO')}
+                                          className="btn-primary"
+                                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', background: '#16a34a' }}
+                                        >
+                                          <CheckCircle size={13} />
+                                          <span>Aprobar</span>
+                                        </button>
+                                        <button
+                                          onClick={() => handleAprobarRechazarVacaciones(sol.id, 'RECHAZADO')}
+                                          className="btn-secondary"
+                                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#dc2626' }}
+                                        >
+                                          <XCircle size={13} />
+                                          <span>Rechazar</span>
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', fontStyle: 'italic' }}>
+                                        Dictaminada
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* Tab 2: Tickets de Soporte */}
+      {/* Tab 2: Tickets de Soporte Agrupados por Colaborador */}
       {activeTab === 'tickets' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {tickets.map((t) => (
-            <div key={t.id} style={{ background: 'var(--muted)', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>`{t.folio}` — {t.empleado_nombre}</span>
-                <span style={{
-                  fontSize: '0.75rem',
-                  padding: '0.2rem 0.55rem',
-                  borderRadius: '4px',
-                  fontWeight: 600,
-                  background: t.estado === 'RESUELTO' ? '#dcfce7' : t.estado === 'EN_PROCESO' ? '#fef3c7' : 'var(--accent)',
-                  color: t.estado === 'RESUELTO' ? '#15803d' : t.estado === 'EN_PROCESO' ? '#b45309' : 'var(--accent-foreground)'
-                }}>
-                  {t.estado}
-                </span>
-              </div>
-              <p style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.3rem' }}>{t.asunto}</p>
-              <p style={{ fontSize: '0.82rem', color: 'var(--muted-foreground)', marginBottom: '0.75rem', whiteSpace: 'pre-line' }}>{t.descripcion}</p>
-
-              {t.respuesta_rh ? (
-                <div style={{ background: 'var(--card)', padding: '0.85rem 1rem', borderRadius: 'var(--radius)', borderLeft: '4px solid #16a34a', fontSize: '0.85rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#16a34a', fontWeight: 600, marginBottom: '0.25rem' }}>
-                    <CheckCircle size={15} />
-                    <span>Respuesta enviada al colaborador:</span>
-                  </div>
-                  <p style={{ margin: 0, color: 'var(--foreground)', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
-                    {t.respuesta_rh}
-                  </p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Barra de Búsqueda y Filtros */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--muted)', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '260px' }}>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
                   <input
                     type="text"
-                    placeholder="Escribe la respuesta formal de RH..."
-                    value={ticketRespuesta.id === t.id ? ticketRespuesta.respuesta_rh : ''}
-                    onChange={(e) => setTicketRespuesta({ id: t.id, respuesta_rh: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        handleEnviarRespuestaTicket(t.id)
-                      }
+                    placeholder="Buscar por colaborador, número, folio (TK-) o asunto..."
+                    value={busquedaTickets}
+                    onChange={(e) => setBusquedaTickets(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.45rem 0.75rem 0.45rem 2.2rem',
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--input)',
+                      color: 'var(--foreground)',
+                      fontSize: '0.85rem'
                     }}
-                    style={{ flex: 1, padding: '0.4rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--input)', color: 'var(--foreground)', fontSize: '0.85rem' }}
                   />
-                  <button
-                    onClick={() => handleEnviarRespuestaTicket(t.id)}
-                    className="btn-primary"
-                    style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                  >
-                    <CheckCircle size={14} />
-                    <span>Responder & Resolver</span>
-                  </button>
                 </div>
-              )}
+              </div>
+
+              {/* Botones de expandir/contraer todos */}
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                <button
+                  onClick={() => toggleExpandirTodosTickets(true)}
+                  className="btn-secondary"
+                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
+                >
+                  Expandir todos
+                </button>
+                <button
+                  onClick={() => toggleExpandirTodosTickets(false)}
+                  className="btn-secondary"
+                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
+                >
+                  Contraer todos
+                </button>
+              </div>
             </div>
-          ))}
+
+            {/* Chips de Filtro */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <Filter size={12} /> Filtro:
+              </span>
+              <button
+                onClick={() => setFiltroTickets('todos')}
+                style={{
+                  background: filtroTickets === 'todos' ? 'var(--primary)' : 'var(--card)',
+                  color: filtroTickets === 'todos' ? 'var(--primary-foreground)' : 'var(--foreground)',
+                  padding: '0.25rem 0.65rem',
+                  borderRadius: '12px',
+                  fontSize: '0.76rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: '1px solid var(--border)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Todos los colaboradores ({colaboradoresTickets.length})
+              </button>
+              <button
+                onClick={() => setFiltroTickets('pendientes')}
+                style={{
+                  background: filtroTickets === 'pendientes' ? 'var(--primary)' : 'var(--card)',
+                  color: filtroTickets === 'pendientes' ? 'var(--primary-foreground)' : 'var(--foreground)',
+                  padding: '0.25rem 0.65rem',
+                  borderRadius: '12px',
+                  fontSize: '0.76rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: '1px solid var(--border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>Con tickets abiertos</span>
+                <span style={{
+                  background: filtroTickets === 'pendientes' ? 'var(--primary-foreground)' : '#dbeafe',
+                  color: filtroTickets === 'pendientes' ? 'var(--primary)' : '#1d4ed8',
+                  padding: '0.1rem 0.4rem',
+                  borderRadius: '8px',
+                  fontSize: '0.7rem'
+                }}>
+                  {colaboradoresTickets.filter(c => c.abiertos_count > 0).length}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Listado Agrupado de Colaboradores con Tickets */}
+          {colaboradoresTicketsFiltrados.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--muted-foreground)', background: 'var(--muted)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+              No se encontraron colaboradores que coincidan con el criterio de búsqueda o filtro seleccionado.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {colaboradoresTicketsFiltrados.map((colab) => {
+                const abierto = isTicketExpandido(colab.key, colab.abiertos_count)
+                return (
+                  <div
+                    key={colab.key}
+                    style={{
+                      background: 'var(--card)',
+                      borderRadius: 'var(--radius)',
+                      border: colab.abiertos_count > 0 ? '1px solid var(--primary)' : '1px solid var(--border)',
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                    }}
+                  >
+                    {/* Fila Encabezado del Colaborador (Click para expandir/colapsar) */}
+                    <div
+                      onClick={() => toggleExpandirTickets(colab.key, colab.abiertos_count)}
+                      style={{
+                        padding: '0.85rem 1.15rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        background: abierto ? 'var(--muted)' : 'transparent',
+                        transition: 'background 0.15s ease',
+                        borderBottom: abierto ? '1px solid var(--border)' : 'none'
+                      }}
+                    >
+                      {/* Información de Identidad */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                        {colab.avatar ? (
+                          <img
+                            src={colab.avatar}
+                            alt={colab.nombre}
+                            style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }}
+                          />
+                        ) : (
+                          <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--primary)', color: 'var(--primary-foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.88rem' }}>
+                            {colab.nombre?.[0] || 'C'}
+                          </div>
+                        )}
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <h4 style={{ fontSize: '0.94rem', fontWeight: 700, color: 'var(--foreground)' }}>
+                              {colab.nombre}
+                            </h4>
+                            <span style={{ fontSize: '0.72rem', background: 'var(--muted)', color: 'var(--muted-foreground)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
+                              {colab.numero}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
+                            {colab.puesto} • {colab.departamento}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Métricas y Estado de Atención */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                        <span style={{
+                          fontSize: '0.75rem',
+                          padding: '0.2rem 0.55rem',
+                          borderRadius: '12px',
+                          fontWeight: 700,
+                          background: colab.abiertos_count > 0 ? '#dbeafe' : '#dcfce7',
+                          color: colab.abiertos_count > 0 ? '#1d4ed8' : '#15803d'
+                        }}>
+                          {colab.abiertos_count > 0 ? `${colab.abiertos_count} abierto(s)` : 'Todos resueltos'}
+                        </span>
+
+                        <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', fontWeight: 500 }}>
+                          {colab.tickets.length} {colab.tickets.length === 1 ? 'ticket' : 'tickets'}
+                        </span>
+
+                        <div style={{ color: 'var(--muted-foreground)' }}>
+                          {abierto ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contenido Expandido: Tickets del Colaborador */}
+                    {abierto && (
+                      <div style={{ padding: '1rem 1.15rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                        {colab.tickets.map((t) => (
+                          <div
+                            key={t.id}
+                            style={{
+                              background: 'var(--background)',
+                              padding: '1rem',
+                              borderRadius: 'var(--radius)',
+                              border: '1px solid var(--border)'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--primary)', fontFamily: 'monospace' }}>
+                                  {t.folio}
+                                </span>
+                                <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
+                                  • {new Date(t.fecha_creacion).toLocaleDateString('es-MX')} {new Date(t.fecha_creacion).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <span style={{
+                                fontSize: '0.74rem',
+                                padding: '0.2rem 0.55rem',
+                                borderRadius: '10px',
+                                fontWeight: 600,
+                                background: t.estado === 'RESUELTO' ? '#dcfce7' : t.estado === 'EN_PROCESO' ? '#fef3c7' : '#fee2e2',
+                                color: t.estado === 'RESUELTO' ? '#15803d' : t.estado === 'EN_PROCESO' ? '#b45309' : '#b91c1c'
+                              }}>
+                                {t.estado}
+                              </span>
+                            </div>
+
+                            <h5 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.35rem' }}>
+                              {t.asunto}
+                            </h5>
+                            <p style={{ fontSize: '0.83rem', color: 'var(--muted-foreground)', marginBottom: '0.85rem', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+                              {t.descripcion}
+                            </p>
+
+                            {t.respuesta_rh ? (
+                              <div style={{ background: 'var(--card)', padding: '0.85rem 1rem', borderRadius: 'var(--radius)', borderLeft: '4px solid #16a34a', fontSize: '0.85rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#16a34a', fontWeight: 600, marginBottom: '0.25rem' }}>
+                                  <CheckCircle size={15} />
+                                  <span>Respuesta formal de Recursos Humanos:</span>
+                                </div>
+                                <p style={{ margin: 0, color: 'var(--foreground)', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+                                  {t.respuesta_rh}
+                                </p>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                                <input
+                                  type="text"
+                                  placeholder="Escribe la respuesta formal de RH para resolver este ticket..."
+                                  value={ticketRespuesta.id === t.id ? ticketRespuesta.respuesta_rh : ''}
+                                  onChange={(e) => setTicketRespuesta({ id: t.id, respuesta_rh: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault()
+                                      handleEnviarRespuestaTicket(t.id)
+                                    }
+                                  }}
+                                  style={{
+                                    flex: 1,
+                                    minWidth: '220px',
+                                    padding: '0.45rem 0.75rem',
+                                    borderRadius: 'var(--radius)',
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--input)',
+                                    color: 'var(--foreground)',
+                                    fontSize: '0.84rem'
+                                  }}
+                                />
+                                <button
+                                  onClick={() => handleEnviarRespuestaTicket(t.id)}
+                                  className="btn-primary"
+                                  style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                >
+                                  <CheckCircle size={14} />
+                                  <span>Responder & Resolver</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
