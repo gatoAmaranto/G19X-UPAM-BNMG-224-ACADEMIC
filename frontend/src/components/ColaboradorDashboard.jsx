@@ -10,6 +10,7 @@ import VacacionesModal from './VacacionesModal.jsx'
 import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 import TicketDetalleModal from './TicketDetalleModal.jsx'
+import CentroTicketsColaborador from './CentroTicketsColaborador.jsx'
 
 const API_BASE = 'http://localhost:8000/api'
 
@@ -460,14 +461,14 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
               {activeTab === 'chat' && 'Asistente Conversacional & Autoservicio con IA'}
               {activeTab === 'perfil' && 'Mi Expediente Laboral & Fotografía de Perfil'}
               {activeTab === 'vacaciones' && 'Control y Solicitud de Vacaciones'}
-              {activeTab === 'tickets' && 'Mesa de Ayuda y Mis Tickets de Soporte'}
+              {activeTab === 'tickets' && 'Centro Individual de Gestión y Seguimiento de Tickets'}
               {activeTab === 'constancia' && 'Emisión de Constancia Laboral Membretada'}
             </h2>
             <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
               {activeTab === 'chat' && 'Interactúa con el agente conversacional inteligente para resolver dudas o tramitar solicitudes.'}
               {activeTab === 'perfil' && 'Consulta tu información oficial, antigüedad calculada y administra tu fotografía institucional.'}
               {activeTab === 'vacaciones' && 'Monitorea tu saldo vacacional, consulta el historial de solicitudes y envía nuevas peticiones a RH.'}
-              {activeTab === 'tickets' && 'Da seguimiento a tus reportes, consulta las respuestas de RH y abre nuevos folios de atención.'}
+              {activeTab === 'tickets' && 'Consulta el expediente individual de cada folio, monitorea el avance de atención y revisa las resoluciones oficiales emitidas por Recursos Humanos.'}
               {activeTab === 'constancia' && 'Genera y descarga en tiempo real tu constancia laboral en formato PDF oficial.'}
             </p>
           </div>
@@ -865,130 +866,16 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
           </div>
         )}
 
-        {/* Tab 4: Mis Tickets de Soporte */}
+        {/* Tab 4: Mis Tickets de Soporte (Centro Individual de Gestión) */}
         {activeTab === 'tickets' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--foreground)' }}>
-                  Mis Folios Registrados
-                </h3>
-                <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
-                  Total: {tickets.length} tickets • {ticketsAbiertosCount} activos
-                </span>
-              </div>
-              <button
-                onClick={() => setModalTicketOpen(true)}
-                className="btn-primary"
-                style={{ fontSize: '0.84rem', padding: '0.45rem 0.95rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}
-              >
-                <Plus size={15} />
-                <span>Crear Nuevo Ticket</span>
-              </button>
-            </div>
-
-            {tickets.length === 0 ? (
-              <p style={{ fontSize: '0.88rem', color: 'var(--muted-foreground)', padding: '1rem 0' }}>
-                No tienes tickets registrados actualmente.
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                {tickets.map((ticket) => (
-                  <div
-                    key={ticket.id}
-                    className="glass-panel"
-                    style={{
-                      padding: '1rem 1.25rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.65rem',
-                      border: '1px solid var(--border)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', background: 'var(--muted)', padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
-                            {ticket.folio}
-                          </span>
-                          <span style={{
-                            fontSize: '0.72rem',
-                            padding: '0.15rem 0.45rem',
-                            borderRadius: '10px',
-                            fontWeight: 600,
-                            background:
-                              ticket.prioridad === 'ALTA' ? '#fee2e2' :
-                              ticket.prioridad === 'MEDIA' ? '#fef3c7' : '#f1f5f9',
-                            color:
-                              ticket.prioridad === 'ALTA' ? '#b91c1c' :
-                              ticket.prioridad === 'MEDIA' ? '#b45309' : '#475569'
-                          }}>
-                            {ticket.prioridad}
-                          </span>
-                        </div>
-                        <h4 style={{ fontSize: '0.96rem', fontWeight: 700, marginTop: '0.35rem', color: 'var(--foreground)' }}>
-                          {ticket.asunto}
-                        </h4>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{
-                          padding: '0.2rem 0.6rem',
-                          borderRadius: '12px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          background:
-                            ticket.estado === 'RESUELTO' ? '#dcfce7' :
-                            ticket.estado === 'EN_PROCESO' ? '#e0e7ff' : '#fef3c7',
-                          color:
-                            ticket.estado === 'RESUELTO' ? '#15803d' :
-                            ticket.estado === 'EN_PROCESO' ? '#4338ca' : '#b45309'
-                        }}>
-                          {ticket.estado}
-                        </span>
-                        <button
-                          onClick={() => setTicketSeleccionado(ticket)}
-                          className="btn-secondary"
-                          style={{ padding: '0.25rem 0.55rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                        >
-                          <Eye size={13} />
-                          <span>Detalle</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <p style={{ fontSize: '0.84rem', color: 'var(--muted-foreground)' }}>
-                      {ticket.descripcion}
-                    </p>
-
-                    {/* Respuesta Resolutiva de RH destacada */}
-                    {ticket.respuesta_rh && (
-                      <div
-                        style={{
-                          background: 'var(--muted)',
-                          padding: '0.65rem 0.85rem',
-                          borderRadius: 'var(--radius)',
-                          borderLeft: '3px solid #16a34a',
-                          marginTop: '0.2rem'
-                        }}
-                      >
-                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16a34a', display: 'block', marginBottom: '0.2rem' }}>
-                          Resolución oficial de Recursos Humanos:
-                        </span>
-                        <p style={{ fontSize: '0.82rem', color: 'var(--foreground)', margin: 0 }}>
-                          {ticket.respuesta_rh}
-                        </p>
-                      </div>
-                    )}
-
-                    <div style={{ fontSize: '0.74rem', color: 'var(--muted-foreground)' }}>
-                      Registrado el {new Date(ticket.fecha_creacion).toLocaleDateString('es-MX')} a las {new Date(ticket.fecha_creacion).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <CentroTicketsColaborador
+            tickets={tickets}
+            onCrearTicket={() => setModalTicketOpen(true)}
+            onRefresh={fetchData}
+            onConsultarChat={(ticket) => {
+              setActiveTab('chat')
+            }}
+          />
         )}
 
         {/* Tab 5: Constancia Laboral */}
