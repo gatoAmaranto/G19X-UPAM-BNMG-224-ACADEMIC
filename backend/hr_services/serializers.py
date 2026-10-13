@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Empleado, SolicitudVacaciones, ConstanciaLaboral, TicketRH, BaseConocimientoRH
+from .models import Empleado, SolicitudVacaciones, ConstanciaLaboral, TicketRH, BaseConocimientoRH, NotaTareaColaborador
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,7 +20,8 @@ class EmpleadoSerializer(serializers.ModelSerializer):
             'id', 'user', 'numero_empleado', 'puesto', 'departamento',
             'fecha_ingreso', 'salario_mensual', 'dias_vacaciones_totales',
             'dias_vacaciones_tomados', 'dias_vacaciones_disponibles',
-            'antiguedad_anios', 'foto_perfil', 'foto_perfil_url'
+            'antiguedad_anios', 'foto_perfil', 'foto_perfil_url',
+            'horario_entrada', 'horario_salida', 'dias_laborales', 'modalidad_trabajo'
         ]
         read_only_fields = ['id', 'user', 'numero_empleado', 'dias_vacaciones_disponibles', 'antiguedad_anios', 'foto_perfil_url']
 
@@ -108,3 +109,15 @@ class BaseConocimientoRHSerializer(serializers.ModelSerializer):
     class Meta:
         model = BaseConocimientoRH
         fields = ['id', 'categoria', 'pregunta', 'respuesta', 'activa', 'fecha_actualizacion']
+
+
+class NotaTareaColaboradorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotaTareaColaborador
+        fields = [
+            'id', 'empleado', 'titulo', 'descripcion', 'fecha',
+            'hora', 'tipo', 'completada', 'color', 'fecha_creacion',
+            'fecha_actualizacion'
+        ]
+        read_only_fields = ['id', 'empleado', 'fecha_creacion', 'fecha_actualizacion']
+

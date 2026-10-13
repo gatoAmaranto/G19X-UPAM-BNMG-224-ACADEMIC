@@ -7,10 +7,11 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 
-from .models import Empleado, SolicitudVacaciones, ConstanciaLaboral, TicketRH, BaseConocimientoRH
+from .models import Empleado, SolicitudVacaciones, ConstanciaLaboral, TicketRH, BaseConocimientoRH, NotaTareaColaborador
 from .serializers import (
     EmpleadoSerializer, SolicitudVacacionesSerializer,
-    ConstanciaLaboralSerializer, TicketRHSerializer, BaseConocimientoRHSerializer
+    ConstanciaLaboralSerializer, TicketRHSerializer, BaseConocimientoRHSerializer,
+    NotaTareaColaboradorSerializer
 )
 from .utils_pdf import generar_pdf_constancia_laboral
 from authentication.permissions import IsRecursosHumanos
@@ -229,6 +230,30 @@ class BaseConocimientoViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
     serializer_class = BaseConocimientoRHSerializer
     queryset = BaseConocimientoRH.objects.filter(activa=True)
+
+
+class NotaTareaViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
+    serializer_class = NotaTareaColaboradorSerializer
+
+    def get_queryset(self):
+        empleado = get_demo_or_current_empleado(self.request)
+        queryset = NotaTareaColaborador.objects.filter(empleado=empleado)
+        fecha = self.request.query_params.get('fecha')
+        if fecha:
+            queryset = queryset.filter(fecha=fecha)
+        mes = self.request.query_params.get('mes')
+        anio = self.request.query_params.get('anio')
+        if mes and anio:
+            try:
+                queryset = queryset.filter(fecha__year=int(anio), fecha__month=int(mes))
+            except ValueError:
+                pass
+        return queryset.order_by('fecha', 'hora', '-fecha_creacion')
+
+    def perform_create(self, serializer):
+        empleado = get_demo_or_current_empleado(self.request)
+        serializer.save(empleado=empleado)
 
 
 # --- ADMIN BACKOFFICE VIEWS ---

@@ -125,3 +125,52 @@ class HRServicesTestCase(TestCase):
         self.assertEqual(del_response.status_code, 200)
         self.assertIsNone(del_response.json().get('foto_perfil_url'))
 
+    def test_perfil_con_horario_laboral(self):
+        response = self.client.get('/api/hr/perfil/')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get('horario_entrada'), '09:00')
+        self.assertEqual(data.get('horario_salida'), '18:00')
+        self.assertEqual(data.get('dias_laborales'), 'Lunes a Viernes')
+        self.assertEqual(data.get('modalidad_trabajo'), 'Híbrido')
+
+    def test_calendario_crud_y_filtros(self):
+        # 1. Crear tarea
+        post_res = self.client.post(
+            '/api/hr/calendario/',
+            data={
+                'titulo': 'Revisión de sprint',
+                'descripcion': 'Junta semanal de alineación técnica',
+                'fecha': '2026-10-15',
+                'hora': '10:00',
+                'tipo': 'TAREA',
+                'color': 'blue'
+            },
+            content_type='application/json'
+        )
+        self.assertEqual(post_res.status_code, 201)
+        tarea_id = post_res.json()['id']
+        self.assertEqual(post_res.json()['titulo'], 'Revisión de sprint')
+        self.assertFalse(post_res.json()['completada'])
+
+        # 2. Listar y filtrar por fecha
+        list_res = self.client.get('/api/hr/calendario/?fecha=2026-10-15')
+        self.assertEqual(list_res.status_code, 200)
+        self.assertEqual(len(list_res.json()), 1)
+
+        # 3. Marcar como completada
+        patch_res = self.client.patch(
+            f'/api/hr/calendario/{tarea_id}/',
+            data={'completada': True},
+            content_type='application/json'
+        )
+        self.assertEqual(patch_res.status_code, 200)
+        self.assertTrue(patch_res.json()['completada'])
+
+        # 4. Eliminar tarea
+        del_res = self.client.delete(f'/api/hr/calendario/{tarea_id}/')
+        self.assertEqual(del_res.status_code, 204)
+        get_res = self.client.get('/api/hr/calendario/')
+        self.assertEqual(len(get_res.json()), 0)
+
+

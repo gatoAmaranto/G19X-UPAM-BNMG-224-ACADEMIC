@@ -12,6 +12,10 @@ class Empleado(models.Model):
     dias_vacaciones_totales = models.PositiveIntegerField(default=12)
     dias_vacaciones_tomados = models.PositiveIntegerField(default=0)
     foto_perfil = models.ImageField(upload_to='avatares/', null=True, blank=True, verbose_name="Foto de Perfil")
+    horario_entrada = models.CharField(max_length=10, default="09:00", verbose_name="Horario de Entrada")
+    horario_salida = models.CharField(max_length=10, default="18:00", verbose_name="Horario de Salida")
+    dias_laborales = models.CharField(max_length=50, default="Lunes a Viernes", verbose_name="Días Laborales")
+    modalidad_trabajo = models.CharField(max_length=20, default="Híbrido", verbose_name="Modalidad de Trabajo")
 
     @property
     def dias_vacaciones_disponibles(self):
@@ -101,3 +105,39 @@ class BaseConocimientoRH(models.Model):
 
     def __str__(self):
         return f"[{self.categoria}] {self.pregunta}"
+
+
+class NotaTareaColaborador(models.Model):
+    TIPOS = [
+        ('TAREA', 'Tarea'),
+        ('NOTA', 'Nota'),
+        ('RECORDATORIO', 'Recordatorio'),
+    ]
+
+    COLORES = [
+        ('blue', 'Azul'),
+        ('green', 'Verde'),
+        ('amber', 'Ámbar'),
+        ('purple', 'Púrpura'),
+        ('rose', 'Rosa'),
+    ]
+
+    empleado = models.ForeignKey(Empleado, on_delete=models.CASCADE, related_name='notas_tareas')
+    titulo = models.CharField(max_length=200, verbose_name="Título")
+    descripcion = models.TextField(blank=True, default='', verbose_name="Descripción")
+    fecha = models.DateField(verbose_name="Fecha")
+    hora = models.CharField(max_length=10, blank=True, default='', verbose_name="Hora")
+    tipo = models.CharField(max_length=20, choices=TIPOS, default='TAREA')
+    completada = models.BooleanField(default=False)
+    color = models.CharField(max_length=20, choices=COLORES, default='blue')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['fecha', 'hora', '-fecha_creacion']
+        verbose_name = "Nota / Tarea de Colaborador"
+        verbose_name_plural = "Notas y Tareas de Colaboradores"
+
+    def __str__(self):
+        return f"[{self.tipo}] {self.titulo} ({self.fecha})"
+

@@ -2,13 +2,14 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     PerfilEmpleadoView, PerfilAvatarUploadView, VacacionesView, GenerarConstanciaView,
-    TicketsViewSet, BaseConocimientoViewSet,
+    TicketsViewSet, BaseConocimientoViewSet, NotaTareaViewSet,
     AdminVacacionesView, AdminTicketsView, AdminFAQView, AdminDocumentUploadView
 )
 
 router = DefaultRouter()
 router.register(r'tickets', TicketsViewSet, basename='tickets')
 router.register(r'faq', BaseConocimientoViewSet, basename='faq')
+router.register(r'calendario', NotaTareaViewSet, basename='calendario')
 
 urlpatterns = [
     path('perfil/', PerfilEmpleadoView.as_view(), name='perfil-empleado'),

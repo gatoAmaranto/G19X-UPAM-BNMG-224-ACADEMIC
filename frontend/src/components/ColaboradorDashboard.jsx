@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import {
   User, Calendar, Ticket, Bot, FileText, CheckCircle, Clock,
   Plus, Camera, Trash2, Mail, Briefcase, Building, Award,
-  AlertCircle, RefreshCw, Eye, Download, Shield, ExternalLink
+  AlertCircle, RefreshCw, Eye, Download, Shield, ExternalLink, CalendarDays
 } from 'lucide-react'
 import axios from 'axios'
 import ChatWidget from './ChatWidget.jsx'
@@ -11,6 +11,7 @@ import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 import TicketDetalleModal from './TicketDetalleModal.jsx'
 import CentroTicketsColaborador from './CentroTicketsColaborador.jsx'
+import CalendarioLaboral from './CalendarioLaboral.jsx'
 
 const API_BASE = 'http://localhost:8000/api'
 
@@ -316,7 +317,42 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
             )}
           </button>
 
-          {/* Opción 3: Mis Vacaciones */}
+          {/* Opción 3: Mi Horario & Calendario */}
+          <button
+            onClick={() => setActiveTab('calendario')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.7rem 0.85rem',
+              borderRadius: 'var(--radius)',
+              border: activeTab === 'calendario' ? '1px solid var(--primary)' : '1px solid transparent',
+              background: activeTab === 'calendario' ? 'var(--primary)' : 'transparent',
+              color: activeTab === 'calendario' ? 'var(--primary-foreground)' : 'var(--foreground)',
+              cursor: 'pointer',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'calendario' ? 600 : 500,
+              textAlign: 'left',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <CalendarDays size={18} />
+              <span>Mi Horario & Calendario</span>
+            </div>
+            <span style={{
+              fontSize: '0.68rem',
+              padding: '0.15rem 0.45rem',
+              borderRadius: '8px',
+              background: activeTab === 'calendario' ? 'var(--primary-foreground)' : 'var(--muted)',
+              color: activeTab === 'calendario' ? 'var(--primary)' : 'var(--muted-foreground)',
+              fontWeight: 600
+            }}>
+              {perfil?.horario_entrada || '09:00'}
+            </span>
+          </button>
+
+          {/* Opción 4: Mis Vacaciones */}
           <button
             onClick={() => setActiveTab('vacaciones')}
             style={{
@@ -460,6 +496,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
             <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--foreground)' }}>
               {activeTab === 'chat' && 'Asistente Conversacional & Autoservicio con IA'}
               {activeTab === 'perfil' && 'Mi Expediente Laboral & Fotografía de Perfil'}
+              {activeTab === 'calendario' && 'Horario Oficial de Trabajo y Calendario de Actividades'}
               {activeTab === 'vacaciones' && 'Control y Solicitud de Vacaciones'}
               {activeTab === 'tickets' && 'Centro Individual de Gestión y Seguimiento de Tickets'}
               {activeTab === 'constancia' && 'Emisión de Constancia Laboral Membretada'}
@@ -467,6 +504,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
             <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
               {activeTab === 'chat' && 'Interactúa con el agente conversacional inteligente para resolver dudas o tramitar solicitudes.'}
               {activeTab === 'perfil' && 'Consulta tu información oficial, antigüedad calculada y administra tu fotografía institucional.'}
+              {activeTab === 'calendario' && 'Visualiza tu jornada laboral registrada, revisa tus días de descanso o vacaciones y administra tus tareas y notas personales.'}
               {activeTab === 'vacaciones' && 'Monitorea tu saldo vacacional, consulta el historial de solicitudes y envía nuevas peticiones a RH.'}
               {activeTab === 'tickets' && 'Consulta el expediente individual de cada folio, monitorea el avance de atención y revisa las resoluciones oficiales emitidas por Recursos Humanos.'}
               {activeTab === 'constancia' && 'Genera y descarga en tiempo real tu constancia laboral en formato PDF oficial.'}
@@ -774,7 +812,16 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
           </div>
         )}
 
-        {/* Tab 3: Mis Vacaciones */}
+        {/* Tab: Mi Horario y Calendario Laboral */}
+        {activeTab === 'calendario' && (
+          <CalendarioLaboral
+            perfil={perfil}
+            vacaciones={vacaciones}
+            onRefreshData={fetchData}
+          />
+        )}
+
+        {/* Tab 4: Mis Vacaciones */}
         {activeTab === 'vacaciones' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {vacaciones && (

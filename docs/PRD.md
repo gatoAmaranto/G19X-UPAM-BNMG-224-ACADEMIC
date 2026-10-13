@@ -143,7 +143,33 @@ Desarrollar un sistema de autoservicio basado en agentes conversacionales para o
 | **RF-13** | Vista Individual de Tickets del Colaborador | Sección individual para el colaborador con filtros por estado, búsqueda de folios y detalle de la respuesta/dictamen oficial de RH. |
 | **RF-14** | Horario Laboral y Calendario Interactivo con Notas/Tareas | Consulta del horario y turno laboral asignado, vista de calendario interactivo y gestión personal de notas y tareas laborales. |
 
-### **8.2. Requerimientos No Funcionales (RNF)**
+### **8.2. Especificaciones Técnicas de los Módulos de Autoservicio y Gestión**
+
+#### **8.2.1. Módulo de Horario Laboral y Calendario con Notas/Tareas (RF-14)**
+* **Horario Laboral Institucional:**
+  * Almacenamiento en el perfil del empleado de: `horario_entrada`, `horario_salida`, `dias_laborales` y `modalidad_trabajo` (Presencial, Remoto, Híbrido).
+  * Exposición de parámetros oficiales mediante el endpoint `/api/hr/perfil/` con visualización destacada en la cabecera del calendario.
+* **Calendario Interactivo Mensual:**
+  * Cuadrícula mensual de lunes a domingo con navegación de meses, botón para volver a la fecha actual y resaltado del día de hoy.
+  * Marcadores semánticos en días hábiles (puntos de jornada regular) y diferenciación de fines de semana.
+  * Detección cruzada automática de períodos de vacaciones autorizados o en trámite provenientes del modelo `SolicitudVacaciones`.
+* **Gestor Personal de Tareas y Notas:**
+  * Modelo `NotaTareaColaborador` vinculado al empleado con atributos: `titulo`, `descripcion`, `fecha`, `hora`, `tipo` (Tarea, Nota, Recordatorio), `completada` y `color` (azul, verde, ámbar, púrpura, rosa).
+  * Endpoint RESTful `/api/hr/calendario/` con soporte de filtrado por año (`anio`), mes (`mes`) y fecha exacta (`fecha`).
+  * Operaciones CRUD en tiempo real con alternancia del estado de completado mediante método `PATCH` y eliminación protegida.
+
+#### **8.2.2. Centro Individual de Gestión y Seguimiento de Tickets (RF-13)**
+* **Arquitectura Master-Detail:** Panel izquierdo con listado filtrable de folios y panel derecho con expediente individual del ticket seleccionado.
+* **Pipeline de Vida del Ticket:** Rastreo gráfico en 3 etapas: 1) Solicitud Registrada, 2) En Revisión por RH y 3) Dictamen y Resolución Emitida.
+* **Filtros y Búsqueda Reactiva:** Filtrado instantáneo por estado (Abierto, En Proceso, Resuelto), prioridad (Alta, Media, Baja) y buscador textual sobre folios (`TK-XXXXXXXX`), asuntos y descripciones.
+* **Visualización de Dictamen de RH:** Marco destacado con borde semántico verde que presenta la resolución formal emitida por el funcionario de Recursos Humanos.
+
+#### **8.2.3. Agrupación de Vacaciones y Tickets en el Backoffice de RH (RF-12)**
+* **Agrupación Jerárquica por Colaborador:** Reemplazo de tablas planas desordenadas por vistas tipo acordeón ordenadas prioritariamente por colaboradores con solicitudes pendientes de dictamen.
+* **Tarjetas de Identidad del Empleado:** Encabezado con fotografía de perfil, nombre, número de nómina, puesto, departamento y contador de días disponibles.
+* **Acciones Resolutivas Integradas:** Aprobación/rechazo de solicitudes vacacionales en línea y formulario de resolución y respuesta directa para tickets.
+
+### **8.3. Requerimientos No Funcionales (RNF)**
 
 | ID | Requerimiento No Funcional | Criterio de Aceptación |
 | :--- | :--- | :--- |
