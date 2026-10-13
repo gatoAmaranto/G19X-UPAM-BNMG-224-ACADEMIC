@@ -112,12 +112,17 @@ class BaseConocimientoRHSerializer(serializers.ModelSerializer):
 
 
 class NotaTareaColaboradorSerializer(serializers.ModelSerializer):
+    empleado_nombre = serializers.SerializerMethodField()
+
     class Meta:
         model = NotaTareaColaborador
         fields = [
-            'id', 'empleado', 'titulo', 'descripcion', 'fecha',
+            'id', 'empleado', 'empleado_nombre', 'titulo', 'descripcion', 'fecha',
             'hora', 'tipo', 'completada', 'color', 'fecha_creacion',
             'fecha_actualizacion'
         ]
         read_only_fields = ['id', 'empleado', 'fecha_creacion', 'fecha_actualizacion']
+
+    def get_empleado_nombre(self, obj):
+        return obj.empleado.user.get_full_name() or obj.empleado.user.username
 

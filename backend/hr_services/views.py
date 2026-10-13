@@ -238,7 +238,16 @@ class NotaTareaViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         empleado = get_demo_or_current_empleado(self.request)
-        queryset = NotaTareaColaborador.objects.filter(empleado=empleado)
+        is_rh = (
+            getattr(self.request.user, 'is_rh_admin', False) or
+            getattr(self.request.user, 'is_staff', False) or
+            'rh' in getattr(self.request.user, 'username', '').lower()
+        )
+        if is_rh:
+            queryset = NotaTareaColaborador.objects.all()
+        else:
+            queryset = NotaTareaColaborador.objects.filter(empleado=empleado)
+
         fecha = self.request.query_params.get('fecha')
         if fecha:
             queryset = queryset.filter(fecha=fecha)
@@ -265,6 +274,24 @@ class AdminVacacionesView(views.APIView):
         solicitudes = SolicitudVacaciones.objects.all().order_by('-fecha_creacion')
         serializer = SolicitudVacacionesSerializer(solicitudes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        empleado_id = request.data.get('empleado_id')
+        if empleado_id:
+            empleado = get_object_or_404(Empleado, pk=empleado_id)
+        else:
+            empleado = get_demo_or_current_empleado(request)
+
+        serializer = SolicitudVacacionesSerializer(data=request.data)
+        if serializer.is_valid():
+            dias_solicitados = serializer.validated_data.get('dias_solicitados', 1)
+            estado = request.data.get('estado', 'APROBADO')
+            solicitud = serializer.save(empleado=empleado, estado=estado)
+            if estado == 'APROBADO':
+                empleado.dias_vacaciones_tomados += dias_solicitados
+                empleado.save()
+            return Response(SolicitudVacacionesSerializer(solicitud).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
         solicitud = get_object_or_404(SolicitudVacaciones, pk=pk)

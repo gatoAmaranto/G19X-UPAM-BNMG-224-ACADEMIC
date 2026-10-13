@@ -1277,6 +1277,7 @@ export default function AdminDashboard() {
           perfil={perfilRH}
           vacaciones={vacaciones}
           onRefreshData={fetchAdminData}
+          esAdminRH={true}
         />
       )}
 

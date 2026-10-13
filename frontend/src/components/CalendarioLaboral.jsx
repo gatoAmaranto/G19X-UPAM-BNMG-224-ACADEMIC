@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react'
 import {
   Calendar, Clock, Briefcase, Plus, CheckCircle2, Circle,
   Trash2, ChevronLeft, ChevronRight, CalendarDays, Check,
-  FileText, AlertCircle, Filter, Building, Sun, Tag
+  FileText, AlertCircle, Filter, Building, Sun, Tag, User,
+  CalendarCheck, Clock3
 } from 'lucide-react'
 import axios from 'axios'
 
@@ -15,7 +16,7 @@ const MESES = [
 
 const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
-export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData }) {
+export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, esAdminRH = false }) {
   const hoy = new Date()
   const [fechaActual, setFechaActual] = useState(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
   const [fechaSeleccionada, setFechaSeleccionada] = useState(
@@ -24,18 +25,52 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
 
   const [tareas, setTareas] = useState([])
   const [cargandoTareas, setCargandoTareas] = useState(false)
-  const [filtroEstadoTareas, setFiltroEstadoTareas] = useState('TODAS') // 'TODAS' | 'PENDIENTES' | 'COMPLETADAS'
+  const [filtroTipo, setFiltroTipo] = useState('TODAS') // 'TODAS' | 'TAREAS' | 'NOTAS' | 'VACACIONES'
 
-  // Modal / Formulario para agregar tarea o nota
-  const [modalNuevaTarea, setModalNuevaTarea] = useState(false)
-  const [guardandoTarea, setGuardandoTarea] = useState(false)
+  // Modal / Formulario unificado para agregar tareas, notas o vacaciones
+  const [modalNuevo, setModalNuevo] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+  const [tipoRegistro, setTipoRegistro] = useState('TAREA') // 'TAREA' | 'NOTA' | 'RECORDATORIO' | 'VACACIONES'
+
   const [formTarea, setFormTarea] = useState({
     titulo: '',
     descripcion: '',
     hora: '10:00',
-    tipo: 'TAREA', // 'TAREA' | 'NOTA' | 'RECORDATORIO'
     color: 'blue'
   })
+
+  // Formulario de vacaciones
+  const [formVacaciones, setFormVacaciones] = useState({
+    fecha_inicio: '',
+    fecha_fin: '',
+    dias_solicitados: 1,
+    motivo: '',
+    empleado_id: ''
+  })
+
+  // Formateador estándar de fechas YYYY-MM-DD
+  const formatYMD = (d) => {
+    if (!d || !(d instanceof Date) || isNaN(d)) return ''
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const dia = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${dia}`
+  }
+
+  const strFechaSeleccionada = formatYMD(fechaSeleccionada)
+  const strHoy = formatYMD(hoy)
+
+  // Al abrir el modal, sincronizar fechas de vacaciones con la fecha seleccionada
+  useEffect(() => {
+    if (modalNuevo && strFechaSeleccionada) {
+      setFormVacaciones(prev => ({
+        ...prev,
+        fecha_inicio: strFechaSeleccionada,
+        fecha_fin: strFechaSeleccionada,
+        dias_solicitados: 1
+      }))
+    }
+  }, [modalNuevo, strFechaSeleccionada])
 
   // Cargar notas y tareas del mes actual
   const cargarTareas = async () => {
@@ -56,13 +91,17 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
     cargarTareas()
   }, [fechaActual])
 
-  // Navegación de mes
+  // Navegación de mes con sincronización inmediata de la fecha seleccionada
   const mesAnterior = () => {
-    setFechaActual(new Date(fechaActual.getFullYear(), fechaActual.getMonth() - 1, 1))
+    const nuevoMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() - 1, 1)
+    setFechaActual(nuevoMes)
+    setFechaSeleccionada(nuevoMes)
   }
 
   const mesSiguiente = () => {
-    setFechaActual(new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 1))
+    const nuevoMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 1)
+    setFechaActual(nuevoMes)
+    setFechaSeleccionada(nuevoMes)
   }
 
   const irAHoy = () => {
@@ -71,7 +110,14 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
     setFechaSeleccionada(new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()))
   }
 
-  // Generación de días para la cuadrícula del mes
+  const handleSeleccionarDia = (diaItem) => {
+    setFechaSeleccionada(diaItem.fecha)
+    if (!diaItem.esMesActual) {
+      setFechaActual(new Date(diaItem.fecha.getFullYear(), diaItem.fecha.getMonth(), 1))
+    }
+  }
+
+  // Generación de días para la cuadrícula del mes (42 celdas iniciando en Lunes)
   const diasCuadricula = useMemo(() => {
     const anio = fechaActual.getFullYear()
     const mes = fechaActual.getMonth()
@@ -79,15 +125,13 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
     const primerDiaMes = new Date(anio, mes, 1)
     const ultimoDiaMes = new Date(anio, mes + 1, 0)
 
-    // Ajustar para que la semana empiece en Lunes (0 = Lunes, 6 = Domingo)
     let diaInicioSemana = primerDiaMes.getDay() - 1
     if (diaInicioSemana === -1) diaInicioSemana = 6
 
     const totalDiasMes = ultimoDiaMes.getDate()
-
     const dias = []
 
-    // Días del mes anterior para rellenar
+    // Relleno de días del mes anterior
     const ultimoDiaMesAnterior = new Date(anio, mes, 0).getDate()
     for (let i = diaInicioSemana - 1; i >= 0; i--) {
       dias.push({
@@ -104,7 +148,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
       })
     }
 
-    // Días del mes siguiente para completar cuadrícula (hasta 42 celdas o múltiplo de 7)
+    // Días del mes siguiente para completar la cuadrícula de 42 celdas
     const resto = 42 - dias.length
     for (let j = 1; j <= resto; j++) {
       dias.push({
@@ -116,33 +160,52 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
     return dias
   }, [fechaActual])
 
-  // Formateador de fechas YYYY-MM-DD
-  const formatYMD = (d) => {
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const dia = String(d.getDate()).padStart(2, '0')
-    return `${y}-${m}-${dia}`
+  // Lista de empleados disponibles para selección en modo RH
+  const listaEmpleados = useMemo(() => {
+    if (!esAdminRH) return []
+    const items = Array.isArray(vacaciones) ? vacaciones : (vacaciones?.solicitudes || [])
+    const empMap = new Map()
+    items.forEach(sol => {
+      if (sol.empleado && sol.empleado_nombre && !sol.empleado_nombre.startsWith('auth0|')) {
+        if (!empMap.has(sol.empleado)) {
+          empMap.set(sol.empleado, { id: sol.empleado, nombre: sol.empleado_nombre })
+        }
+      }
+    })
+    return Array.from(empMap.values())
+  }, [vacaciones, esAdminRH])
+
+  // Limpieza de nombres para badges
+  const getNombreCorto = (nombre) => {
+    if (!nombre) return 'Colaborador'
+    if (nombre.startsWith('auth0|')) return 'Colaborador'
+    return nombre.split(' ')[0]
   }
 
-  const strFechaSeleccionada = formatYMD(fechaSeleccionada)
-  const strHoy = formatYMD(hoy)
-
-  // Mapa de vacaciones aprobadas/registradas
+  // Mapa de vacaciones registradas por fecha (evita desplazamientos por zona horaria)
   const vacacionesMap = useMemo(() => {
     const map = new Map()
     const lista = Array.isArray(vacaciones)
       ? vacaciones
       : (vacaciones?.solicitudes || [])
 
-    if (lista.length === 0) return map
+    if (!lista || lista.length === 0) return map
 
     lista.forEach((sol) => {
+      if (!sol.fecha_inicio || !sol.fecha_fin) return
       if (sol.estado && sol.estado === 'RECHAZADO') return
 
-      const inicio = new Date(sol.fecha_inicio + 'T00:00:00')
-      const fin = new Date(sol.fecha_fin + 'T00:00:00')
+      const cleanInicio = sol.fecha_inicio.split('T')[0]
+      const cleanFin = sol.fecha_fin.split('T')[0]
 
-      for (let cur = new Date(inicio); cur <= fin; cur.setDate(cur.getDate() + 1)) {
+      const partsI = cleanInicio.split('-').map(Number)
+      const partsF = cleanFin.split('-').map(Number)
+      if (partsI.length !== 3 || partsF.length !== 3) return
+
+      const start = new Date(partsI[0], partsI[1] - 1, partsI[2])
+      const end = new Date(partsF[0], partsF[1] - 1, partsF[2])
+
+      for (let cur = new Date(start); cur <= end; cur.setDate(cur.getDate() + 1)) {
         const key = formatYMD(cur)
         if (!map.has(key)) {
           map.set(key, [])
@@ -153,30 +216,56 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
     return map
   }, [vacaciones])
 
-  // Tareas filtradas por día seleccionado
+  // Registros de vacaciones y tareas para el día seleccionado
+  const vacacionesDelDia = vacacionesMap.get(strFechaSeleccionada) || []
+
   const tareasDelDia = useMemo(() => {
     return tareas.filter((t) => t.fecha === strFechaSeleccionada)
   }, [tareas, strFechaSeleccionada])
 
-  const tareasDelDiaFiltradas = useMemo(() => {
-    if (filtroEstadoTareas === 'PENDIENTES') return tareasDelDia.filter(t => !t.completada)
-    if (filtroEstadoTareas === 'COMPLETADAS') return tareasDelDia.filter(t => t.completada)
-    return tareasDelDia
-  }, [tareasDelDia, filtroEstadoTareas])
+  // Filtrado reactivo en el panel lateral
+  const itemsFiltrados = useMemo(() => {
+    const res = []
 
-  // Manejo de crear nueva tarea
+    if (filtroTipo === 'TODAS' || filtroTipo === 'VACACIONES') {
+      vacacionesDelDia.forEach(v => {
+        res.push({
+          id: `vac-${v.id}-${v.fecha_inicio}`,
+          tipoRegistro: 'VACACIONES',
+          data: v
+        })
+      })
+    }
+
+    if (filtroTipo === 'TODAS' || filtroTipo === 'TAREAS' || filtroTipo === 'NOTAS') {
+      tareasDelDia.forEach(t => {
+        const esTarea = t.tipo === 'TAREA'
+        if (filtroTipo === 'TODAS') {
+          res.push({ id: `tarea-${t.id}`, tipoRegistro: 'ACTIVIDAD', data: t })
+        } else if (filtroTipo === 'TAREAS' && esTarea) {
+          res.push({ id: `tarea-${t.id}`, tipoRegistro: 'ACTIVIDAD', data: t })
+        } else if (filtroTipo === 'NOTAS' && !esTarea) {
+          res.push({ id: `tarea-${t.id}`, tipoRegistro: 'ACTIVIDAD', data: t })
+        }
+      })
+    }
+
+    return res
+  }, [vacacionesDelDia, tareasDelDia, filtroTipo])
+
+  // Crear Tarea, Nota o Recordatorio
   const handleCrearTarea = async (e) => {
     e.preventDefault()
     if (!formTarea.titulo.trim()) return
 
     try {
-      setGuardandoTarea(true)
+      setGuardando(true)
       const res = await axios.post(`${API_BASE}/hr/calendario/`, {
         titulo: formTarea.titulo.trim(),
         descripcion: formTarea.descripcion.trim(),
         fecha: strFechaSeleccionada,
         hora: formTarea.hora,
-        tipo: formTarea.tipo,
+        tipo: tipoRegistro,
         color: formTarea.color
       })
 
@@ -185,19 +274,59 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
         titulo: '',
         descripcion: '',
         hora: '10:00',
-        tipo: 'TAREA',
         color: 'blue'
       })
-      setModalNuevaTarea(false)
+      setModalNuevo(false)
+      if (onRefreshData) onRefreshData()
     } catch (err) {
-      console.error('Error al crear tarea en calendario:', err)
-      alert('Error al registrar la nota/tarea.')
+      console.error('Error al registrar actividad en calendario:', err)
+      alert('Error al registrar la actividad en el calendario.')
     } finally {
-      setGuardandoTarea(false)
+      setGuardando(false)
     }
   }
 
-  // Alternar estado completada
+  // Registrar Vacaciones directamente desde el calendario
+  const handleCrearVacaciones = async (e) => {
+    e.preventDefault()
+    if (!formVacaciones.fecha_inicio || !formVacaciones.fecha_fin) {
+      alert('Por favor selecciona las fechas de inicio y fin.')
+      return
+    }
+
+    try {
+      setGuardando(true)
+      const endpoint = esAdminRH
+        ? `${API_BASE}/hr/admin/vacaciones/`
+        : `${API_BASE}/hr/vacaciones/`
+
+      const payload = {
+        fecha_inicio: formVacaciones.fecha_inicio,
+        fecha_fin: formVacaciones.fecha_fin,
+        dias_solicitados: Number(formVacaciones.dias_solicitados) || 1,
+        motivo: formVacaciones.motivo || 'Registro mediante calendario institucional'
+      }
+
+      if (esAdminRH) {
+        payload.estado = 'APROBADO'
+        if (formVacaciones.empleado_id) {
+          payload.empleado_id = formVacaciones.empleado_id
+        }
+      }
+
+      await axios.post(endpoint, payload)
+      if (onRefreshData) await onRefreshData()
+      setModalNuevo(false)
+    } catch (err) {
+      console.error('Error al registrar periodo vacacional:', err)
+      const msg = err.response?.data?.error || 'Error al registrar el periodo de vacaciones.'
+      alert(msg)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  // Alternar estado de completada
   const handleToggleCompletada = async (tarea) => {
     try {
       const res = await axios.patch(`${API_BASE}/hr/calendario/${tarea.id}/`, {
@@ -209,9 +338,9 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
     }
   }
 
-  // Eliminar tarea
+  // Eliminar tarea o nota
   const handleEliminarTarea = async (id) => {
-    if (!window.confirm('¿Deseas eliminar esta tarea o nota del calendario?')) return
+    if (!window.confirm('¿Deseas eliminar este registro del calendario?')) return
     try {
       await axios.delete(`${API_BASE}/hr/calendario/${id}/`)
       setTareas(prev => prev.filter(t => t.id !== id))
@@ -236,18 +365,14 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
     }
   }
 
-  // Comprobar si un día es laboral para el colaborador
   const esDiaLaboral = (fecha) => {
     const diaNum = fecha.getDay()
-    // Lunes a Viernes: 1 a 5
     return diaNum >= 1 && diaNum <= 5
   }
 
-  const vacacionesDelDia = vacacionesMap.get(strFechaSeleccionada) || []
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* 1. Tarjeta Informativa de Horario Oficial del Colaborador */}
+      {/* 1. Tarjeta Informativa de Horario Oficial de Trabajo */}
       <div style={{
         background: 'var(--card)',
         padding: '1.25rem 1.5rem',
@@ -275,7 +400,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--foreground)', margin: 0 }}>
-                Horario Oficial de Trabajo
+                {esAdminRH ? 'Calendario Institucional y Horarios RH' : 'Horario Oficial de Trabajo'}
               </h3>
               <span style={{
                 fontSize: '0.72rem',
@@ -289,14 +414,15 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
               </span>
             </div>
             <p style={{ fontSize: '0.82rem', color: 'var(--muted-foreground)', margin: '0.2rem 0 0 0' }}>
-              Jornada laboral registrada institucionalmente por el área de Recursos Humanos.
+              {esAdminRH
+                ? 'Monitoreo global de jornadas, ausencias autorizadas y actividades laborales institucionalizadas.'
+                : 'Jornada laboral registrada institucionalmente por el área de Recursos Humanos.'}
             </p>
           </div>
         </div>
 
         {/* Fichas de Horario */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-          {/* Turno */}
           <div style={{ background: 'var(--muted)', padding: '0.5rem 0.85rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
             <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', fontWeight: 600 }}>
               Turno Laboral
@@ -306,7 +432,6 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
             </span>
           </div>
 
-          {/* Días */}
           <div style={{ background: 'var(--muted)', padding: '0.5rem 0.85rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
             <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', fontWeight: 600 }}>
               Días de Asistencia
@@ -316,7 +441,6 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
             </span>
           </div>
 
-          {/* Comida / Descanso */}
           <div style={{ background: 'var(--muted)', padding: '0.5rem 0.85rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
             <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', fontWeight: 600 }}>
               Alimentos
@@ -328,8 +452,8 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
         </div>
       </div>
 
-      {/* 2. Área Dividida: Calendario Interactivo a la Izquierda, Panel de Tareas y Notas a la Derecha */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) 380px', gap: '1.25rem', alignItems: 'start' }}>
+      {/* 2. Área Dividida: Calendario Interactivo a la Izquierda, Panel Detallado a la Derecha */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) 400px', gap: '1.25rem', alignItems: 'start' }}>
         {/* Panel del Calendario */}
         <div style={{
           background: 'var(--card)',
@@ -407,9 +531,9 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
               return (
                 <div
                   key={index}
-                  onClick={() => setFechaSeleccionada(item.fecha)}
+                  onClick={() => handleSeleccionarDia(item)}
                   style={{
-                    minHeight: '74px',
+                    minHeight: '84px',
                     padding: '0.35rem 0.45rem',
                     borderRadius: 'var(--radius)',
                     background: esSeleccionado
@@ -435,7 +559,8 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
                     justifyContent: 'space-between',
                     opacity: item.esMesActual ? 1 : 0.45,
                     transition: 'all 0.15s ease',
-                    boxShadow: esSeleccionado ? '0 2px 6px rgba(0,0,0,0.1)' : 'none'
+                    boxShadow: esSeleccionado ? '0 2px 6px rgba(0,0,0,0.1)' : 'none',
+                    overflow: 'hidden'
                   }}
                 >
                   {/* Encabezado celda: Número de día e indicador laboral */}
@@ -459,8 +584,8 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
                       <span
                         title="Día Laboral"
                         style={{
-                          width: '5px',
-                          height: '5px',
+                          width: '6px',
+                          height: '6px',
                           borderRadius: '50%',
                           background: esSeleccionado ? 'var(--primary-foreground)' : '#10b981',
                           opacity: 0.8
@@ -471,50 +596,89 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
 
                   {/* Indicadores de Eventos del Día */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.2rem' }}>
-                    {/* Badge de Vacaciones */}
+                    {/* Badge de Vacaciones legible */}
                     {vacacionesEsteDia.length > 0 && (
-                      <div style={{
-                        fontSize: '0.62rem',
-                        fontWeight: 700,
-                        padding: '0.1rem 0.3rem',
-                        borderRadius: '4px',
-                        background: esSeleccionado ? 'rgba(255,255,255,0.25)' : '#dcfce7',
-                        color: esSeleccionado ? 'var(--primary-foreground)' : '#15803d',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {vacacionesEsteDia[0].empleado_nombre
-                          ? `${vacacionesEsteDia[0].empleado_nombre.split(' ')[0]} (Vac)`
-                          : 'Vacaciones'}
-                        {vacacionesEsteDia.length > 1 ? ` +${vacacionesEsteDia.length - 1}` : ''}
+                      <div
+                        title={`Vacaciones: ${vacacionesEsteDia.map(v => `${getNombreCorto(v.empleado_nombre)} (${v.estado})`).join(', ')}`}
+                        style={{
+                          fontSize: '0.62rem',
+                          fontWeight: 700,
+                          padding: '0.12rem 0.35rem',
+                          borderRadius: '4px',
+                          background: esSeleccionado
+                            ? 'rgba(255,255,255,0.25)'
+                            : vacacionesEsteDia[0].estado === 'PENDIENTE' ? '#fef3c7' : '#dcfce7',
+                          color: esSeleccionado
+                            ? 'var(--primary-foreground)'
+                            : vacacionesEsteDia[0].estado === 'PENDIENTE' ? '#b45309' : '#15803d',
+                          border: esSeleccionado
+                            ? '1px solid rgba(255,255,255,0.3)'
+                            : vacacionesEsteDia[0].estado === 'PENDIENTE' ? '1px solid #fde68a' : '1px solid #bbf7d0',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}
+                      >
+                        <Sun size={10} style={{ flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {vacacionesEsteDia[0].empleado_nombre && !vacacionesEsteDia[0].empleado_nombre.startsWith('auth0|')
+                            ? `${getNombreCorto(vacacionesEsteDia[0].empleado_nombre)} (Vac)`
+                            : 'Vacaciones'}
+                          {vacacionesEsteDia[0].estado === 'PENDIENTE' ? ' [Pend]' : ''}
+                          {vacacionesEsteDia.length > 1 ? ` +${vacacionesEsteDia.length - 1}` : ''}
+                        </span>
                       </div>
                     )}
 
-                    {/* Chips / Puntos de Tareas */}
-                    {tareasEsteDia.length > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', flexWrap: 'wrap' }}>
-                        {tareasEsteDia.slice(0, 3).map((t) => {
-                          const theme = getColorTheme(t.color)
-                          return (
-                            <span
-                              key={t.id}
-                              title={`${t.titulo} (${t.tipo})`}
-                              style={{
-                                width: '7px',
-                                height: '7px',
-                                borderRadius: '50%',
-                                background: esSeleccionado ? 'var(--primary-foreground)' : theme.dot
-                              }}
-                            />
-                          )
-                        })}
-                        {tareasEsteDia.length > 3 && (
-                          <span style={{ fontSize: '0.62rem', fontWeight: 700, color: esSeleccionado ? 'var(--primary-foreground)' : 'var(--muted-foreground)' }}>
-                            +{tareasEsteDia.length - 3}
+                    {/* Chips legibles de Tareas y Notas */}
+                    {tareasEsteDia.slice(0, 2).map((t) => {
+                      const theme = getColorTheme(t.color)
+                      return (
+                        <div
+                          key={t.id}
+                          title={`${t.tipo}: ${t.titulo}`}
+                          style={{
+                            fontSize: '0.62rem',
+                            fontWeight: 600,
+                            padding: '0.1rem 0.3rem',
+                            borderRadius: '4px',
+                            background: esSeleccionado ? 'rgba(255,255,255,0.2)' : theme.bg,
+                            color: esSeleccionado ? 'var(--primary-foreground)' : theme.text,
+                            border: esSeleccionado ? '1px solid rgba(255,255,255,0.25)' : `1px solid ${theme.border}`,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem'
+                          }}
+                        >
+                          <span style={{
+                            width: '5px',
+                            height: '5px',
+                            borderRadius: '50%',
+                            background: esSeleccionado ? 'var(--primary-foreground)' : theme.dot,
+                            flexShrink: 0
+                          }} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: t.completada ? 'line-through' : 'none' }}>
+                            {t.hora ? `${t.hora} ` : ''}{t.titulo}
                           </span>
-                        )}
-                      </div>
+                        </div>
+                      )
+                    })}
+
+                    {tareasEsteDia.length > 2 && (
+                      <span style={{
+                        fontSize: '0.58rem',
+                        fontWeight: 700,
+                        color: esSeleccionado ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
+                        paddingLeft: '0.2rem'
+                      }}>
+                        +{tareasEsteDia.length - 2} más
+                      </span>
                     )}
                   </div>
                 </div>
@@ -542,13 +706,17 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
               <span>Vacaciones autorizadas</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '4px', background: '#fef3c7', border: '1px solid #fde68a' }} />
+              <span>Vacaciones pendientes</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }} />
-              <span>Notas o tareas programadas</span>
+              <span>Tareas / Notas programadas</span>
             </div>
           </div>
         </div>
 
-        {/* Panel Derecho: Detalle del Día y Gestión de Tareas/Notas */}
+        {/* Panel Derecho: Detalle del Día y Gestión de Actividades y Vacaciones */}
         <div style={{
           background: 'var(--card)',
           borderRadius: 'var(--radius)',
@@ -573,7 +741,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
               </div>
 
               <button
-                onClick={() => setModalNuevaTarea(true)}
+                onClick={() => setModalNuevo(true)}
                 className="btn-primary"
                 style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
               >
@@ -585,27 +753,21 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
             {/* Estado del día (Laboral / Vacaciones / Descanso) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
               {vacacionesDelDia.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', width: '100%' }}>
-                  {vacacionesDelDia.map((v, idx) => (
-                    <span key={idx} style={{
-                      fontSize: '0.72rem',
-                      padding: '0.2rem 0.55rem',
-                      borderRadius: '10px',
-                      fontWeight: 700,
-                      background: '#dcfce7',
-                      color: '#15803d',
-                      border: '1px solid #bbf7d0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.3rem'
-                    }}>
-                      <Sun size={12} />
-                      <span>
-                        Vacaciones{v.empleado_nombre ? `: ${v.empleado_nombre}` : ''} ({v.estado})
-                      </span>
-                    </span>
-                  ))}
-                </div>
+                <span style={{
+                  fontSize: '0.72rem',
+                  padding: '0.2rem 0.55rem',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  background: '#dcfce7',
+                  color: '#15803d',
+                  border: '1px solid #bbf7d0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem'
+                }}>
+                  <Sun size={12} />
+                  <span>Día con Vacaciones ({vacacionesDelDia.length} registro{vacacionesDelDia.length > 1 ? 's' : ''})</span>
+                </span>
               ) : esDiaLaboral(fechaSeleccionada) ? (
                 <span style={{
                   fontSize: '0.72rem',
@@ -635,199 +797,342 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
               )}
 
               <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)' }}>
-                {tareasDelDia.length} {tareasDelDia.length === 1 ? 'registro' : 'registros'}
+                {itemsFiltrados.length} {itemsFiltrados.length === 1 ? 'registro' : 'registros'}
               </span>
             </div>
           </div>
 
-          {/* Filtros rápidos de tareas */}
-          {tareasDelDia.length > 0 && (
-            <div style={{ display: 'flex', gap: '0.35rem' }}>
-              {[
-                { id: 'TODAS', label: `Todas (${tareasDelDia.length})` },
-                { id: 'PENDIENTES', label: `Pendientes (${tareasDelDia.filter(t => !t.completada).length})` },
-                { id: 'COMPLETADAS', label: `Listas (${tareasDelDia.filter(t => t.completada).length})` }
-              ].map((f) => (
+          {/* Filtros rápidos */}
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+            {[
+              { id: 'TODAS', label: `Todos (${vacacionesDelDia.length + tareasDelDia.length})` },
+              { id: 'TAREAS', label: `Tareas (${tareasDelDia.filter(t => t.tipo === 'TAREA').length})` },
+              { id: 'NOTAS', label: `Notas (${tareasDelDia.filter(t => t.tipo !== 'TAREA').length})` },
+              { id: 'VACACIONES', label: `Vacaciones (${vacacionesDelDia.length})` }
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFiltroTipo(f.id)}
+                style={{
+                  background: filtroTipo === f.id ? 'var(--primary)' : 'var(--muted)',
+                  color: filtroTipo === f.id ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
+                  border: 'none',
+                  padding: '0.2rem 0.55rem',
+                  borderRadius: '8px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Formulario / Modal para Crear Tarea, Nota o Vacaciones */}
+          {modalNuevo && (
+            <div style={{
+              background: 'var(--muted)',
+              padding: '1rem',
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--foreground)' }}>
+                  Registrar en Calendario ({strFechaSeleccionada})
+                </span>
                 <button
-                  key={f.id}
-                  onClick={() => setFiltroEstadoTareas(f.id)}
-                  style={{
-                    background: filtroEstadoTareas === f.id ? 'var(--primary)' : 'var(--muted)',
-                    color: filtroEstadoTareas === f.id ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
-                    border: 'none',
-                    padding: '0.2rem 0.55rem',
-                    borderRadius: '8px',
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
+                  type="button"
+                  onClick={() => setModalNuevo(false)}
+                  style={{ background: 'none', border: 'none', color: 'var(--muted-foreground)', cursor: 'pointer', fontSize: '0.8rem' }}
                 >
-                  {f.label}
+                  Cerrar
                 </button>
-              ))}
+              </div>
+
+              {/* Selector de Tipo de Registro */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.35rem' }}>
+                {[
+                  { id: 'TAREA', label: 'Tarea' },
+                  { id: 'NOTA', label: 'Nota' },
+                  { id: 'RECORDATORIO', label: 'Alerta' },
+                  { id: 'VACACIONES', label: 'Vacaciones' }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setTipoRegistro(item.id)}
+                    style={{
+                      padding: '0.3rem 0.2rem',
+                      fontSize: '0.72rem',
+                      fontWeight: tipoRegistro === item.id ? 700 : 500,
+                      borderRadius: '6px',
+                      border: tipoRegistro === item.id ? '1px solid var(--primary)' : '1px solid var(--border)',
+                      background: tipoRegistro === item.id ? 'var(--primary)' : 'var(--background)',
+                      color: tipoRegistro === item.id ? 'var(--primary-foreground)' : 'var(--foreground)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Formulario específico según el tipo seleccionado */}
+              {tipoRegistro === 'VACACIONES' ? (
+                <form onSubmit={handleCrearVacaciones} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  {esAdminRH && listaEmpleados.length > 0 && (
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>
+                        Colaborador asignado:
+                      </label>
+                      <select
+                        value={formVacaciones.empleado_id}
+                        onChange={(e) => setFormVacaciones({ ...formVacaciones, empleado_id: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '0.35rem 0.5rem',
+                          borderRadius: 'var(--radius)',
+                          border: '1px solid var(--border)',
+                          background: 'var(--input)',
+                          color: 'var(--foreground)',
+                          fontSize: '0.78rem'
+                        }}
+                      >
+                        <option value="">Colaborador actual / General</option>
+                        {listaEmpleados.map(emp => (
+                          <option key={emp.id} value={emp.id}>{emp.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>
+                        Fecha de inicio:
+                      </label>
+                      <input
+                        type="date"
+                        value={formVacaciones.fecha_inicio}
+                        onChange={(e) => setFormVacaciones({ ...formVacaciones, fecha_inicio: e.target.value })}
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '0.35rem 0.5rem',
+                          borderRadius: 'var(--radius)',
+                          border: '1px solid var(--border)',
+                          background: 'var(--input)',
+                          color: 'var(--foreground)',
+                          fontSize: '0.78rem'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>
+                        Fecha de fin:
+                      </label>
+                      <input
+                        type="date"
+                        value={formVacaciones.fecha_fin}
+                        onChange={(e) => setFormVacaciones({ ...formVacaciones, fecha_fin: e.target.value })}
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '0.35rem 0.5rem',
+                          borderRadius: 'var(--radius)',
+                          border: '1px solid var(--border)',
+                          background: 'var(--input)',
+                          color: 'var(--foreground)',
+                          fontSize: '0.78rem'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>
+                      Días solicitados:
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formVacaciones.dias_solicitados}
+                      onChange={(e) => setFormVacaciones({ ...formVacaciones, dias_solicitados: e.target.value })}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '0.35rem 0.5rem',
+                        borderRadius: 'var(--radius)',
+                        border: '1px solid var(--border)',
+                        background: 'var(--input)',
+                        color: 'var(--foreground)',
+                        fontSize: '0.78rem'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Motivo o justificación del periodo..."
+                      value={formVacaciones.motivo}
+                      onChange={(e) => setFormVacaciones({ ...formVacaciones, motivo: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.45rem 0.65rem',
+                        borderRadius: 'var(--radius)',
+                        border: '1px solid var(--border)',
+                        background: 'var(--input)',
+                        color: 'var(--foreground)',
+                        fontSize: '0.8rem'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.25rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setModalNuevo(false)}
+                      className="btn-secondary"
+                      style={{ fontSize: '0.76rem', padding: '0.3rem 0.65rem' }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={guardando}
+                      className="btn-primary"
+                      style={{ fontSize: '0.76rem', padding: '0.3rem 0.75rem' }}
+                    >
+                      {guardando ? 'Guardando...' : esAdminRH ? 'Autorizar Vacaciones' : 'Solicitar Vacaciones'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleCrearTarea} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Título de la actividad..."
+                      value={formTarea.titulo}
+                      onChange={(e) => setFormTarea({ ...formTarea, titulo: e.target.value })}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '0.45rem 0.65rem',
+                        borderRadius: 'var(--radius)',
+                        border: '1px solid var(--border)',
+                        background: 'var(--input)',
+                        color: 'var(--foreground)',
+                        fontSize: '0.82rem'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>
+                        Hora programada:
+                      </label>
+                      <input
+                        type="time"
+                        value={formTarea.hora}
+                        onChange={(e) => setFormTarea({ ...formTarea, hora: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '0.35rem 0.5rem',
+                          borderRadius: 'var(--radius)',
+                          border: '1px solid var(--border)',
+                          background: 'var(--input)',
+                          color: 'var(--foreground)',
+                          fontSize: '0.78rem'
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>
+                        Etiqueta de color:
+                      </label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', height: '32px' }}>
+                        {['blue', 'green', 'amber', 'purple', 'rose'].map((c) => {
+                          const theme = getColorTheme(c)
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => setFormTarea({ ...formTarea, color: c })}
+                              style={{
+                                width: '18px',
+                                height: '18px',
+                                borderRadius: '50%',
+                                background: theme.dot,
+                                border: formTarea.color === c ? '2px solid var(--foreground)' : 'none',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                            />
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <textarea
+                      placeholder="Descripción o apuntes adicionales (opcional)..."
+                      value={formTarea.descripcion}
+                      onChange={(e) => setFormTarea({ ...formTarea, descripcion: e.target.value })}
+                      rows={2}
+                      style={{
+                        width: '100%',
+                        padding: '0.45rem 0.65rem',
+                        borderRadius: 'var(--radius)',
+                        border: '1px solid var(--border)',
+                        background: 'var(--input)',
+                        color: 'var(--foreground)',
+                        fontSize: '0.8rem',
+                        resize: 'none'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.25rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setModalNuevo(false)}
+                      className="btn-secondary"
+                      style={{ fontSize: '0.76rem', padding: '0.3rem 0.65rem' }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={guardando}
+                      className="btn-primary"
+                      style={{ fontSize: '0.76rem', padding: '0.3rem 0.75rem' }}
+                    >
+                      {guardando ? 'Guardando...' : 'Guardar en Calendario'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
 
-          {/* Formulario Inline / Modal de Nueva Tarea o Nota */}
-          {modalNuevaTarea && (
-            <form
-              onSubmit={handleCrearTarea}
-              style={{
-                background: 'var(--muted)',
-                padding: '1rem',
-                borderRadius: 'var(--radius)',
-                border: '1px solid var(--border)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.75rem'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--foreground)' }}>
-                  Nueva Nota o Tarea
-                </span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)' }}>
-                  {strFechaSeleccionada}
-                </span>
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  placeholder="Título de la nota o tarea..."
-                  value={formTarea.titulo}
-                  onChange={(e) => setFormTarea({ ...formTarea, titulo: e.target.value })}
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '0.45rem 0.65rem',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border)',
-                    background: 'var(--input)',
-                    color: 'var(--foreground)',
-                    fontSize: '0.82rem'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>
-                    Tipo:
-                  </label>
-                  <select
-                    value={formTarea.tipo}
-                    onChange={(e) => setFormTarea({ ...formTarea, tipo: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.35rem 0.5rem',
-                      borderRadius: 'var(--radius)',
-                      border: '1px solid var(--border)',
-                      background: 'var(--input)',
-                      color: 'var(--foreground)',
-                      fontSize: '0.78rem'
-                    }}
-                  >
-                    <option value="TAREA">Tarea</option>
-                    <option value="NOTA">Nota</option>
-                    <option value="RECORDATORIO">Recordatorio</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>
-                    Hora programada:
-                  </label>
-                  <input
-                    type="time"
-                    value={formTarea.hora}
-                    onChange={(e) => setFormTarea({ ...formTarea, hora: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '0.35rem 0.5rem',
-                      borderRadius: 'var(--radius)',
-                      border: '1px solid var(--border)',
-                      background: 'var(--input)',
-                      color: 'var(--foreground)',
-                      fontSize: '0.78rem'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <textarea
-                  placeholder="Descripción o apuntes adicionales (opcional)..."
-                  value={formTarea.descripcion}
-                  onChange={(e) => setFormTarea({ ...formTarea, descripcion: e.target.value })}
-                  rows={2}
-                  style={{
-                    width: '100%',
-                    padding: '0.45rem 0.65rem',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border)',
-                    background: 'var(--input)',
-                    color: 'var(--foreground)',
-                    fontSize: '0.8rem',
-                    resize: 'none'
-                  }}
-                />
-              </div>
-
-              {/* Selector de Color */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)' }}>Etiqueta:</span>
-                {['blue', 'green', 'amber', 'purple', 'rose'].map((c) => {
-                  const theme = getColorTheme(c)
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setFormTarea({ ...formTarea, color: c })}
-                      style={{
-                        width: '18px',
-                        height: '18px',
-                        borderRadius: '50%',
-                        background: theme.dot,
-                        border: formTarea.color === c ? '2px solid var(--foreground)' : 'none',
-                        cursor: 'pointer',
-                        padding: 0
-                      }}
-                    />
-                  )
-                })}
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.25rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setModalNuevaTarea(false)}
-                  className="btn-secondary"
-                  style={{ fontSize: '0.76rem', padding: '0.3rem 0.65rem' }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={guardandoTarea}
-                  className="btn-primary"
-                  style={{ fontSize: '0.76rem', padding: '0.3rem 0.75rem' }}
-                >
-                  {guardandoTarea ? 'Guardando...' : 'Guardar en Calendario'}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Listado de Notas y Tareas del Día */}
+          {/* Listado Unificado y Reactivo de Eventos del Día */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', overflowY: 'auto', flex: 1 }}>
             {cargandoTareas ? (
               <div style={{ padding: '1.5rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
                 Cargando registros del calendario...
               </div>
-            ) : tareasDelDiaFiltradas.length === 0 ? (
+            ) : itemsFiltrados.length === 0 ? (
               <div style={{
-                padding: '2rem 1rem',
+                padding: '2.5rem 1rem',
                 textAlign: 'center',
                 color: 'var(--muted-foreground)',
                 display: 'flex',
@@ -835,20 +1140,76 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
                 alignItems: 'center',
                 gap: '0.5rem'
               }}>
-                <FileText size={28} style={{ opacity: 0.4 }} />
-                <p style={{ margin: 0, fontSize: '0.84rem', fontWeight: 600 }}>
-                  Sin notas ni tareas para este día
+                <FileText size={32} style={{ opacity: 0.35 }} />
+                <p style={{ margin: 0, fontSize: '0.86rem', fontWeight: 600 }}>
+                  Sin notas, tareas ni vacaciones para este día
                 </p>
                 <p style={{ margin: 0, fontSize: '0.76rem' }}>
-                  Haz clic en "Agregar" para programar un recordatorio o apunte personal.
+                  Haz clic en "Agregar" para programar una actividad o periodo vacacional.
                 </p>
               </div>
             ) : (
-              tareasDelDiaFiltradas.map((tarea) => {
+              itemsFiltrados.map((item) => {
+                if (item.tipoRegistro === 'VACACIONES') {
+                  const vac = item.data
+                  const esAprobado = vac.estado === 'APROBADO'
+
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        background: esAprobado ? '#f0fdf4' : '#fffbeb',
+                        padding: '0.85rem',
+                        borderRadius: 'var(--radius)',
+                        border: `1px solid ${esAprobado ? '#bbf7d0' : '#fde68a'}`,
+                        borderLeft: `4px solid ${esAprobado ? '#16a34a' : '#f59e0b'}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.4rem',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{
+                          fontSize: '0.66rem',
+                          fontWeight: 700,
+                          padding: '0.12rem 0.4rem',
+                          borderRadius: '4px',
+                          background: esAprobado ? '#dcfce7' : '#fef3c7',
+                          color: esAprobado ? '#15803d' : '#b45309'
+                        }}>
+                          VACACIONES {esAprobado ? 'AUTORIZADAS' : 'PENDIENTES'}
+                        </span>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', fontWeight: 600 }}>
+                          {vac.dias_solicitados} {vac.dias_solicitados === 1 ? 'día' : 'días'}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                        {vac.empleado_nombre && !vac.empleado_nombre.startsWith('auth0|')
+                          ? vac.empleado_nombre
+                          : 'Colaborador Registrado'}
+                      </div>
+
+                      <div style={{ fontSize: '0.76rem', color: 'var(--muted-foreground)' }}>
+                        Periodo: {vac.fecha_inicio} al {vac.fecha_fin}
+                      </div>
+
+                      {vac.motivo && (
+                        <div style={{ fontSize: '0.76rem', color: 'var(--muted-foreground)', fontStyle: 'italic', background: 'rgba(255,255,255,0.6)', padding: '0.35rem 0.5rem', borderRadius: '4px' }}>
+                          "{vac.motivo}"
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+
+                const tarea = item.data
                 const theme = getColorTheme(tarea.color)
+
                 return (
                   <div
-                    key={tarea.id}
+                    key={item.id}
                     style={{
                       background: 'var(--background)',
                       padding: '0.75rem 0.85rem',
@@ -881,8 +1242,8 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
                           </button>
                         )}
 
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                             <span style={{
                               fontSize: '0.66rem',
                               fontWeight: 700,
@@ -894,8 +1255,14 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
                               {tarea.tipo}
                             </span>
                             {tarea.hora && (
-                              <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                <Clock3 size={11} />
                                 {tarea.hora} hrs
+                              </span>
+                            )}
+                            {esAdminRH && tarea.empleado_nombre && (
+                              <span style={{ fontSize: '0.68rem', color: 'var(--muted-foreground)', fontWeight: 600 }}>
+                                • {getNombreCorto(tarea.empleado_nombre)}
                               </span>
                             )}
                           </div>

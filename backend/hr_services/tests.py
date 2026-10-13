@@ -63,6 +63,24 @@ class HRServicesTestCase(TestCase):
         self.empleado.refresh_from_db()
         self.assertEqual(self.empleado.dias_vacaciones_tomados, 5)
 
+    def test_admin_crear_vacaciones(self):
+        response = self.client.post(
+            '/api/hr/admin/vacaciones/',
+            data={
+                'empleado_id': self.empleado.id,
+                'fecha_inicio': '2026-12-01',
+                'fecha_fin': '2026-12-05',
+                'dias_solicitados': 5,
+                'motivo': 'Periodo decembrino institucional',
+                'estado': 'APROBADO'
+            },
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()['estado'], 'APROBADO')
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.dias_vacaciones_tomados, 7)
+
     def test_admin_responder_ticket(self):
         ticket = TicketRH.objects.create(
             empleado=self.empleado,

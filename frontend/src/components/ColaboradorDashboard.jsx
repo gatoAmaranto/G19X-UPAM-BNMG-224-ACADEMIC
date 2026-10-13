@@ -818,6 +818,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
             perfil={perfil}
             vacaciones={vacaciones}
             onRefreshData={fetchData}
+            esAdminRH={false}
           />
         )}
 
