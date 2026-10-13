@@ -11,6 +11,14 @@ import CalendarioLaboral from './CalendarioLaboral.jsx'
 
 const API_BASE = 'http://localhost:8000/api/hr/admin'
 
+const resolveAvatarUrl = (url) => {
+  if (!url) return null
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url
+  }
+  return `http://localhost:8000${url.startsWith('/') ? '' : '/'}${url}`
+}
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('vacaciones')
   const [vacaciones, setVacaciones] = useState([])
@@ -87,7 +95,7 @@ export default function AdminDashboard() {
           numero: vac.empleado_numero || 'S/N',
           puesto: vac.empleado_puesto || 'Puesto no asignado',
           departamento: vac.empleado_departamento || 'General',
-          avatar: vac.empleado_avatar || null,
+          avatar: resolveAvatarUrl(vac.empleado_avatar),
           dias_disponibles: vac.empleado_dias_disponibles,
           solicitudes: []
         })
@@ -151,7 +159,7 @@ export default function AdminDashboard() {
           numero: t.empleado_numero || 'S/N',
           puesto: t.empleado_puesto || 'Puesto no asignado',
           departamento: t.empleado_departamento || 'General',
-          avatar: t.empleado_avatar || null,
+          avatar: resolveAvatarUrl(t.empleado_avatar),
           tickets: []
         })
       }
@@ -764,13 +772,31 @@ export default function AdminDashboard() {
                           <img
                             src={colab.avatar}
                             alt={colab.nombre}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                              if (e.currentTarget.nextElementSibling) {
+                                e.currentTarget.nextElementSibling.style.display = 'flex'
+                              }
+                            }}
                             style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }}
                           />
-                        ) : (
-                          <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--primary)', color: 'var(--primary-foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.88rem' }}>
-                            {colab.nombre?.[0] || 'C'}
-                          </div>
-                        )}
+                        ) : null}
+                        <div
+                          style={{
+                            display: colab.avatar ? 'none' : 'flex',
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '50%',
+                            background: 'var(--primary)',
+                            color: 'var(--primary-foreground)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '0.88rem'
+                          }}
+                        >
+                          {colab.nombre?.[0] || 'C'}
+                        </div>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <h4 style={{ fontSize: '0.94rem', fontWeight: 700, color: 'var(--foreground)' }}>
@@ -1040,13 +1066,31 @@ export default function AdminDashboard() {
                           <img
                             src={colab.avatar}
                             alt={colab.nombre}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                              if (e.currentTarget.nextElementSibling) {
+                                e.currentTarget.nextElementSibling.style.display = 'flex'
+                              }
+                            }}
                             style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }}
                           />
-                        ) : (
-                          <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--primary)', color: 'var(--primary-foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.88rem' }}>
-                            {colab.nombre?.[0] || 'C'}
-                          </div>
-                        )}
+                        ) : null}
+                        <div
+                          style={{
+                            display: colab.avatar ? 'none' : 'flex',
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '50%',
+                            background: 'var(--primary)',
+                            color: 'var(--primary-foreground)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '0.88rem'
+                          }}
+                        >
+                          {colab.nombre?.[0] || 'C'}
+                        </div>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <h4 style={{ fontSize: '0.94rem', fontWeight: 700, color: 'var(--foreground)' }}>

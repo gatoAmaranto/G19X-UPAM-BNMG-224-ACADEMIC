@@ -30,7 +30,10 @@ class EmpleadoSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.foto_perfil.url)
-            return obj.foto_perfil.url
+            url = obj.foto_perfil.url
+            if url.startswith('http'):
+                return url
+            return f"http://localhost:8000{url if url.startswith('/') else '/' + url}"
         return None
 
 
@@ -56,11 +59,14 @@ class SolicitudVacacionesSerializer(serializers.ModelSerializer):
         return obj.empleado.user.get_full_name() or obj.empleado.user.username
 
     def get_empleado_avatar(self, obj):
-        if obj.empleado.foto_perfil:
+        if getattr(obj, 'empleado', None) and obj.empleado.foto_perfil:
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.empleado.foto_perfil.url)
-            return obj.empleado.foto_perfil.url
+            url = obj.empleado.foto_perfil.url
+            if url.startswith('http'):
+                return url
+            return f"http://localhost:8000{url if url.startswith('/') else '/' + url}"
         return None
 
 
@@ -97,11 +103,14 @@ class TicketRHSerializer(serializers.ModelSerializer):
         return obj.empleado.user.get_full_name() or obj.empleado.user.username
 
     def get_empleado_avatar(self, obj):
-        if obj.empleado.foto_perfil:
+        if getattr(obj, 'empleado', None) and obj.empleado.foto_perfil:
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.empleado.foto_perfil.url)
-            return obj.empleado.foto_perfil.url
+            url = obj.empleado.foto_perfil.url
+            if url.startswith('http'):
+                return url
+            return f"http://localhost:8000{url if url.startswith('/') else '/' + url}"
         return None
 
 

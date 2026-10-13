@@ -134,7 +134,7 @@ class VacacionesView(views.APIView):
     def get(self, request):
         empleado = get_demo_or_current_empleado(request)
         solicitudes = SolicitudVacaciones.objects.filter(empleado=empleado).order_by('-fecha_creacion')
-        serializer = SolicitudVacacionesSerializer(solicitudes, many=True)
+        serializer = SolicitudVacacionesSerializer(solicitudes, many=True, context={'request': request})
         return Response({
             'saldo': {
                 'totales': empleado.dias_vacaciones_totales,
@@ -146,7 +146,7 @@ class VacacionesView(views.APIView):
 
     def post(self, request):
         empleado = get_demo_or_current_empleado(request)
-        serializer = SolicitudVacacionesSerializer(data=request.data)
+        serializer = SolicitudVacacionesSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             dias_solicitados = serializer.validated_data.get('dias_solicitados', 1)
             if dias_solicitados > empleado.dias_vacaciones_disponibles:
@@ -155,7 +155,7 @@ class VacacionesView(views.APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             solicitud = serializer.save(empleado=empleado)
-            return Response(SolicitudVacacionesSerializer(solicitud).data, status=status.HTTP_201_CREATED)
+            return Response(SolicitudVacacionesSerializer(solicitud, context={'request': request}).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -264,7 +264,7 @@ class AdminVacacionesView(views.APIView):
 
     def get(self, request):
         solicitudes = SolicitudVacaciones.objects.all().order_by('-fecha_creacion')
-        serializer = SolicitudVacacionesSerializer(solicitudes, many=True)
+        serializer = SolicitudVacacionesSerializer(solicitudes, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
@@ -274,7 +274,7 @@ class AdminVacacionesView(views.APIView):
         else:
             empleado = get_demo_or_current_empleado(request)
 
-        serializer = SolicitudVacacionesSerializer(data=request.data)
+        serializer = SolicitudVacacionesSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             dias_solicitados = serializer.validated_data.get('dias_solicitados', 1)
             estado = request.data.get('estado', 'APROBADO')
@@ -282,7 +282,7 @@ class AdminVacacionesView(views.APIView):
             if estado == 'APROBADO':
                 empleado.dias_vacaciones_tomados += dias_solicitados
                 empleado.save()
-            return Response(SolicitudVacacionesSerializer(solicitud).data, status=status.HTTP_201_CREATED)
+            return Response(SolicitudVacacionesSerializer(solicitud, context={'request': request}).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
@@ -297,7 +297,7 @@ class AdminVacacionesView(views.APIView):
 
             solicitud.estado = nuevo_estado
             solicitud.save()
-            return Response(SolicitudVacacionesSerializer(solicitud).data, status=status.HTTP_200_OK)
+            return Response(SolicitudVacacionesSerializer(solicitud, context={'request': request}).data, status=status.HTTP_200_OK)
 
         return Response({'error': 'Estado no válido.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -307,7 +307,7 @@ class AdminTicketsView(views.APIView):
 
     def get(self, request):
         tickets = TicketRH.objects.all().order_by('-fecha_creacion')
-        serializer = TicketRHSerializer(tickets, many=True)
+        serializer = TicketRHSerializer(tickets, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request, pk):
@@ -321,7 +321,7 @@ class AdminTicketsView(views.APIView):
             ticket.estado = nuevo_estado
 
         ticket.save()
-        return Response(TicketRHSerializer(ticket).data, status=status.HTTP_200_OK)
+        return Response(TicketRHSerializer(ticket, context={'request': request}).data, status=status.HTTP_200_OK)
 
 
 import io
