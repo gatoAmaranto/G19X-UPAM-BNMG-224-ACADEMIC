@@ -3,9 +3,10 @@ import {
   CheckCircle, XCircle, MessageSquare, Plus, BookOpen, Calendar,
   Ticket, AlertCircle, RefreshCw, Upload, FileText, Briefcase,
   User, Camera, Trash2, Shield, Mail, Award, Check,
-  ChevronDown, ChevronUp, Search, Filter, Users
+  ChevronDown, ChevronUp, Search, Filter, Users, CalendarDays
 } from 'lucide-react'
 import axios from 'axios'
+import CalendarioLaboral from './CalendarioLaboral.jsx'
 
 
 const API_BASE = 'http://localhost:8000/api/hr/admin'
@@ -490,7 +491,42 @@ export default function AdminDashboard() {
             </span>
           </button>
 
-          {/* Opción 4: Mi Perfil RH */}
+          {/* Opción 4: Horario & Calendario RH */}
+          <button
+            onClick={() => setActiveTab('calendario')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.7rem 0.85rem',
+              borderRadius: 'var(--radius)',
+              border: activeTab === 'calendario' ? '1px solid var(--primary)' : '1px solid transparent',
+              background: activeTab === 'calendario' ? 'var(--primary)' : 'transparent',
+              color: activeTab === 'calendario' ? 'var(--primary-foreground)' : 'var(--foreground)',
+              cursor: 'pointer',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'calendario' ? 600 : 500,
+              textAlign: 'left',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <CalendarDays size={18} />
+              <span>Horario & Calendario</span>
+            </div>
+            <span style={{
+              fontSize: '0.68rem',
+              padding: '0.15rem 0.45rem',
+              borderRadius: '8px',
+              background: activeTab === 'calendario' ? 'var(--primary-foreground)' : 'var(--muted)',
+              color: activeTab === 'calendario' ? 'var(--primary)' : 'var(--muted-foreground)',
+              fontWeight: 600
+            }}>
+              {perfilRH?.horario_entrada || '09:00'}
+            </span>
+          </button>
+
+          {/* Opción 5: Mi Perfil RH */}
           <button
             onClick={() => setActiveTab('perfil')}
             style={{
@@ -575,12 +611,14 @@ export default function AdminDashboard() {
               {activeTab === 'vacaciones' && 'Aprobación y Gestión de Vacaciones'}
               {activeTab === 'tickets' && 'Mesa de Ayuda y Atención de Tickets'}
               {activeTab === 'faq' && 'Entrenamiento de Base de Conocimiento RAG'}
+              {activeTab === 'calendario' && 'Horario Institucional y Calendario de Recursos Humanos'}
               {activeTab === 'perfil' && 'Perfil Institucional y Credenciales de Recursos Humanos'}
             </h2>
             <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
               {activeTab === 'vacaciones' && 'Revisa y dictamina las solicitudes de descanso vacacional enviadas por los colaboradores.'}
               {activeTab === 'tickets' && 'Resuelve consultas y solicitudes especiales canalizadas por el agente conversacional.'}
               {activeTab === 'faq' && 'Carga reglamentos y actualiza preguntas frecuentes para alimentar el modelo de IA.'}
+              {activeTab === 'calendario' && 'Supervisa los descansos vacacionales de la organización y administra tus notas y tareas de Recursos Humanos.'}
               {activeTab === 'perfil' && 'Expediente del funcionario de RH, fotografía institucional y auditoría de permisos asignados.'}
             </p>
           </div>
@@ -1233,7 +1271,16 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Tab 4: Mi Perfil RH */}
+      {/* Tab: Horario y Calendario Institucional RH */}
+      {activeTab === 'calendario' && (
+        <CalendarioLaboral
+          perfil={perfilRH}
+          vacaciones={vacaciones}
+          onRefreshData={fetchAdminData}
+        />
+      )}
+
+      {/* Tab 5: Mi Perfil RH */}
       {activeTab === 'perfil' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {!perfilRH ? (

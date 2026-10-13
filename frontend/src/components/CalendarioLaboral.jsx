@@ -130,15 +130,24 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
   // Mapa de vacaciones aprobadas/registradas
   const vacacionesMap = useMemo(() => {
     const map = new Map()
-    if (!vacaciones?.solicitudes) return map
+    const lista = Array.isArray(vacaciones)
+      ? vacaciones
+      : (vacaciones?.solicitudes || [])
 
-    vacaciones.solicitudes.forEach((sol) => {
+    if (lista.length === 0) return map
+
+    lista.forEach((sol) => {
+      if (sol.estado && sol.estado === 'RECHAZADO') return
+
       const inicio = new Date(sol.fecha_inicio + 'T00:00:00')
       const fin = new Date(sol.fecha_fin + 'T00:00:00')
 
       for (let cur = new Date(inicio); cur <= fin; cur.setDate(cur.getDate() + 1)) {
         const key = formatYMD(cur)
-        map.set(key, sol)
+        if (!map.has(key)) {
+          map.set(key, [])
+        }
+        map.get(key).push(sol)
       }
     })
     return map
@@ -234,7 +243,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
     return diaNum >= 1 && diaNum <= 5
   }
 
-  const vacacionDiaSeleccionado = vacacionesMap.get(strFechaSeleccionada)
+  const vacacionesDelDia = vacacionesMap.get(strFechaSeleccionada) || []
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -391,7 +400,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
               const strDia = formatYMD(item.fecha)
               const esHoy = strDia === strHoy
               const esSeleccionado = strDia === strFechaSeleccionada
-              const tieneVacacion = vacacionesMap.get(strDia)
+              const vacacionesEsteDia = vacacionesMap.get(strDia) || []
               const tareasEsteDia = tareas.filter(t => t.fecha === strDia)
               const laboral = esDiaLaboral(item.fecha)
 
@@ -463,7 +472,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
                   {/* Indicadores de Eventos del Día */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.2rem' }}>
                     {/* Badge de Vacaciones */}
-                    {tieneVacacion && (
+                    {vacacionesEsteDia.length > 0 && (
                       <div style={{
                         fontSize: '0.62rem',
                         fontWeight: 700,
@@ -475,7 +484,10 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
                       }}>
-                        Vacaciones
+                        {vacacionesEsteDia[0].empleado_nombre
+                          ? `${vacacionesEsteDia[0].empleado_nombre.split(' ')[0]} (Vac)`
+                          : 'Vacaciones'}
+                        {vacacionesEsteDia.length > 1 ? ` +${vacacionesEsteDia.length - 1}` : ''}
                       </div>
                     )}
 
@@ -572,22 +584,28 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData })
 
             {/* Estado del día (Laboral / Vacaciones / Descanso) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
-              {vacacionDiaSeleccionado ? (
-                <span style={{
-                  fontSize: '0.72rem',
-                  padding: '0.2rem 0.55rem',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  background: '#dcfce7',
-                  color: '#15803d',
-                  border: '1px solid #bbf7d0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.3rem'
-                }}>
-                  <Sun size={12} />
-                  <span>Día de Vacaciones</span>
-                </span>
+              {vacacionesDelDia.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', width: '100%' }}>
+                  {vacacionesDelDia.map((v, idx) => (
+                    <span key={idx} style={{
+                      fontSize: '0.72rem',
+                      padding: '0.2rem 0.55rem',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      background: '#dcfce7',
+                      color: '#15803d',
+                      border: '1px solid #bbf7d0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.3rem'
+                    }}>
+                      <Sun size={12} />
+                      <span>
+                        Vacaciones{v.empleado_nombre ? `: ${v.empleado_nombre}` : ''} ({v.estado})
+                      </span>
+                    </span>
+                  ))}
+                </div>
               ) : esDiaLaboral(fechaSeleccionada) ? (
                 <span style={{
                   fontSize: '0.72rem',
