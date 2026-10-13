@@ -453,13 +453,13 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
       </div>
 
       {/* 2. Área Dividida: Calendario Interactivo a la Izquierda, Panel Detallado a la Derecha */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) 400px', gap: '1.25rem', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '1.25rem', alignItems: 'stretch' }}>
         {/* Panel del Calendario */}
         <div style={{
           background: 'var(--card)',
           borderRadius: 'var(--radius)',
           border: '1px solid var(--border)',
-          padding: '1.25rem',
+          padding: '1.5rem',
           boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
           display: 'flex',
           flexDirection: 'column',
@@ -469,7 +469,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <CalendarDays size={20} style={{ color: 'var(--primary)' }} />
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--foreground)', margin: 0 }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--foreground)', margin: 0 }}>
                 {MESES[fechaActual.getMonth()]} {fechaActual.getFullYear()}
               </h3>
             </div>
@@ -478,7 +478,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
               <button
                 onClick={irAHoy}
                 className="btn-secondary"
-                style={{ fontSize: '0.78rem', padding: '0.3rem 0.65rem' }}
+                style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
               >
                 Hoy
               </button>
@@ -502,15 +502,15 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
           </div>
 
           {/* Días de la semana */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.35rem', textAlign: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.45rem', textAlign: 'center' }}>
             {DIAS_SEMANA.map((dia, idx) => (
               <div
                 key={dia}
                 style={{
-                  fontSize: '0.76rem',
+                  fontSize: '0.8rem',
                   fontWeight: 700,
                   color: idx >= 5 ? 'var(--muted-foreground)' : 'var(--foreground)',
-                  padding: '0.4rem 0'
+                  padding: '0.45rem 0'
                 }}
               >
                 {dia}
@@ -519,7 +519,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
           </div>
 
           {/* Celdas del Calendario */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.35rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.45rem' }}>
             {diasCuadricula.map((item, index) => {
               const strDia = formatYMD(item.fecha)
               const esHoy = strDia === strHoy
@@ -528,13 +528,18 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
               const tareasEsteDia = tareas.filter(t => t.fecha === strDia)
               const laboral = esDiaLaboral(item.fecha)
 
+              const vacMostradas = Math.min(2, vacacionesEsteDia.length)
+              const maxTareas = Math.max(1, 3 - vacMostradas)
+              const tareasMostradas = tareasEsteDia.slice(0, maxTareas)
+              const totalOcultos = (vacacionesEsteDia.length + tareasEsteDia.length) - (vacMostradas + tareasMostradas.length)
+
               return (
                 <div
                   key={index}
                   onClick={() => handleSeleccionarDia(item)}
                   style={{
-                    minHeight: '84px',
-                    padding: '0.35rem 0.45rem',
+                    minHeight: '115px',
+                    padding: '0.45rem 0.5rem',
                     borderRadius: 'var(--radius)',
                     background: esSeleccionado
                       ? 'var(--primary)'
@@ -566,10 +571,10 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                   {/* Encabezado celda: Número de día e indicador laboral */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{
-                      fontSize: '0.82rem',
+                      fontSize: '0.84rem',
                       fontWeight: esHoy || esSeleccionado ? 700 : 500,
-                      width: '22px',
-                      height: '22px',
+                      width: '24px',
+                      height: '24px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -588,62 +593,66 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                           height: '6px',
                           borderRadius: '50%',
                           background: esSeleccionado ? 'var(--primary-foreground)' : '#10b981',
-                          opacity: 0.8
+                          opacity: 0.85
                         }}
                       />
                     )}
                   </div>
 
                   {/* Indicadores de Eventos del Día */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.2rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', marginTop: '0.35rem', flex: 1 }}>
                     {/* Badge de Vacaciones legible */}
-                    {vacacionesEsteDia.length > 0 && (
-                      <div
-                        title={`Vacaciones: ${vacacionesEsteDia.map(v => `${getNombreCorto(v.empleado_nombre)} (${v.estado})`).join(', ')}`}
-                        style={{
-                          fontSize: '0.62rem',
-                          fontWeight: 700,
-                          padding: '0.12rem 0.35rem',
-                          borderRadius: '4px',
-                          background: esSeleccionado
-                            ? 'rgba(255,255,255,0.25)'
-                            : vacacionesEsteDia[0].estado === 'PENDIENTE' ? '#fef3c7' : '#dcfce7',
-                          color: esSeleccionado
-                            ? 'var(--primary-foreground)'
-                            : vacacionesEsteDia[0].estado === 'PENDIENTE' ? '#b45309' : '#15803d',
-                          border: esSeleccionado
-                            ? '1px solid rgba(255,255,255,0.3)'
-                            : vacacionesEsteDia[0].estado === 'PENDIENTE' ? '1px solid #fde68a' : '1px solid #bbf7d0',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.25rem'
-                        }}
-                      >
-                        <Sun size={10} style={{ flexShrink: 0 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {vacacionesEsteDia[0].empleado_nombre && !vacacionesEsteDia[0].empleado_nombre.startsWith('auth0|')
-                            ? `${getNombreCorto(vacacionesEsteDia[0].empleado_nombre)} (Vac)`
-                            : 'Vacaciones'}
-                          {vacacionesEsteDia[0].estado === 'PENDIENTE' ? ' [Pend]' : ''}
-                          {vacacionesEsteDia.length > 1 ? ` +${vacacionesEsteDia.length - 1}` : ''}
-                        </span>
-                      </div>
-                    )}
+                    {vacacionesEsteDia.slice(0, 2).map((v, vIdx) => {
+                      const esPendiente = v.estado === 'PENDIENTE'
+                      const nombre = v.empleado_nombre && !v.empleado_nombre.startsWith('auth0|')
+                        ? getNombreCorto(v.empleado_nombre)
+                        : 'Vacaciones'
+
+                      return (
+                        <div
+                          key={`vac-pill-${vIdx}`}
+                          title={`Vacaciones: ${v.empleado_nombre || 'Colaborador'} (${v.estado})`}
+                          style={{
+                            fontSize: '0.66rem',
+                            fontWeight: 700,
+                            padding: '0.15rem 0.4rem',
+                            borderRadius: '4px',
+                            background: esSeleccionado
+                              ? 'rgba(255,255,255,0.25)'
+                              : esPendiente ? '#fef3c7' : '#dcfce7',
+                            color: esSeleccionado
+                              ? 'var(--primary-foreground)'
+                              : esPendiente ? '#b45309' : '#15803d',
+                            border: esSeleccionado
+                              ? '1px solid rgba(255,255,255,0.3)'
+                              : esPendiente ? '1px solid #fde68a' : '1px solid #bbf7d0',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem'
+                          }}
+                        >
+                          <Sun size={10} style={{ flexShrink: 0 }} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {nombre} {esPendiente ? '(Pend)' : '(Vac)'}
+                          </span>
+                        </div>
+                      )
+                    })}
 
                     {/* Chips legibles de Tareas y Notas */}
-                    {tareasEsteDia.slice(0, 2).map((t) => {
+                    {tareasMostradas.map((t) => {
                       const theme = getColorTheme(t.color)
                       return (
                         <div
                           key={t.id}
                           title={`${t.tipo}: ${t.titulo}`}
                           style={{
-                            fontSize: '0.62rem',
+                            fontSize: '0.66rem',
                             fontWeight: 600,
-                            padding: '0.1rem 0.3rem',
+                            padding: '0.15rem 0.4rem',
                             borderRadius: '4px',
                             background: esSeleccionado ? 'rgba(255,255,255,0.2)' : theme.bg,
                             color: esSeleccionado ? 'var(--primary-foreground)' : theme.text,
@@ -670,14 +679,15 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                       )
                     })}
 
-                    {tareasEsteDia.length > 2 && (
+                    {totalOcultos > 0 && (
                       <span style={{
-                        fontSize: '0.58rem',
+                        fontSize: '0.6rem',
                         fontWeight: 700,
                         color: esSeleccionado ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
-                        paddingLeft: '0.2rem'
+                        paddingLeft: '0.2rem',
+                        marginTop: 'auto'
                       }}>
-                        +{tareasEsteDia.length - 2} más
+                        +{totalOcultos} más
                       </span>
                     )}
                   </div>
@@ -721,12 +731,12 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
           background: 'var(--card)',
           borderRadius: 'var(--radius)',
           border: '1px solid var(--border)',
-          padding: '1.25rem',
+          padding: '1.5rem',
           boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
           display: 'flex',
           flexDirection: 'column',
           gap: '1rem',
-          minHeight: '520px'
+          minHeight: '100%'
         }}>
           {/* Encabezado del Día Seleccionado */}
           <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.85rem' }}>

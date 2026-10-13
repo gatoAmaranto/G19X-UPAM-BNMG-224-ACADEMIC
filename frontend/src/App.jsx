@@ -122,7 +122,7 @@ export default function App() {
       </header>
 
       {/* Main Container */}
-      <main style={{ flex: 1, padding: '1.5rem 2rem', maxWidth: '1350px', width: '100%', margin: '0 auto' }}>
+      <main style={{ flex: 1, padding: '1.5rem 2rem', maxWidth: '1680px', width: '100%', margin: '0 auto' }}>
         {!isAuthenticated ? (
           /* Redirección automática hacia Auth0 */
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
