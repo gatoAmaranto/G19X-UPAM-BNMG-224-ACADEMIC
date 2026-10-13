@@ -61,6 +61,7 @@ export default function AdminDashboard() {
       setFaqs(resFaq.data)
       if (resPerfil?.data) {
         setPerfilRH(resPerfil.data)
+        window.dispatchEvent(new CustomEvent('profile-updated', { detail: resPerfil.data }))
       }
     } catch (err) {
       console.error('Error al cargar datos administrativos:', err)

@@ -47,6 +47,9 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
         axios.get(`${API_BASE}/hr/tickets/`)
       ])
       setPerfil(resPerfil.data)
+      if (resPerfil?.data) {
+        window.dispatchEvent(new CustomEvent('profile-updated', { detail: resPerfil.data }))
+      }
       setVacaciones(resVacaciones.data)
       setTickets(resTickets.data)
     } catch (err) {

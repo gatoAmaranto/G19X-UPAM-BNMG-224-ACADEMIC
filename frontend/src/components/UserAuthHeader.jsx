@@ -1,21 +1,26 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { LogIn, LogOut, Shield, UserCheck } from 'lucide-react'
+import axios from 'axios'
 import { useAuth } from '../auth/AuthContext.jsx'
-import apiClient from '../api/apiClient.js'
+
+const API_BASE = 'http://localhost:8000/api'
 
 export default function UserAuthHeader() {
   const { isAuthenticated, user, isRhAdmin, login, logout, switchRole, isAuth0Live } = useAuth()
-  const [avatarCustomUrl, setAvatarCustomUrl] = React.useState(null)
-  const [puestoUsuario, setPuestoUsuario] = React.useState('')
+  const [avatarCustomUrl, setAvatarCustomUrl] = useState(null)
+  const [puestoUsuario, setPuestoUsuario] = useState('')
+  const [nombreUsuario, setNombreUsuario] = useState('')
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAuthenticated) return
 
-    // Cargar perfil y avatar institucional
+    // Cargar perfil institucional con token de sesión
     const fetchPerfil = async () => {
       try {
-        const endpoint = isRhAdmin ? '/hr/admin/perfil/' : '/hr/perfil/'
-        const res = await apiClient.get(endpoint)
+        const endpoint = isRhAdmin
+          ? `${API_BASE}/hr/admin/perfil/`
+          : `${API_BASE}/hr/perfil/`
+        const res = await axios.get(endpoint)
         if (res.data) {
           if (res.data.foto_perfil_url) {
             setAvatarCustomUrl(res.data.foto_perfil_url)
@@ -25,31 +30,31 @@ export default function UserAuthHeader() {
           if (res.data.puesto) {
             setPuestoUsuario(res.data.puesto)
           }
+          const fullName = res.data.user
+            ? `${res.data.user.first_name || ''} ${res.data.user.last_name || ''}`.trim()
+            : ''
+          if (fullName) {
+            setNombreUsuario(fullName)
+          }
         }
       } catch (err) {
-        try {
-          const fallbackRes = await apiClient.get('/hr/perfil/')
-          if (fallbackRes.data?.foto_perfil_url) {
-            setAvatarCustomUrl(fallbackRes.data.foto_perfil_url)
-          }
-          if (fallbackRes.data?.puesto) {
-            setPuestoUsuario(fallbackRes.data.puesto)
-          }
-        } catch (e) {
-          // Silencioso en caso de error
-        }
+        console.warn('Error al sincronizar perfil en cabecera:', err)
       }
     }
 
     fetchPerfil()
 
-    // Escuchar actualizaciones dinámicas de perfil
+    // Escuchar actualizaciones dinámicas de perfil desde los dashboards
     const handleProfileUpdated = (e) => {
       if (e.detail?.foto_perfil_url !== undefined) {
         setAvatarCustomUrl(e.detail.foto_perfil_url)
       }
       if (e.detail?.puesto) {
         setPuestoUsuario(e.detail.puesto)
+      }
+      if (e.detail?.user) {
+        const fullName = `${e.detail.user.first_name || ''} ${e.detail.user.last_name || ''}`.trim()
+        if (fullName) setNombreUsuario(fullName)
       }
     }
 
@@ -75,7 +80,20 @@ export default function UserAuthHeader() {
   const defaultColabAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'
   const defaultRhAvatar = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150'
   const fallbackAvatar = isRhAdmin ? defaultRhAvatar : defaultColabAvatar
-  const displayAvatar = avatarCustomUrl || user?.picture || fallbackAvatar
+
+  // Descartar avatares de iniciales generados automáticamente por Auth0 / Gravatar
+  const isAuth0Initials = user?.picture && (
+    user.picture.includes('cdn.auth0.com/avatars') ||
+    user.picture.includes('gravatar.com/avatar')
+  )
+
+  const displayAvatar = avatarCustomUrl || (!isAuth0Initials && user?.picture) || fallbackAvatar
+
+  const displayPuesto = isRhAdmin
+    ? (puestoUsuario && puestoUsuario.toLowerCase().includes('recursos') ? puestoUsuario : 'Especialista de Recursos Humanos')
+    : (puestoUsuario || user?.puesto || 'Colaborador')
+
+  const displayNombre = nombreUsuario || user?.name || (isRhAdmin ? 'Administrador RH' : 'Colaborador')
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -139,7 +157,7 @@ export default function UserAuthHeader() {
       }}>
         <img
           src={displayAvatar}
-          alt={user?.name || 'Foto de perfil'}
+          alt={displayNombre}
           onError={(e) => {
             if (e.currentTarget.src !== fallbackAvatar) {
               e.currentTarget.src = fallbackAvatar
@@ -157,14 +175,14 @@ export default function UserAuthHeader() {
 
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
           <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--foreground)' }}>
-            {user?.name}
+            {displayNombre}
           </span>
           <span style={{
             fontSize: '0.7rem',
             color: 'var(--muted-foreground)',
             fontWeight: 500
           }}>
-            {puestoUsuario || user?.puesto || (isRhAdmin ? 'Especialista de Recursos Humanos' : 'Colaborador')}
+            {displayPuesto}
           </span>
         </div>
       </div>
