@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
-from hr_services.models import Empleado, SolicitudVacaciones, TicketRH, BaseConocimientoRH
+from hr_services.models import Empleado, SolicitudVacaciones, TicketRH, BaseConocimientoRH, NotaTareaColaborador
 
 class HRServicesTestCase(TestCase):
     def setUp(self):
@@ -190,5 +190,29 @@ class HRServicesTestCase(TestCase):
         self.assertEqual(del_res.status_code, 204)
         get_res = self.client.get('/api/hr/calendario/')
         self.assertEqual(len(get_res.json()), 0)
+
+    def test_calendario_privacidad_entre_usuarios(self):
+        # Crear usuario secundario con tarea
+        otro_user = User.objects.create_user(username='otro_colaborador', email='otro@develop.com.mx')
+        otro_emp = Empleado.objects.create(
+            user=otro_user,
+            numero_empleado='EMP-8888',
+            puesto='Diseñador UX',
+            departamento='Diseño',
+            fecha_ingreso='2024-01-01'
+        )
+        NotaTareaColaborador.objects.create(
+            empleado=otro_emp,
+            titulo='Tarea privada de otro colaborador',
+            fecha='2026-10-15',
+            tipo='TAREA'
+        )
+
+        # Cuando el usuario actual lista sus tareas, NO debe ver la tarea del otro colaborador
+        res = self.client.get('/api/hr/calendario/?fecha=2026-10-15')
+        self.assertEqual(res.status_code, 200)
+        titulos = [item['titulo'] for item in res.json()]
+        self.assertNotIn('Tarea privada de otro colaborador', titulos)
+
 
 

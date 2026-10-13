@@ -238,15 +238,7 @@ class NotaTareaViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         empleado = get_demo_or_current_empleado(self.request)
-        is_rh = (
-            getattr(self.request.user, 'is_rh_admin', False) or
-            getattr(self.request.user, 'is_staff', False) or
-            'rh' in getattr(self.request.user, 'username', '').lower()
-        )
-        if is_rh:
-            queryset = NotaTareaColaborador.objects.all()
-        else:
-            queryset = NotaTareaColaborador.objects.filter(empleado=empleado)
+        queryset = NotaTareaColaborador.objects.filter(empleado=empleado)
 
         fecha = self.request.query_params.get('fecha')
         if fecha:

@@ -1,37 +1,55 @@
 import React from 'react'
-import { LogIn, LogOut, Shield, UserCheck, Key } from 'lucide-react'
+import { LogIn, LogOut, Shield, UserCheck } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
+import apiClient from '../api/apiClient.js'
 
 export default function UserAuthHeader() {
   const { isAuthenticated, user, isRhAdmin, login, logout, switchRole, isAuth0Live } = useAuth()
   const [avatarCustomUrl, setAvatarCustomUrl] = React.useState(null)
+  const [puestoUsuario, setPuestoUsuario] = React.useState('')
 
   React.useEffect(() => {
     if (!isAuthenticated) return
 
-    // Cargar avatar personalizado del perfil si existe
-    const fetchAvatar = async () => {
+    // Cargar perfil y avatar institucional
+    const fetchPerfil = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/hr/perfil/')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.foto_perfil_url) {
-            setAvatarCustomUrl(data.foto_perfil_url)
+        const endpoint = isRhAdmin ? '/hr/admin/perfil/' : '/hr/perfil/'
+        const res = await apiClient.get(endpoint)
+        if (res.data) {
+          if (res.data.foto_perfil_url) {
+            setAvatarCustomUrl(res.data.foto_perfil_url)
           } else {
             setAvatarCustomUrl(null)
           }
+          if (res.data.puesto) {
+            setPuestoUsuario(res.data.puesto)
+          }
         }
       } catch (err) {
-        // Silencioso en caso de error de red
+        try {
+          const fallbackRes = await apiClient.get('/hr/perfil/')
+          if (fallbackRes.data?.foto_perfil_url) {
+            setAvatarCustomUrl(fallbackRes.data.foto_perfil_url)
+          }
+          if (fallbackRes.data?.puesto) {
+            setPuestoUsuario(fallbackRes.data.puesto)
+          }
+        } catch (e) {
+          // Silencioso en caso de error
+        }
       }
     }
 
-    fetchAvatar()
+    fetchPerfil()
 
     // Escuchar actualizaciones dinámicas de perfil
     const handleProfileUpdated = (e) => {
       if (e.detail?.foto_perfil_url !== undefined) {
         setAvatarCustomUrl(e.detail.foto_perfil_url)
+      }
+      if (e.detail?.puesto) {
+        setPuestoUsuario(e.detail.puesto)
       }
     }
 
@@ -54,27 +72,13 @@ export default function UserAuthHeader() {
     )
   }
 
-  const displayAvatar = avatarCustomUrl || user?.picture
+  const defaultColabAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'
+  const defaultRhAvatar = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150'
+  const fallbackAvatar = isRhAdmin ? defaultRhAvatar : defaultColabAvatar
+  const displayAvatar = avatarCustomUrl || user?.picture || fallbackAvatar
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-      {/* Auth0 Status Indicator */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.4rem',
-        fontSize: '0.72rem',
-        padding: '0.2rem 0.55rem',
-        borderRadius: '20px',
-        background: isAuth0Live ? '#dcfce7' : 'var(--muted)',
-        color: isAuth0Live ? '#15803d' : 'var(--muted-foreground)',
-        border: '1px solid var(--border)',
-        fontWeight: 600
-      }}>
-        <Key size={12} />
-        <span>{isAuth0Live ? 'Auth0 Conectado' : 'Auth0 Simulación'}</span>
-      </div>
-
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
       {/* Switcher para pruebas locales si no está en vivo */}
       {!isAuth0Live && (
         <div style={{ display: 'flex', background: 'var(--muted)', padding: '0.2rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
@@ -122,30 +126,45 @@ export default function UserAuthHeader() {
         </div>
       )}
 
-      {/* User Info Avatar Badge */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.25rem 0.6rem', borderRadius: 'var(--radius)', background: 'var(--card)', border: '1px solid var(--border)' }}>
-        {displayAvatar ? (
-          <img
-            src={displayAvatar}
-            alt={user?.name || 'Usuario'}
-            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }}
-          />
-        ) : (
-          <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', color: 'var(--primary-foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>
-            {user?.name?.[0] || 'U'}
-          </div>
-        )}
+      {/* User Info Avatar Badge con Foto y Puesto de Trabajo */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.65rem',
+        padding: '0.3rem 0.75rem',
+        borderRadius: 'var(--radius)',
+        background: 'var(--card)',
+        border: '1px solid var(--border)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+      }}>
+        <img
+          src={displayAvatar}
+          alt={user?.name || 'Foto de perfil'}
+          onError={(e) => {
+            if (e.currentTarget.src !== fallbackAvatar) {
+              e.currentTarget.src = fallbackAvatar
+            }
+          }}
+          style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            objectFit: 'cover',
+            border: '1.5px solid var(--border)',
+            flexShrink: 0
+          }}
+        />
 
-        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
           <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--foreground)' }}>
             {user?.name}
           </span>
           <span style={{
             fontSize: '0.7rem',
-            color: isRhAdmin ? 'var(--primary)' : 'var(--muted-foreground)',
-            fontWeight: isRhAdmin ? 700 : 500
+            color: 'var(--muted-foreground)',
+            fontWeight: 500
           }}>
-            {isRhAdmin ? 'Recursos Humanos' : 'Colaborador'}
+            {puestoUsuario || user?.puesto || (isRhAdmin ? 'Especialista de Recursos Humanos' : 'Colaborador')}
           </span>
         </div>
       </div>
@@ -155,7 +174,7 @@ export default function UserAuthHeader() {
         onClick={logout}
         className="btn-secondary"
         title="Cerrar Sesión"
-        style={{ padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        style={{ padding: '0.45rem 0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
         <LogOut size={16} />
       </button>
