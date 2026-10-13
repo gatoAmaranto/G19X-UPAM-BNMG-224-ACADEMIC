@@ -566,7 +566,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
             </div>
           </div>
 
-          {/* Fichas de Saldo y Botón de Solicitud */}
+          {/* Fichas de Saldo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
             <div style={{ background: 'var(--muted)', padding: '0.45rem 0.95rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', textAlign: 'center', minWidth: '95px' }}>
               <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', fontWeight: 600 }}>
@@ -588,25 +588,6 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
               </span>
               <strong style={{ fontSize: '1.2rem', color: '#15803d' }}>{saldoDisponibles}</strong>
             </div>
-
-            <button
-              onClick={() => {
-                setTipoRegistro('VACACIONES')
-                setModalNuevo(true)
-              }}
-              className="btn-primary"
-              style={{
-                fontSize: '0.84rem',
-                padding: '0.55rem 1rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <Plus size={15} />
-              <span>Pedir Vacaciones</span>
-            </button>
           </div>
         </div>
       )}
@@ -1053,31 +1034,6 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
               {/* Formulario específico según el tipo seleccionado */}
               {tipoRegistro === 'VACACIONES' ? (
                 <form onSubmit={handleCrearVacaciones} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                  {!esAdminRH && (
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
-                      gap: '0.4rem',
-                      textAlign: 'center',
-                      background: 'var(--card)',
-                      padding: '0.55rem',
-                      borderRadius: 'var(--radius)',
-                      border: '1px solid var(--border)'
-                    }}>
-                      <div>
-                        <span style={{ fontSize: '0.66rem', color: 'var(--muted-foreground)', display: 'block' }}>Totales</span>
-                        <strong style={{ fontSize: '0.9rem', color: 'var(--foreground)' }}>{saldoTotales}</strong>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '0.66rem', color: 'var(--muted-foreground)', display: 'block' }}>Disfrutados</span>
-                        <strong style={{ fontSize: '0.9rem', color: 'var(--foreground)' }}>{saldoDisfrutados}</strong>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '0.66rem', color: '#15803d', display: 'block', fontWeight: 600 }}>Disponibles</span>
-                        <strong style={{ fontSize: '0.9rem', color: '#15803d' }}>{saldoDisponibles}</strong>
-                      </div>
-                    </div>
-                  )}
 
                   {esAdminRH && listaEmpleados.length > 0 && (
                     <div>
