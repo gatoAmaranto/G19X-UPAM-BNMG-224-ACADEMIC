@@ -48,6 +48,46 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
     empleado_id: ''
   })
 
+  // Saldo oficial de vacaciones
+  const saldoTotales = vacaciones?.saldo?.totales ?? perfil?.dias_vacaciones_totales ?? 0
+  const saldoDisfrutados = vacaciones?.saldo?.tomados ?? perfil?.dias_vacaciones_tomados ?? 0
+  const saldoDisponibles = vacaciones?.saldo?.disponibles ?? perfil?.dias_vacaciones_disponibles ?? 0
+
+  // Cálculo de días calendario solicitados
+  const calcularDias = (inicio, fin) => {
+    if (!inicio || !fin) return 1
+    const partsI = inicio.split('-').map(Number)
+    const partsF = fin.split('-').map(Number)
+    if (partsI.length !== 3 || partsF.length !== 3) return 1
+    const d1 = new Date(partsI[0], partsI[1] - 1, partsI[2])
+    const d2 = new Date(partsF[0], partsF[1] - 1, partsF[2])
+    if (d2 < d1) return 1
+    const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1
+    return diff > 0 ? diff : 1
+  }
+
+  const handleCambioFechaInicioVac = (nuevaFecha) => {
+    const fin = formVacaciones.fecha_fin && formVacaciones.fecha_fin >= nuevaFecha ? formVacaciones.fecha_fin : nuevaFecha
+    const dias = calcularDias(nuevaFecha, fin)
+    setFormVacaciones(prev => ({
+      ...prev,
+      fecha_inicio: nuevaFecha,
+      fecha_fin: fin,
+      dias_solicitados: dias
+    }))
+  }
+
+  const handleCambioFechaFinVac = (nuevaFecha) => {
+    const inicio = formVacaciones.fecha_inicio && formVacaciones.fecha_inicio <= nuevaFecha ? formVacaciones.fecha_inicio : nuevaFecha
+    const dias = calcularDias(inicio, nuevaFecha)
+    setFormVacaciones(prev => ({
+      ...prev,
+      fecha_inicio: inicio,
+      fecha_fin: nuevaFecha,
+      dias_solicitados: dias
+    }))
+  }
+
   // Formateador estándar de fechas YYYY-MM-DD
   const formatYMD = (d) => {
     if (!d || !(d instanceof Date) || isNaN(d)) return ''
@@ -227,7 +267,22 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
   const itemsFiltrados = useMemo(() => {
     const res = []
 
-    if (filtroTipo === 'TODAS' || filtroTipo === 'VACACIONES') {
+    if (filtroTipo === 'VACACIONES') {
+      const lista = vacacionesDelDia.length > 0
+        ? vacacionesDelDia
+        : (Array.isArray(vacaciones) ? vacaciones : (vacaciones?.solicitudes || []))
+
+      lista.forEach(v => {
+        res.push({
+          id: `vac-${v.id}-${v.fecha_inicio}`,
+          tipoRegistro: 'VACACIONES',
+          data: v
+        })
+      })
+      return res
+    }
+
+    if (filtroTipo === 'TODAS') {
       vacacionesDelDia.forEach(v => {
         res.push({
           id: `vac-${v.id}-${v.fecha_inicio}`,
@@ -235,23 +290,21 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
           data: v
         })
       })
-    }
-
-    if (filtroTipo === 'TODAS' || filtroTipo === 'TAREAS' || filtroTipo === 'NOTAS') {
       tareasDelDia.forEach(t => {
-        const esTarea = t.tipo === 'TAREA'
-        if (filtroTipo === 'TODAS') {
-          res.push({ id: `tarea-${t.id}`, tipoRegistro: 'ACTIVIDAD', data: t })
-        } else if (filtroTipo === 'TAREAS' && esTarea) {
-          res.push({ id: `tarea-${t.id}`, tipoRegistro: 'ACTIVIDAD', data: t })
-        } else if (filtroTipo === 'NOTAS' && !esTarea) {
-          res.push({ id: `tarea-${t.id}`, tipoRegistro: 'ACTIVIDAD', data: t })
-        }
+        res.push({ id: `tarea-${t.id}`, tipoRegistro: 'ACTIVIDAD', data: t })
+      })
+    } else if (filtroTipo === 'TAREAS') {
+      tareasDelDia.filter(t => t.tipo === 'TAREA').forEach(t => {
+        res.push({ id: `tarea-${t.id}`, tipoRegistro: 'ACTIVIDAD', data: t })
+      })
+    } else if (filtroTipo === 'NOTAS') {
+      tareasDelDia.filter(t => t.tipo !== 'TAREA').forEach(t => {
+        res.push({ id: `tarea-${t.id}`, tipoRegistro: 'ACTIVIDAD', data: t })
       })
     }
 
     return res
-  }, [vacacionesDelDia, tareasDelDia, filtroTipo])
+  }, [vacacionesDelDia, tareasDelDia, filtroTipo, vacaciones])
 
   // Crear Tarea, Nota o Recordatorio
   const handleCrearTarea = async (e) => {
@@ -294,6 +347,17 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
       return
     }
 
+    const diasNum = Number(formVacaciones.dias_solicitados) || 1
+    if (diasNum <= 0) {
+      alert('El número de días solicitados debe ser mayor a 0.')
+      return
+    }
+
+    if (!esAdminRH && diasNum > saldoDisponibles) {
+      alert(`No cuentas con saldo suficiente de vacaciones. Tu saldo disponible es de ${saldoDisponibles} día(s).`)
+      return
+    }
+
     try {
       setGuardando(true)
       const endpoint = esAdminRH
@@ -303,7 +367,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
       const payload = {
         fecha_inicio: formVacaciones.fecha_inicio,
         fecha_fin: formVacaciones.fecha_fin,
-        dias_solicitados: Number(formVacaciones.dias_solicitados) || 1,
+        dias_solicitados: diasNum,
         motivo: formVacaciones.motivo || 'Registro mediante calendario institucional'
       }
 
@@ -451,6 +515,101 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
           </div>
         </div>
       </div>
+
+      {/* 1.1 Tarjeta Informativa de Saldo de Vacaciones (Colaborador) */}
+      {!esAdminRH && (
+        <div style={{
+          background: 'var(--card)',
+          padding: '1.15rem 1.5rem',
+          borderRadius: 'var(--radius)',
+          border: '1px solid var(--border)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <div style={{
+              background: '#dcfce7',
+              color: '#15803d',
+              padding: '0.65rem',
+              borderRadius: 'var(--radius)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid #bbf7d0'
+            }}>
+              <Sun size={24} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--foreground)', margin: 0 }}>
+                  Saldo de Vacaciones
+                </h3>
+                <span style={{
+                  fontSize: '0.72rem',
+                  background: '#dcfce7',
+                  color: '#15803d',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  border: '1px solid #bbf7d0'
+                }}>
+                  {saldoDisponibles} disponibles
+                </span>
+              </div>
+              <p style={{ fontSize: '0.82rem', color: 'var(--muted-foreground)', margin: '0.2rem 0 0 0' }}>
+                Días anuales de descanso remunerado conforme a tu antigüedad y registro laboral.
+              </p>
+            </div>
+          </div>
+
+          {/* Fichas de Saldo y Botón de Solicitud */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
+            <div style={{ background: 'var(--muted)', padding: '0.45rem 0.95rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', textAlign: 'center', minWidth: '95px' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', fontWeight: 600 }}>
+                Días Totales
+              </span>
+              <strong style={{ fontSize: '1.15rem', color: 'var(--foreground)' }}>{saldoTotales}</strong>
+            </div>
+
+            <div style={{ background: 'var(--muted)', padding: '0.45rem 0.95rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', textAlign: 'center', minWidth: '95px' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', fontWeight: 600 }}>
+                Días Disfrutados
+              </span>
+              <strong style={{ fontSize: '1.15rem', color: 'var(--foreground)' }}>{saldoDisfrutados}</strong>
+            </div>
+
+            <div style={{ background: '#dcfce7', color: '#15803d', padding: '0.45rem 1.05rem', borderRadius: 'var(--radius)', border: '1px solid #bbf7d0', textAlign: 'center', minWidth: '100px' }}>
+              <span style={{ fontSize: '0.7rem', display: 'block', fontWeight: 700, color: '#166534' }}>
+                Días Disponibles
+              </span>
+              <strong style={{ fontSize: '1.2rem', color: '#15803d' }}>{saldoDisponibles}</strong>
+            </div>
+
+            <button
+              onClick={() => {
+                setTipoRegistro('VACACIONES')
+                setModalNuevo(true)
+              }}
+              className="btn-primary"
+              style={{
+                fontSize: '0.84rem',
+                padding: '0.55rem 1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Plus size={15} />
+              <span>Pedir Vacaciones</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 2. Área Dividida: Calendario Interactivo a la Izquierda, Panel Detallado a la Derecha */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '1.25rem', alignItems: 'stretch' }}>
@@ -818,7 +977,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
               { id: 'TODAS', label: `Todos (${vacacionesDelDia.length + tareasDelDia.length})` },
               { id: 'TAREAS', label: `Tareas (${tareasDelDia.filter(t => t.tipo === 'TAREA').length})` },
               { id: 'NOTAS', label: `Notas (${tareasDelDia.filter(t => t.tipo !== 'TAREA').length})` },
-              { id: 'VACACIONES', label: `Vacaciones (${vacacionesDelDia.length})` }
+              { id: 'VACACIONES', label: `Vacaciones (${vacacionesDelDia.length > 0 ? vacacionesDelDia.length : (Array.isArray(vacaciones) ? vacaciones.length : (vacaciones?.solicitudes?.length || 0))})` }
             ].map((f) => (
               <button
                 key={f.id}
@@ -894,6 +1053,32 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
               {/* Formulario específico según el tipo seleccionado */}
               {tipoRegistro === 'VACACIONES' ? (
                 <form onSubmit={handleCrearVacaciones} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  {!esAdminRH && (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: '0.4rem',
+                      textAlign: 'center',
+                      background: 'var(--card)',
+                      padding: '0.55rem',
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid var(--border)'
+                    }}>
+                      <div>
+                        <span style={{ fontSize: '0.66rem', color: 'var(--muted-foreground)', display: 'block' }}>Totales</span>
+                        <strong style={{ fontSize: '0.9rem', color: 'var(--foreground)' }}>{saldoTotales}</strong>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '0.66rem', color: 'var(--muted-foreground)', display: 'block' }}>Disfrutados</span>
+                        <strong style={{ fontSize: '0.9rem', color: 'var(--foreground)' }}>{saldoDisfrutados}</strong>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '0.66rem', color: '#15803d', display: 'block', fontWeight: 600 }}>Disponibles</span>
+                        <strong style={{ fontSize: '0.9rem', color: '#15803d' }}>{saldoDisponibles}</strong>
+                      </div>
+                    </div>
+                  )}
+
                   {esAdminRH && listaEmpleados.length > 0 && (
                     <div>
                       <label style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>
@@ -928,7 +1113,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                       <input
                         type="date"
                         value={formVacaciones.fecha_inicio}
-                        onChange={(e) => setFormVacaciones({ ...formVacaciones, fecha_inicio: e.target.value })}
+                        onChange={(e) => handleCambioFechaInicioVac(e.target.value)}
                         required
                         style={{
                           width: '100%',
@@ -948,7 +1133,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                       <input
                         type="date"
                         value={formVacaciones.fecha_fin}
-                        onChange={(e) => setFormVacaciones({ ...formVacaciones, fecha_fin: e.target.value })}
+                        onChange={(e) => handleCambioFechaFinVac(e.target.value)}
                         required
                         style={{
                           width: '100%',
@@ -983,6 +1168,11 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                         fontSize: '0.78rem'
                       }}
                     />
+                    {!esAdminRH && Number(formVacaciones.dias_solicitados) > saldoDisponibles && (
+                      <span style={{ fontSize: '0.68rem', color: '#b91c1c', marginTop: '0.2rem', display: 'block' }}>
+                        Atención: Los días solicitados superan tus días disponibles ({saldoDisponibles}).
+                      </span>
+                    )}
                   </div>
 
                   <div>
@@ -1159,41 +1349,60 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                 </p>
               </div>
             ) : (
-              itemsFiltrados.map((item) => {
-                if (item.tipoRegistro === 'VACACIONES') {
-                  const vac = item.data
-                  const esAprobado = vac.estado === 'APROBADO'
+              <>
+                {filtroTipo === 'VACACIONES' && vacacionesDelDia.length === 0 && (
+                  <div style={{
+                    fontSize: '0.72rem',
+                    color: 'var(--muted-foreground)',
+                    background: 'var(--muted)',
+                    padding: '0.4rem 0.65rem',
+                    borderRadius: '6px',
+                    marginBottom: '0.2rem'
+                  }}>
+                    Sin vacaciones en la fecha seleccionada. Mostrando historial de solicitudes:
+                  </div>
+                )}
+                {itemsFiltrados.map((item) => {
+                  if (item.tipoRegistro === 'VACACIONES') {
+                    const vac = item.data
+                    const esAprobado = vac.estado === 'APROBADO'
+                    const esRechazado = vac.estado === 'RECHAZADO'
+                    const colorBg = esAprobado ? '#f0fdf4' : esRechazado ? '#fef2f2' : '#fffbeb'
+                    const colorBorder = esAprobado ? '#bbf7d0' : esRechazado ? '#fecdd3' : '#fde68a'
+                    const colorLeft = esAprobado ? '#16a34a' : esRechazado ? '#ef4444' : '#f59e0b'
+                    const badgeBg = esAprobado ? '#dcfce7' : esRechazado ? '#fee2e2' : '#fef3c7'
+                    const badgeColor = esAprobado ? '#15803d' : esRechazado ? '#b91c1c' : '#b45309'
 
-                  return (
-                    <div
-                      key={item.id}
-                      style={{
-                        background: esAprobado ? '#f0fdf4' : '#fffbeb',
-                        padding: '0.85rem',
-                        borderRadius: 'var(--radius)',
-                        border: `1px solid ${esAprobado ? '#bbf7d0' : '#fde68a'}`,
-                        borderLeft: `4px solid ${esAprobado ? '#16a34a' : '#f59e0b'}`,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.4rem',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{
-                          fontSize: '0.66rem',
-                          fontWeight: 700,
-                          padding: '0.12rem 0.4rem',
-                          borderRadius: '4px',
-                          background: esAprobado ? '#dcfce7' : '#fef3c7',
-                          color: esAprobado ? '#15803d' : '#b45309'
-                        }}>
-                          VACACIONES {esAprobado ? 'AUTORIZADAS' : 'PENDIENTES'}
-                        </span>
-                        <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', fontWeight: 600 }}>
-                          {vac.dias_solicitados} {vac.dias_solicitados === 1 ? 'día' : 'días'}
-                        </span>
-                      </div>
+                    return (
+                      <div
+                        key={item.id}
+                        style={{
+                          background: colorBg,
+                          padding: '0.85rem',
+                          borderRadius: 'var(--radius)',
+                          border: `1px solid ${colorBorder}`,
+                          borderLeft: `4px solid ${colorLeft}`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.4rem',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{
+                            fontSize: '0.66rem',
+                            fontWeight: 700,
+                            padding: '0.12rem 0.4rem',
+                            borderRadius: '4px',
+                            background: badgeBg,
+                            color: badgeColor
+                          }}>
+                            VACACIONES {vac.estado || 'REGISTRADAS'}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', fontWeight: 600 }}>
+                            {vac.dias_solicitados} {vac.dias_solicitados === 1 ? 'día' : 'días'}
+                          </span>
+                        </div>
 
                       <div style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--foreground)' }}>
                         {vac.empleado_nombre && !vac.empleado_nombre.startsWith('auth0|')
@@ -1318,7 +1527,8 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                     )}
                   </div>
                 )
-              })
+              })}
+              </>
             )}
           </div>
         </div>

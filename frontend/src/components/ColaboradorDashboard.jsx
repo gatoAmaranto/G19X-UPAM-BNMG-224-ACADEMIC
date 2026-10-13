@@ -6,7 +6,6 @@ import {
 } from 'lucide-react'
 import axios from 'axios'
 import ChatWidget from './ChatWidget.jsx'
-import VacacionesModal from './VacacionesModal.jsx'
 import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 import TicketDetalleModal from './TicketDetalleModal.jsx'
@@ -16,14 +15,13 @@ import CalendarioLaboral from './CalendarioLaboral.jsx'
 const API_BASE = 'http://localhost:8000/api'
 
 export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) {
-  const [activeTab, setActiveTab] = useState('chat') // 'chat' | 'perfil' | 'vacaciones' | 'tickets' | 'constancia'
+  const [activeTab, setActiveTab] = useState('chat') // 'chat' | 'calendario' | 'tickets' | 'constancia' | 'perfil'
   const [perfil, setPerfil] = useState(null)
   const [vacaciones, setVacaciones] = useState(null)
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
 
   // Modales operativos
-  const [modalVacacionesOpen, setModalVacacionesOpen] = useState(false)
   const [modalTicketOpen, setModalTicketOpen] = useState(false)
   const [modalConstanciaOpen, setModalConstanciaOpen] = useState(false)
   const [ticketSeleccionado, setTicketSeleccionado] = useState(null)
@@ -180,15 +178,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '270px 1fr', gap: '1.5rem', alignItems: 'start' }}>
       {/* Modales operativos */}
-      {vacaciones && (
-        <VacacionesModal
-          isOpen={modalVacacionesOpen}
-          onClose={() => setModalVacacionesOpen(false)}
-          saldoDisponibles={vacaciones.saldo.disponibles}
-          onSuccess={fetchData}
-        />
-      )}
-
       <TicketModal
         isOpen={modalTicketOpen}
         onClose={() => setModalTicketOpen(false)}
@@ -268,7 +257,114 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
             </span>
           </button>
 
-          {/* Opción 2: Mi Perfil Laboral */}
+          {/* Opción 2: Mi Horario & Calendario */}
+          <button
+            onClick={() => setActiveTab('calendario')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.7rem 0.85rem',
+              borderRadius: 'var(--radius)',
+              border: activeTab === 'calendario' ? '1px solid var(--primary)' : '1px solid transparent',
+              background: activeTab === 'calendario' ? 'var(--primary)' : 'transparent',
+              color: activeTab === 'calendario' ? 'var(--primary-foreground)' : 'var(--foreground)',
+              cursor: 'pointer',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'calendario' ? 600 : 500,
+              textAlign: 'left',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <CalendarDays size={18} />
+              <span>Mi Horario & Calendario</span>
+            </div>
+            <span style={{
+              fontSize: '0.68rem',
+              padding: '0.15rem 0.45rem',
+              borderRadius: '8px',
+              background: activeTab === 'calendario' ? 'var(--primary-foreground)' : '#dcfce7',
+              color: activeTab === 'calendario' ? 'var(--primary)' : '#15803d',
+              fontWeight: 700
+            }}>
+              {diasDisponibles}d
+            </span>
+          </button>
+
+          {/* Opción 3: Mis Tickets */}
+          <button
+            onClick={() => setActiveTab('tickets')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.7rem 0.85rem',
+              borderRadius: 'var(--radius)',
+              border: activeTab === 'tickets' ? '1px solid var(--primary)' : '1px solid transparent',
+              background: activeTab === 'tickets' ? 'var(--primary)' : 'transparent',
+              color: activeTab === 'tickets' ? 'var(--primary-foreground)' : 'var(--foreground)',
+              cursor: 'pointer',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'tickets' ? 600 : 500,
+              textAlign: 'left',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <Ticket size={18} />
+              <span>Mis Tickets</span>
+            </div>
+            {ticketsAbiertosCount > 0 && (
+              <span style={{
+                fontSize: '0.7rem',
+                padding: '0.15rem 0.45rem',
+                borderRadius: '10px',
+                background: activeTab === 'tickets' ? 'var(--primary-foreground)' : '#dbeafe',
+                color: activeTab === 'tickets' ? 'var(--primary)' : '#1d4ed8',
+                fontWeight: 700
+              }}>
+                {ticketsAbiertosCount}
+              </span>
+            )}
+          </button>
+
+          {/* Opción 4: Constancia PDF */}
+          <button
+            onClick={() => setActiveTab('constancia')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.7rem 0.85rem',
+              borderRadius: 'var(--radius)',
+              border: activeTab === 'constancia' ? '1px solid var(--primary)' : '1px solid transparent',
+              background: activeTab === 'constancia' ? 'var(--primary)' : 'transparent',
+              color: activeTab === 'constancia' ? 'var(--primary-foreground)' : 'var(--foreground)',
+              cursor: 'pointer',
+              fontSize: '0.86rem',
+              fontWeight: activeTab === 'constancia' ? 600 : 500,
+              textAlign: 'left',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <FileText size={18} />
+              <span>Constancia PDF</span>
+            </div>
+            <span style={{
+              fontSize: '0.68rem',
+              padding: '0.15rem 0.45rem',
+              borderRadius: '8px',
+              background: activeTab === 'constancia' ? 'var(--primary-foreground)' : 'var(--muted)',
+              color: activeTab === 'constancia' ? 'var(--primary)' : 'var(--muted-foreground)',
+              fontWeight: 600
+            }}>
+              PDF
+            </span>
+          </button>
+
+          {/* Opción 5: Mi Perfil Laboral (Al final de la lista) */}
           <button
             onClick={() => setActiveTab('perfil')}
             style={{
@@ -316,148 +412,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
               </span>
             )}
           </button>
-
-          {/* Opción 3: Mi Horario & Calendario */}
-          <button
-            onClick={() => setActiveTab('calendario')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'calendario' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'calendario' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'calendario' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'calendario' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <CalendarDays size={18} />
-              <span>Mi Horario & Calendario</span>
-            </div>
-            <span style={{
-              fontSize: '0.68rem',
-              padding: '0.15rem 0.45rem',
-              borderRadius: '8px',
-              background: activeTab === 'calendario' ? 'var(--primary-foreground)' : 'var(--muted)',
-              color: activeTab === 'calendario' ? 'var(--primary)' : 'var(--muted-foreground)',
-              fontWeight: 600
-            }}>
-              {perfil?.horario_entrada || '09:00'}
-            </span>
-          </button>
-
-          {/* Opción 4: Mis Vacaciones */}
-          <button
-            onClick={() => setActiveTab('vacaciones')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'vacaciones' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'vacaciones' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'vacaciones' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'vacaciones' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <Calendar size={18} />
-              <span>Mis Vacaciones</span>
-            </div>
-            <span style={{
-              fontSize: '0.7rem',
-              padding: '0.15rem 0.45rem',
-              borderRadius: '10px',
-              background: activeTab === 'vacaciones' ? 'var(--primary-foreground)' : '#dcfce7',
-              color: activeTab === 'vacaciones' ? 'var(--primary)' : '#15803d',
-              fontWeight: 700
-            }}>
-              {diasDisponibles}d
-            </span>
-          </button>
-
-          {/* Opción 4: Mis Tickets */}
-          <button
-            onClick={() => setActiveTab('tickets')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'tickets' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'tickets' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'tickets' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'tickets' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <Ticket size={18} />
-              <span>Mis Tickets</span>
-            </div>
-            {ticketsAbiertosCount > 0 && (
-              <span style={{
-                fontSize: '0.7rem',
-                padding: '0.15rem 0.45rem',
-                borderRadius: '10px',
-                background: activeTab === 'tickets' ? 'var(--primary-foreground)' : '#dbeafe',
-                color: activeTab === 'tickets' ? 'var(--primary)' : '#1d4ed8',
-                fontWeight: 700
-              }}>
-                {ticketsAbiertosCount}
-              </span>
-            )}
-          </button>
-
-          {/* Opción 5: Constancia Laboral */}
-          <button
-            onClick={() => setActiveTab('constancia')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'constancia' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'constancia' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'constancia' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'constancia' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <FileText size={18} />
-              <span>Constancia PDF</span>
-            </div>
-            <span style={{
-              fontSize: '0.68rem',
-              padding: '0.15rem 0.45rem',
-              borderRadius: '8px',
-              background: activeTab === 'constancia' ? 'var(--primary-foreground)' : 'var(--muted)',
-              color: activeTab === 'constancia' ? 'var(--primary)' : 'var(--muted-foreground)',
-              fontWeight: 600
-            }}>
-              PDF
-            </span>
-          </button>
         </nav>
 
         {/* Resumen de Métricas / Estado */}
@@ -497,7 +451,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
               {activeTab === 'chat' && 'Asistente Conversacional & Autoservicio con IA'}
               {activeTab === 'perfil' && 'Mi Expediente Laboral & Fotografía de Perfil'}
               {activeTab === 'calendario' && 'Horario Oficial de Trabajo y Calendario de Actividades'}
-              {activeTab === 'vacaciones' && 'Control y Solicitud de Vacaciones'}
               {activeTab === 'tickets' && 'Centro Individual de Gestión y Seguimiento de Tickets'}
               {activeTab === 'constancia' && 'Emisión de Constancia Laboral Membretada'}
             </h2>
@@ -505,7 +458,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
               {activeTab === 'chat' && 'Interactúa con el agente conversacional inteligente para resolver dudas o tramitar solicitudes.'}
               {activeTab === 'perfil' && 'Consulta tu información oficial, antigüedad calculada y administra tu fotografía institucional.'}
               {activeTab === 'calendario' && 'Visualiza tu jornada laboral registrada, revisa tus días de descanso o vacaciones y administra tus tareas y notas personales.'}
-              {activeTab === 'vacaciones' && 'Monitorea tu saldo vacacional, consulta el historial de solicitudes y envía nuevas peticiones a RH.'}
               {activeTab === 'tickets' && 'Consulta el expediente individual de cada folio, monitorea el avance de atención y revisa las resoluciones oficiales emitidas por Recursos Humanos.'}
               {activeTab === 'constancia' && 'Genera y descarga en tiempo real tu constancia laboral en formato PDF oficial.'}
             </p>
@@ -784,7 +736,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
                       Resumen de Días de Vacaciones Anuales
                     </span>
                     <button
-                      onClick={() => setModalVacacionesOpen(true)}
+                      onClick={() => setActiveTab('calendario')}
                       className="btn-primary"
                       style={{ fontSize: '0.78rem', padding: '0.3rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                     >
@@ -822,99 +774,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
           />
         )}
 
-        {/* Tab 4: Mis Vacaciones */}
-        {activeTab === 'vacaciones' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {vacaciones && (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.85rem', textAlign: 'center' }}>
-                  <div style={{ background: 'var(--muted)', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>Días Totales</span>
-                    <strong style={{ fontSize: '1.35rem', color: 'var(--foreground)' }}>{vacaciones.saldo.totales}</strong>
-                  </div>
-                  <div style={{ background: 'var(--muted)', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>Días Disfrutados</span>
-                    <strong style={{ fontSize: '1.35rem', color: 'var(--foreground)' }}>{vacaciones.saldo.tomados}</strong>
-                  </div>
-                  <div style={{ background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                    <span style={{ fontSize: '0.78rem', display: 'block', marginBottom: '0.2rem' }}>Días Disponibles</span>
-                    <strong style={{ fontSize: '1.35rem' }}>{vacaciones.saldo.disponibles}</strong>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--foreground)' }}>
-                    Historial de Solicitudes de Vacaciones
-                  </h3>
-                  <button
-                    onClick={() => setModalVacacionesOpen(true)}
-                    className="btn-primary"
-                    style={{ fontSize: '0.84rem', padding: '0.45rem 0.95rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}
-                  >
-                    <Plus size={15} />
-                    <span>Nueva Solicitud de Vacaciones</span>
-                  </button>
-                </div>
-
-                {vacaciones.solicitudes.length === 0 ? (
-                  <p style={{ fontSize: '0.88rem', color: 'var(--muted-foreground)', padding: '1rem 0' }}>
-                    No tienes solicitudes de vacaciones registradas.
-                  </p>
-                ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'left' }}>
-                      <thead>
-                        <tr style={{ background: 'var(--muted)', color: 'var(--muted-foreground)', borderBottom: '1px solid var(--border)' }}>
-                          <th style={{ padding: '0.75rem' }}>Período Solicitado</th>
-                          <th style={{ padding: '0.75rem' }}>Días</th>
-                          <th style={{ padding: '0.75rem' }}>Motivo</th>
-                          <th style={{ padding: '0.75rem' }}>Fecha de Registro</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'right' }}>Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {vacaciones.solicitudes.map((sol) => (
-                          <tr key={sol.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '0.75rem', fontWeight: 600 }}>
-                              {sol.fecha_inicio} al {sol.fecha_fin}
-                            </td>
-                            <td style={{ padding: '0.75rem' }}>
-                              {sol.dias_solicitados} días
-                            </td>
-                            <td style={{ padding: '0.75rem', color: 'var(--muted-foreground)' }}>
-                              {sol.motivo || 'Sin especificar'}
-                            </td>
-                            <td style={{ padding: '0.75rem', fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
-                              {new Date(sol.fecha_creacion).toLocaleDateString('es-MX')}
-                            </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                              <span style={{
-                                padding: '0.2rem 0.6rem',
-                                borderRadius: '12px',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                background:
-                                  sol.estado === 'APROBADO' ? '#dcfce7' :
-                                  sol.estado === 'RECHAZADO' ? '#fee2e2' : '#fef3c7',
-                                color:
-                                  sol.estado === 'APROBADO' ? '#15803d' :
-                                  sol.estado === 'RECHAZADO' ? '#b91c1c' : '#b45309'
-                              }}>
-                                {sol.estado}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Tab 4: Mis Tickets de Soporte (Centro Individual de Gestión) */}
+        {/* Tab 3: Mis Tickets de Soporte (Centro Individual de Gestión) */}
         {activeTab === 'tickets' && (
           <CentroTicketsColaborador
             tickets={tickets}
