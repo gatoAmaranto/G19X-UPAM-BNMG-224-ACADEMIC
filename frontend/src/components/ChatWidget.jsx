@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Download, Calendar, Ticket, HelpCircle, Loader2, Eye, RotateCcw } from 'lucide-react'
+import { Send, Bot, User, Download, Calendar, Ticket, Loader2, Eye, RotateCcw } from 'lucide-react'
 import axios from 'axios'
 
 import VacacionesModal from './VacacionesModal.jsx'
@@ -459,47 +459,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
         <div ref={chatEndRef} />
       </div>
 
-      {/* Quick Action Chips */}
-      <div style={{ padding: '0.65rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--card)', display: 'flex', gap: '0.5rem', overflowX: 'auto', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--muted-foreground)', marginRight: '0.2rem' }}>
-          Accesos rápidos:
-        </span>
-        <button
-          onClick={() => setModalVacacionesOpen(true)}
-          className="btn-secondary"
-          style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
-        >
-          <Calendar size={14} />
-          Solicitar Vacaciones
-        </button>
 
-        <button
-          onClick={() => handleSendMessage('Generar mi constancia laboral')}
-          className="btn-secondary"
-          style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
-        >
-          <Download size={14} />
-          Constancia PDF
-        </button>
-
-        <button
-          onClick={() => handleSendMessage('¿Cuál es el horario laboral oficial?')}
-          className="btn-secondary"
-          style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
-        >
-          <HelpCircle size={14} />
-          Horario Laboral
-        </button>
-
-        <button
-          onClick={() => setModalTicketOpen(true)}
-          className="btn-secondary"
-          style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
-        >
-          <Ticket size={14} />
-          Crear Ticket
-        </button>
-      </div>
 
       {/* Input Form */}
       <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--card)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
