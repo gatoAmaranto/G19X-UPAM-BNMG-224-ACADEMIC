@@ -128,6 +128,10 @@ export default function ChatWidget({ onRefreshData, perfil }) {
         setModalTicketOpen(true)
       } else if (data.tipo_accion === 'CONSTANCIA_GENERADA') {
         setModalConstanciaOpen(true)
+      } else if (data.tipo_accion === 'VACACIONES_CREADAS') {
+        if (data.datos && data.datos.saldo_restante !== undefined) {
+          setSaldoVacaciones(data.datos.saldo_restante)
+        }
       }
 
       if (onRefreshData) onRefreshData()
@@ -317,6 +321,114 @@ export default function ChatWidget({ onRefreshData, perfil }) {
                     <Download size={16} />
                     <span>Descargar PDF</span>
                   </a>
+                </div>
+              )}
+
+              {(msg.actionType === 'VACACIONES_CREADAS' || msg.actionType === 'VACACIONES_CONFIRMADAS') && msg.datos && (
+                <div style={{
+                  marginTop: '0.85rem',
+                  padding: '0.75rem 0.9rem',
+                  borderRadius: 'calc(var(--radius) - 6px)',
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  fontSize: '0.84rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: 'var(--chart-1)', marginBottom: '0.35rem' }}>
+                    <Calendar size={15} />
+                    <span>Solicitud de Vacaciones Registrada</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.4rem', color: 'var(--foreground)' }}>
+                    <div>
+                      <span style={{ color: 'var(--muted-foreground)', fontSize: '0.74rem' }}>Período:</span>
+                      <div style={{ fontWeight: 500 }}>{msg.datos.fecha_inicio} al {msg.datos.fecha_fin}</div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--muted-foreground)', fontSize: '0.74rem' }}>Días hábiles:</span>
+                      <div style={{ fontWeight: 500 }}>{msg.datos.dias_solicitados} días</div>
+                    </div>
+                    {msg.datos.saldo_restante !== undefined && (
+                      <div>
+                        <span style={{ color: 'var(--muted-foreground)', fontSize: '0.74rem' }}>Saldo disponible:</span>
+                        <div style={{ fontWeight: 500 }}>{msg.datos.saldo_restante} días</div>
+                      </div>
+                    )}
+                    <div>
+                      <span style={{ color: 'var(--muted-foreground)', fontSize: '0.74rem' }}>Estado:</span>
+                      <div>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          background: '#fef3c7',
+                          color: '#92400e'
+                        }}>
+                          {msg.datos.estado || 'PENDIENTE'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(msg.actionType === 'TICKET_CREADO' || msg.actionType === 'TICKET_CONFIRMADO') && msg.datos && (
+                <div style={{
+                  marginTop: '0.85rem',
+                  padding: '0.75rem 0.9rem',
+                  borderRadius: 'calc(var(--radius) - 6px)',
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  fontSize: '0.84rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: 'var(--chart-1)', marginBottom: '0.35rem' }}>
+                    <Ticket size={15} />
+                    <span>Ticket de Soporte Registrado</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.4rem', color: 'var(--foreground)' }}>
+                    <div>
+                      <span style={{ color: 'var(--muted-foreground)', fontSize: '0.74rem' }}>Folio:</span>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{msg.datos.folio}</div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--muted-foreground)', fontSize: '0.74rem' }}>Asunto:</span>
+                      <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.datos.asunto}</div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--muted-foreground)', fontSize: '0.74rem' }}>Prioridad:</span>
+                      <div>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '0.1rem 0.45rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          background: msg.datos.prioridad === 'ALTA' ? '#fee2e2' : msg.datos.prioridad === 'MEDIA' ? '#fef3c7' : '#e0e7ff',
+                          color: msg.datos.prioridad === 'ALTA' ? '#991b1b' : msg.datos.prioridad === 'MEDIA' ? '#92400e' : '#3730a3'
+                        }}>
+                          {msg.datos.prioridad || 'MEDIA'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--muted-foreground)', fontSize: '0.74rem' }}>Estado:</span>
+                      <div>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          background: '#dcfce7',
+                          color: '#166534'
+                        }}>
+                          {msg.datos.estado || 'ABIERTO'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

@@ -91,8 +91,15 @@ def generar_pdf_constancia_laboral(constancia):
     # Datos del Empleado
     emp = constancia.empleado
     nombre_completo = emp.user.get_full_name() or emp.user.username
-    fecha_ingreso_str = emp.fecha_ingreso.strftime("%d de %B de %Y")
-    fecha_hoy_str = constancia.fecha_emision.strftime("%d de %B de %Y")
+    if isinstance(emp.fecha_ingreso, str):
+        try:
+            emp.fecha_ingreso = datetime.strptime(emp.fecha_ingreso.split('T')[0], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    fecha_ingreso_str = emp.fecha_ingreso.strftime("%d de %B de %Y") if hasattr(emp.fecha_ingreso, 'strftime') else str(emp.fecha_ingreso)
+
+    fecha_emision = constancia.fecha_emision or datetime.now()
+    fecha_hoy_str = fecha_emision.strftime("%d de %B de %Y") if hasattr(fecha_emision, 'strftime') else str(fecha_emision)
 
     texto_cuerpo = (
         f"Por medio de la presente, <b>PluriOne S.A. de C.V. (Develop Talent & Technology)</b> hace constar que el/la C. "

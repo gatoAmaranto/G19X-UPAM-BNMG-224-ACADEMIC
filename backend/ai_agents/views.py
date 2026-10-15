@@ -16,7 +16,13 @@ class ConversacionAgenteView(views.APIView):
 
         empleado = get_demo_or_current_empleado(request)
 
-        # 1. Persistir mensaje del colaborador
+        # 1. Obtener historial reciente para memoria de contexto (hasta 10 mensajes anteriores)
+        mensajes_previos = list(
+            MensajeChat.objects.filter(empleado=empleado).order_by('-fecha_creacion')[:10]
+        )
+        mensajes_previos.reverse()
+
+        # 2. Persistir mensaje del colaborador
         msg_usuario = MensajeChat.objects.create(
             empleado=empleado,
             remitente='user',
@@ -24,10 +30,10 @@ class ConversacionAgenteView(views.APIView):
             tipo_accion='USER_INPUT'
         )
 
-        # 2. Procesar respuesta mediante Agente Conversacional (Gemini / Reglas)
-        resultado = procesar_mensaje_agente(mensaje, empleado)
+        # 3. Procesar respuesta mediante Agente Conversacional (Gemini con Tools y Memoria)
+        resultado = procesar_mensaje_agente(mensaje, empleado, historial=mensajes_previos)
 
-        # 3. Persistir respuesta del agente
+        # 4. Persistir respuesta del agente
         msg_bot = MensajeChat.objects.create(
             empleado=empleado,
             remitente='bot',
