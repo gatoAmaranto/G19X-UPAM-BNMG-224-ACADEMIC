@@ -64,7 +64,7 @@ function Auth0WrappedChild({ children }) {
     r === 'rh' ||
     r === 'admin' ||
     r.includes('recursos')
-  ) || user?.email?.toLowerCase().includes('rh') || user?.email?.toLowerCase().includes('admin')
+  )
 
   const userRole = isRhAdmin ? 'recursos humanos' : 'colaborador'
 

@@ -4,6 +4,12 @@ Guia de configuracion y ejecucion del repositorio en entorno local.
 
 ---
 
+## Uso de Inteligencia Artificial
+
+Para este proyecto se hace uso de Inteligencia Artificial mediante la herramienta **Antigravity** y el modelo **Gemini 3.8 Flash High**.
+
+---
+
 ## Prerrequisitos
 
 - **Git**

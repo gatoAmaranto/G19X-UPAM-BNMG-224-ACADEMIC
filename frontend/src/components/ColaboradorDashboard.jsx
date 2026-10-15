@@ -555,7 +555,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
         {/* Tab 1: Asistente Virtual Conversacional */}
         {activeTab === 'chat' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <ChatWidget onRefreshData={fetchData} />
+            <ChatWidget onRefreshData={fetchData} perfil={perfil} />
           </div>
         )}
 

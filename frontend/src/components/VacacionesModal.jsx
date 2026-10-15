@@ -4,7 +4,7 @@ import axios from 'axios'
 
 const API_BASE = 'http://localhost:8000/api/hr'
 
-export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, onSuccess }) {
+export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, diasLaborales = 'Lunes a Viernes', onSuccess }) {
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
   const [motivo, setMotivo] = useState('')
@@ -16,15 +16,46 @@ export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, onS
   // Fecha actual en formato YYYY-MM-DD para la propiedad min
   const todayStr = new Date().toISOString().split('T')[0]
 
-  // Calcular número de días seleccionados
+  // Determinar si una fecha es día laboral según la jornada del colaborador
+  const esDiaLaboral = (fechaStr) => {
+    if (!fechaStr) return false
+    const d = new Date(`${fechaStr.split('T')[0]}T12:00:00`)
+    if (isNaN(d.getTime())) return false
+    const day = d.getDay() // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+    const txt = (diasLaborales || 'Lunes a Viernes').toLowerCase()
+
+    if (txt.includes('lunes a sabado') || txt.includes('lunes a sábado') || txt.includes('l-s')) {
+      return day >= 1 && day <= 6
+    }
+    if (txt.includes('lunes a jueves')) {
+      return day >= 1 && day <= 4
+    }
+    if (txt.includes('lunes a domingo')) {
+      return true
+    }
+    return day >= 1 && day <= 5
+  }
+
+  // Calcular número de días laborales seleccionados
   const calcularDias = () => {
     if (!fechaInicio || !fechaFin) return 0
-    const start = new Date(fechaInicio)
-    const end = new Date(fechaFin)
+    const partsI = fechaInicio.split('-').map(Number)
+    const partsF = fechaFin.split('-').map(Number)
+    if (partsI.length !== 3 || partsF.length !== 3) return 0
+    const start = new Date(partsI[0], partsI[1] - 1, partsI[2], 12, 0, 0)
+    const end = new Date(partsF[0], partsF[1] - 1, partsF[2], 12, 0, 0)
     if (end < start) return 0
-    const diffTime = Math.abs(end - start)
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
-    return diffDays
+
+    let count = 0
+    for (let cur = new Date(start); cur <= end; cur.setDate(cur.getDate() + 1)) {
+      const y = cur.getFullYear()
+      const m = String(cur.getMonth() + 1).padStart(2, '0')
+      const dia = String(cur.getDate()).padStart(2, '0')
+      if (esDiaLaboral(`${y}-${m}-${dia}`)) {
+        count++
+      }
+    }
+    return count
   }
 
   const diasSolicitados = calcularDias()
@@ -43,8 +74,18 @@ export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, onS
       return
     }
 
+    if (!esDiaLaboral(fechaInicio)) {
+      setErrorMsg(`La fecha de inicio (${fechaInicio}) no es un día laboral según tu jornada (${diasLaborales}). Solo puedes iniciar vacaciones en días laborales de trabajo.`)
+      return
+    }
+
+    if (!esDiaLaboral(fechaFin)) {
+      setErrorMsg(`La fecha de fin (${fechaFin}) no es un día laboral según tu jornada (${diasLaborales}). Solo puedes finalizar vacaciones en días laborales de trabajo.`)
+      return
+    }
+
     if (diasSolicitados <= 0) {
-      setErrorMsg('La fecha de fin debe ser posterior o igual a la fecha de inicio.')
+      setErrorMsg(`El periodo seleccionado no comprende ningún día laboral según tu jornada (${diasLaborales}).`)
       return
     }
 
@@ -171,8 +212,8 @@ export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, onS
           {/* Días Calculados Badge */}
           {diasSolicitados > 0 && (
             <div style={{ background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.6rem 0.85rem', borderRadius: 'var(--radius)', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>Días solicitados a procesar:</span>
-              <strong style={{ fontSize: '1rem' }}>{diasSolicitados} días</strong>
+              <span>Días laborales a procesar:</span>
+              <strong style={{ fontSize: '0.95rem' }}>{diasSolicitados} día(s) ({diasLaborales})</strong>
             </div>
           )}
 

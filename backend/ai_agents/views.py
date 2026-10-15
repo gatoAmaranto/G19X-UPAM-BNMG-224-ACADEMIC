@@ -1,13 +1,13 @@
 from rest_framework import status, views
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from hr_services.views import get_demo_or_current_empleado
 from .agent_graph import procesar_mensaje_agente
 from .models import MensajeChat
 from .serializers import MensajeChatSerializer
 
 class ConversacionAgenteView(views.APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         mensaje = request.data.get('mensaje', '').strip()
@@ -44,7 +44,7 @@ class ConversacionAgenteView(views.APIView):
 
 
 class HistorialChatView(views.APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """

@@ -44,13 +44,15 @@ class SolicitudVacacionesSerializer(serializers.ModelSerializer):
     empleado_departamento = serializers.ReadOnlyField(source='empleado.departamento')
     empleado_avatar = serializers.SerializerMethodField()
     empleado_dias_disponibles = serializers.ReadOnlyField(source='empleado.dias_vacaciones_disponibles')
+    empleado_dias_laborales = serializers.ReadOnlyField(source='empleado.dias_laborales')
+    dias_solicitados = serializers.IntegerField(required=False)
 
     class Meta:
         model = SolicitudVacaciones
         fields = [
             'id', 'empleado', 'empleado_nombre', 'empleado_numero',
             'empleado_puesto', 'empleado_departamento', 'empleado_avatar',
-            'empleado_dias_disponibles', 'fecha_inicio', 'fecha_fin',
+            'empleado_dias_disponibles', 'empleado_dias_laborales', 'fecha_inicio', 'fecha_fin',
             'dias_solicitados', 'motivo', 'estado', 'fecha_creacion'
         ]
         read_only_fields = ['empleado', 'estado', 'fecha_creacion']

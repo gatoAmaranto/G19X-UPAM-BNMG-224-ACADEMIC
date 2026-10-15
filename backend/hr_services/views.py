@@ -2,7 +2,8 @@ import os
 from django.core.files.base import ContentFile
 from rest_framework import status, views, viewsets
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import NotAuthenticated
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
@@ -14,57 +15,37 @@ from .serializers import (
     NotaTareaColaboradorSerializer
 )
 from .utils_pdf import generar_pdf_constancia_laboral
+from .utils_laborales import es_dia_laboral, calcular_dias_laborales
 from authentication.permissions import IsRecursosHumanos
 
 
 
 def get_demo_or_current_empleado(request):
     """
-    Helper function to get the current authenticated employee,
-    or a default demo employee for testing purposes.
+    Obtiene el perfil Empleado asociado al usuario autenticado.
+    No devuelve al empleado demo si el usuario no ha iniciado sesion.
     """
-    if request.user and request.user.is_authenticated:
-        is_rh = getattr(request.user, 'is_rh_admin', False) or request.user.is_staff or 'rh' in request.user.username.lower()
-        empleado, _ = Empleado.objects.get_or_create(
-            user=request.user,
-            defaults={
-                'numero_empleado': f"RH-{request.user.id:04d}" if is_rh else f"EMP-{request.user.id:04d}",
-                'puesto': 'Especialista de Recursos Humanos' if is_rh else 'Consultor TI',
-                'departamento': 'Recursos Humanos' if is_rh else 'Desarrollo de Software',
-                'fecha_ingreso': '2024-01-15',
-                'salario_mensual': 45000.00 if is_rh else 35000.00,
-                'dias_vacaciones_totales': 14 if is_rh else 12,
-                'dias_vacaciones_tomados': 2 if is_rh else 3
-            }
-        )
-        return empleado
+    if not request.user or not request.user.is_authenticated:
+        raise NotAuthenticated("Debe iniciar sesión para acceder a las funciones del colaborador.")
 
-    # Fallback to Demo Employee (Juan Perez)
-    demo_user, _ = User.objects.get_or_create(
-        username='demo_colaborador',
+    is_rh = getattr(request.user, 'is_rh_admin', False) or request.user.is_staff
+    empleado, _ = Empleado.objects.get_or_create(
+        user=request.user,
         defaults={
-            'first_name': 'Juan',
-            'last_name': 'Pérez',
-            'email': 'juan.perez@develop.com.mx'
+            'numero_empleado': f"RH-{request.user.id:04d}" if is_rh else f"EMP-{request.user.id:04d}",
+            'puesto': 'Especialista de Recursos Humanos' if is_rh else 'Consultor TI',
+            'departamento': 'Recursos Humanos' if is_rh else 'Desarrollo de Software',
+            'fecha_ingreso': '2024-01-15',
+            'salario_mensual': 45000.00 if is_rh else 35000.00,
+            'dias_vacaciones_totales': 14 if is_rh else 12,
+            'dias_vacaciones_tomados': 2 if is_rh else 3
         }
     )
-    demo_empleado, _ = Empleado.objects.get_or_create(
-        user=demo_user,
-        defaults={
-            'numero_empleado': 'EMP-0101',
-            'puesto': 'Desarrollador Full Stack',
-            'departamento': 'Tecnología de la Información',
-            'fecha_ingreso': '2023-03-01',
-            'salario_mensual': 38500.00,
-            'dias_vacaciones_totales': 14,
-            'dias_vacaciones_tomados': 4
-        }
-    )
-    return demo_empleado
+    return empleado
 
 
 class PerfilEmpleadoView(views.APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         empleado = get_demo_or_current_empleado(request)
@@ -93,7 +74,7 @@ class PerfilEmpleadoView(views.APIView):
 
 
 class PerfilAvatarUploadView(views.APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         empleado = get_demo_or_current_empleado(request)
@@ -129,7 +110,7 @@ class PerfilAvatarUploadView(views.APIView):
 
 
 class VacacionesView(views.APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         empleado = get_demo_or_current_empleado(request)
@@ -147,16 +128,56 @@ class VacacionesView(views.APIView):
     def post(self, request):
         empleado = get_demo_or_current_empleado(request)
         serializer = SolicitudVacacionesSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            dias_solicitados = serializer.validated_data.get('dias_solicitados', 1)
-            if dias_solicitados > empleado.dias_vacaciones_disponibles:
-                return Response({
-                    'error': f'No tienes suficientes días disponibles. Tienes {empleado.dias_vacaciones_disponibles} días y solicitaste {dias_solicitados}.'
-                }, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            solicitud = serializer.save(empleado=empleado)
-            return Response(SolicitudVacacionesSerializer(solicitud, context={'request': request}).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        fecha_inicio = serializer.validated_data.get('fecha_inicio')
+        fecha_fin = serializer.validated_data.get('fecha_fin')
+
+        import datetime
+        hoy = datetime.date.today()
+
+        # 1. Bloquear solicitudes en fechas anteriores a hoy
+        if fecha_inicio < hoy:
+            return Response({
+                'error': 'No es posible solicitar vacaciones para fechas anteriores al día de hoy.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if fecha_fin < fecha_inicio:
+            return Response({
+                'error': 'La fecha de fin debe ser posterior o igual a la fecha de inicio.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. Consultar horario laboral del colaborador y validar que inicio y fin sean dias habiles
+        jornada = empleado.dias_laborales or 'Lunes a Viernes'
+        if not es_dia_laboral(fecha_inicio, jornada):
+            return Response({
+                'error': f'La fecha de inicio ({fecha_inicio.strftime("%Y-%m-%d")}) no es un día laboral según tu jornada ({jornada}). Las vacaciones solo pueden iniciar en días laborales.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if not es_dia_laboral(fecha_fin, jornada):
+            return Response({
+                'error': f'La fecha de fin ({fecha_fin.strftime("%Y-%m-%d")}) no es un día laboral según tu jornada ({jornada}). Las vacaciones solo pueden finalizar en días laborales.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 3. Calcular dias laborales reales en el rango
+        dias_habiles = calcular_dias_laborales(fecha_inicio, fecha_fin, jornada)
+        dias_calculados = len(dias_habiles)
+
+        if dias_calculados <= 0:
+            return Response({
+                'error': f'El periodo seleccionado no comprende ningún día laboral según tu jornada ({jornada}).'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 4. Validar saldo disponible de vacaciones
+        if dias_calculados > empleado.dias_vacaciones_disponibles:
+            return Response({
+                'error': f'No tienes suficientes días disponibles. Tienes {empleado.dias_vacaciones_disponibles} días y el periodo laboral seleccionado requiere {dias_calculados} días.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 5. Persistir solicitud forzando dias_solicitados a los dias laborales reales calculados
+        solicitud = serializer.save(empleado=empleado, dias_solicitados=dias_calculados)
+        return Response(SolicitudVacacionesSerializer(solicitud, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 
 from django.views.decorators.clickjacking import xframe_options_exempt
@@ -165,7 +186,7 @@ from django.utils.decorators import method_decorator
 
 @method_decorator(xframe_options_exempt, name='dispatch')
 class GenerarConstanciaView(views.APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         empleado = get_demo_or_current_empleado(request)
@@ -214,7 +235,7 @@ class GenerarConstanciaView(views.APIView):
 
 
 class TicketsViewSet(viewsets.ModelViewSet):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     serializer_class = TicketRHSerializer
 
     def get_queryset(self):
@@ -227,13 +248,13 @@ class TicketsViewSet(viewsets.ModelViewSet):
 
 
 class BaseConocimientoViewSet(viewsets.ReadOnlyModelViewSet):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     serializer_class = BaseConocimientoRHSerializer
     queryset = BaseConocimientoRH.objects.filter(activa=True)
 
 
 class NotaTareaViewSet(viewsets.ModelViewSet):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     serializer_class = NotaTareaColaboradorSerializer
 
     def get_queryset(self):
@@ -276,11 +297,15 @@ class AdminVacacionesView(views.APIView):
 
         serializer = SolicitudVacacionesSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            dias_solicitados = serializer.validated_data.get('dias_solicitados', 1)
+            fecha_inicio = serializer.validated_data.get('fecha_inicio')
+            fecha_fin = serializer.validated_data.get('fecha_fin')
+            jornada = empleado.dias_laborales or 'Lunes a Viernes'
+            dias_habiles = calcular_dias_laborales(fecha_inicio, fecha_fin, jornada)
+            dias_calculados = len(dias_habiles) if dias_habiles else serializer.validated_data.get('dias_solicitados', 1)
             estado = request.data.get('estado', 'APROBADO')
-            solicitud = serializer.save(empleado=empleado, estado=estado)
+            solicitud = serializer.save(empleado=empleado, estado=estado, dias_solicitados=dias_calculados)
             if estado == 'APROBADO':
-                empleado.dias_vacaciones_tomados += dias_solicitados
+                empleado.dias_vacaciones_tomados += dias_calculados
                 empleado.save()
             return Response(SolicitudVacacionesSerializer(solicitud, context={'request': request}).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

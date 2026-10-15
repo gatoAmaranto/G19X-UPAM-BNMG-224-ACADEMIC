@@ -22,33 +22,37 @@ class Auth0JSONWebTokenAuthentication(authentication.BaseAuthentication):
         if not token:
             return None
 
-        # Soporte para tokens de prueba en desarrollo local
-        if token == 'mock-jwt-token-plurione':
-            user, _ = User.objects.get_or_create(
-                username='demo_colaborador',
-                defaults={
-                    'first_name': 'Juan',
-                    'last_name': 'Pérez',
-                    'email': 'juan.perez@develop.com.mx'
-                }
-            )
-            user.is_rh_admin = False
-            user.user_role = 'colaborador'
-            return (user, token)
+        # Soporte para tokens de prueba en desarrollo local solo si DEBUG esta activo
+        if token in ('mock-jwt-token-plurione', 'mock-jwt-token-plurione-rh'):
+            if not getattr(settings, 'DEBUG', False):
+                return None
 
-        if token == 'mock-jwt-token-plurione-rh':
-            user, _ = User.objects.get_or_create(
-                username='demo_rh_admin',
-                defaults={
-                    'first_name': 'María',
-                    'last_name': 'Rodríguez',
-                    'email': 'maria.rodriguez@develop.com.mx',
-                    'is_staff': True
-                }
-            )
-            user.is_rh_admin = True
-            user.user_role = 'recursos humanos'
-            return (user, token)
+            if token == 'mock-jwt-token-plurione':
+                user, _ = User.objects.get_or_create(
+                    username='demo_colaborador',
+                    defaults={
+                        'first_name': 'Juan',
+                        'last_name': 'Pérez',
+                        'email': 'juan.perez@develop.com.mx'
+                    }
+                )
+                user.is_rh_admin = False
+                user.user_role = 'colaborador'
+                return (user, token)
+
+            if token == 'mock-jwt-token-plurione-rh':
+                user, _ = User.objects.get_or_create(
+                    username='demo_rh_admin',
+                    defaults={
+                        'first_name': 'María',
+                        'last_name': 'Rodríguez',
+                        'email': 'maria.rodriguez@develop.com.mx',
+                        'is_staff': True
+                    }
+                )
+                user.is_rh_admin = True
+                user.user_role = 'recursos humanos'
+                return (user, token)
 
         domain = getattr(settings, 'AUTH0_DOMAIN', 'dev-n4ra6mt0qf5e4h61.us.auth0.com').replace('https://', '').rstrip('/')
         audience = getattr(settings, 'AUTH0_AUDIENCE', '')
@@ -103,7 +107,7 @@ class Auth0JSONWebTokenAuthentication(authentication.BaseAuthentication):
         is_rh_admin = any(
             r in ['recursos humanos', 'recursos_humanos', 'rh_admin', 'rh', 'admin'] or 'recursos' in r
             for r in normalized_roles
-        ) or ('rh' in email.lower() or 'admin' in email.lower() or 'rh' in sub.lower())
+        )
 
         user_role = 'recursos humanos' if is_rh_admin else 'colaborador'
 

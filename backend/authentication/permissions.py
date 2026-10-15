@@ -9,11 +9,10 @@ class IsRecursosHumanos(permissions.BasePermission):
     message = "Acceso restringido: Se requieren permisos del rol institucional 'recursos humanos'."
 
     def has_permission(self, request, view):
-        if request.user and request.user.is_authenticated:
-            return bool(
-                getattr(request.user, 'is_rh_admin', False)
-                or request.user.is_staff
-                or getattr(request.user, 'user_role', '') == 'recursos humanos'
-            )
-        # Fallback para peticiones locales internas sin cabecera de autenticación
-        return True
+        if not (request.user and request.user.is_authenticated):
+            return False
+        return bool(
+            getattr(request.user, 'is_rh_admin', False)
+            or request.user.is_staff
+            or getattr(request.user, 'user_role', '') == 'recursos humanos'
+        )

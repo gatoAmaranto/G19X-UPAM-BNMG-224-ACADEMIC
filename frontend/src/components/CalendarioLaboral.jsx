@@ -53,41 +53,6 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
   const saldoDisfrutados = vacaciones?.saldo?.tomados ?? perfil?.dias_vacaciones_tomados ?? 0
   const saldoDisponibles = vacaciones?.saldo?.disponibles ?? perfil?.dias_vacaciones_disponibles ?? 0
 
-  // Cálculo de días calendario solicitados
-  const calcularDias = (inicio, fin) => {
-    if (!inicio || !fin) return 1
-    const partsI = inicio.split('-').map(Number)
-    const partsF = fin.split('-').map(Number)
-    if (partsI.length !== 3 || partsF.length !== 3) return 1
-    const d1 = new Date(partsI[0], partsI[1] - 1, partsI[2])
-    const d2 = new Date(partsF[0], partsF[1] - 1, partsF[2])
-    if (d2 < d1) return 1
-    const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1
-    return diff > 0 ? diff : 1
-  }
-
-  const handleCambioFechaInicioVac = (nuevaFecha) => {
-    const fin = formVacaciones.fecha_fin && formVacaciones.fecha_fin >= nuevaFecha ? formVacaciones.fecha_fin : nuevaFecha
-    const dias = calcularDias(nuevaFecha, fin)
-    setFormVacaciones(prev => ({
-      ...prev,
-      fecha_inicio: nuevaFecha,
-      fecha_fin: fin,
-      dias_solicitados: dias
-    }))
-  }
-
-  const handleCambioFechaFinVac = (nuevaFecha) => {
-    const inicio = formVacaciones.fecha_inicio && formVacaciones.fecha_inicio <= nuevaFecha ? formVacaciones.fecha_inicio : nuevaFecha
-    const dias = calcularDias(inicio, nuevaFecha)
-    setFormVacaciones(prev => ({
-      ...prev,
-      fecha_inicio: inicio,
-      fecha_fin: nuevaFecha,
-      dias_solicitados: dias
-    }))
-  }
-
   // Formateador estándar de fechas YYYY-MM-DD
   const formatYMD = (d) => {
     if (!d || !(d instanceof Date) || isNaN(d)) return ''
@@ -100,17 +65,92 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
   const strFechaSeleccionada = formatYMD(fechaSeleccionada)
   const strHoy = formatYMD(hoy)
 
-  // Al abrir el modal, sincronizar fechas de vacaciones con la fecha seleccionada
+  // Determinar si una fecha cae en día laboral consultando el horario institucional del colaborador
+  const esDiaLaboral = (fecha, diasLaboralesStr = perfil?.dias_laborales) => {
+    if (!fecha) return false
+    const d = typeof fecha === 'string'
+      ? new Date(`${fecha.split('T')[0]}T12:00:00`)
+      : new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate(), 12, 0, 0)
+    if (isNaN(d.getTime())) return false
+
+    const dayOfWeek = d.getDay() // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+    const txt = (diasLaboralesStr || perfil?.dias_laborales || 'Lunes a Viernes').toLowerCase()
+
+    if (txt.includes('lunes a sabado') || txt.includes('lunes a sábado') || txt.includes('l-s')) {
+      return dayOfWeek >= 1 && dayOfWeek <= 6
+    }
+    if (txt.includes('lunes a jueves')) {
+      return dayOfWeek >= 1 && dayOfWeek <= 4
+    }
+    if (txt.includes('lunes a domingo')) {
+      return true
+    }
+    // Por defecto estándar: Lunes a Viernes
+    return dayOfWeek >= 1 && dayOfWeek <= 5
+  }
+
+  // Cálculo de días laborales hábiles solicitados en el rango
+  const calcularDiasLaborales = (inicio, fin, diasLaboralesStr = perfil?.dias_laborales) => {
+    if (!inicio || !fin) return 0
+    const partsI = inicio.split('-').map(Number)
+    const partsF = fin.split('-').map(Number)
+    if (partsI.length !== 3 || partsF.length !== 3) return 0
+    const d1 = new Date(partsI[0], partsI[1] - 1, partsI[2], 12, 0, 0)
+    const d2 = new Date(partsF[0], partsF[1] - 1, partsF[2], 12, 0, 0)
+    if (d2 < d1) return 0
+
+    let habiles = 0
+    for (let cur = new Date(d1); cur <= d2; cur.setDate(cur.getDate() + 1)) {
+      if (esDiaLaboral(cur, diasLaboralesStr)) {
+        habiles++
+      }
+    }
+    return habiles
+  }
+
+  const handleCambioFechaInicioVac = (nuevaFecha) => {
+    if (nuevaFecha < strHoy) {
+      alert('No es posible seleccionar una fecha anterior al día de hoy para vacaciones.')
+      nuevaFecha = strHoy
+    }
+    const fin = formVacaciones.fecha_fin && formVacaciones.fecha_fin >= nuevaFecha ? formVacaciones.fecha_fin : nuevaFecha
+    const dias = calcularDiasLaborales(nuevaFecha, fin)
+    setFormVacaciones(prev => ({
+      ...prev,
+      fecha_inicio: nuevaFecha,
+      fecha_fin: fin,
+      dias_solicitados: dias
+    }))
+  }
+
+  const handleCambioFechaFinVac = (nuevaFecha) => {
+    if (nuevaFecha < strHoy) {
+      alert('No es posible seleccionar una fecha anterior al día de hoy para vacaciones.')
+      nuevaFecha = strHoy
+    }
+    const inicio = formVacaciones.fecha_inicio && formVacaciones.fecha_inicio <= nuevaFecha ? formVacaciones.fecha_inicio : nuevaFecha
+    const dias = calcularDiasLaborales(inicio, nuevaFecha)
+    setFormVacaciones(prev => ({
+      ...prev,
+      fecha_inicio: inicio,
+      fecha_fin: nuevaFecha,
+      dias_solicitados: dias
+    }))
+  }
+
+  // Al abrir el modal, sincronizar fechas de vacaciones con la fecha seleccionada (restringiendo fechas pasadas)
   useEffect(() => {
     if (modalNuevo && strFechaSeleccionada) {
+      const fechaValida = strFechaSeleccionada < strHoy ? strHoy : strFechaSeleccionada
+      const dias = calcularDiasLaborales(fechaValida, fechaValida)
       setFormVacaciones(prev => ({
         ...prev,
-        fecha_inicio: strFechaSeleccionada,
-        fecha_fin: strFechaSeleccionada,
-        dias_solicitados: 1
+        fecha_inicio: fechaValida,
+        fecha_fin: fechaValida,
+        dias_solicitados: dias
       }))
     }
-  }, [modalNuevo, strFechaSeleccionada])
+  }, [modalNuevo, strFechaSeleccionada, strHoy])
 
   // Cargar notas y tareas del mes actual
   const cargarTareas = async () => {
@@ -242,10 +282,16 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
       const partsF = cleanFin.split('-').map(Number)
       if (partsI.length !== 3 || partsF.length !== 3) return
 
-      const start = new Date(partsI[0], partsI[1] - 1, partsI[2])
-      const end = new Date(partsF[0], partsF[1] - 1, partsF[2])
+      const start = new Date(partsI[0], partsI[1] - 1, partsI[2], 12, 0, 0)
+      const end = new Date(partsF[0], partsF[1] - 1, partsF[2], 12, 0, 0)
+      const jornada = sol.empleado_dias_laborales || perfil?.dias_laborales || 'Lunes a Viernes'
 
       for (let cur = new Date(start); cur <= end; cur.setDate(cur.getDate() + 1)) {
+        // Solo marcar en el calendario si es un día laboral para el colaborador
+        if (!esDiaLaboral(cur, jornada)) {
+          continue
+        }
+
         const key = formatYMD(cur)
         if (!map.has(key)) {
           map.set(key, [])
@@ -254,7 +300,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
       }
     })
     return map
-  }, [vacaciones])
+  }, [vacaciones, perfil])
 
   // Registros de vacaciones y tareas para el día seleccionado
   const vacacionesDelDia = vacacionesMap.get(strFechaSeleccionada) || []
@@ -347,14 +393,36 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
       return
     }
 
-    const diasNum = Number(formVacaciones.dias_solicitados) || 1
-    if (diasNum <= 0) {
-      alert('El número de días solicitados debe ser mayor a 0.')
+    if (formVacaciones.fecha_inicio < strHoy) {
+      alert('No es posible solicitar vacaciones para fechas anteriores al día de hoy.')
       return
     }
 
-    if (!esAdminRH && diasNum > saldoDisponibles) {
-      alert(`No cuentas con saldo suficiente de vacaciones. Tu saldo disponible es de ${saldoDisponibles} día(s).`)
+    if (formVacaciones.fecha_fin < formVacaciones.fecha_inicio) {
+      alert('La fecha de fin debe ser posterior o igual a la fecha de inicio.')
+      return
+    }
+
+    const jornada = perfil?.dias_laborales || 'Lunes a Viernes'
+
+    if (!esDiaLaboral(formVacaciones.fecha_inicio, jornada)) {
+      alert(`La fecha de inicio (${formVacaciones.fecha_inicio}) no es un día laboral según tu jornada (${jornada}). Las vacaciones solo pueden iniciar en días laborales de trabajo.`)
+      return
+    }
+
+    if (!esDiaLaboral(formVacaciones.fecha_fin, jornada)) {
+      alert(`La fecha de fin (${formVacaciones.fecha_fin}) no es un día laboral según tu jornada (${jornada}). Las vacaciones solo pueden finalizar en días laborales de trabajo.`)
+      return
+    }
+
+    const diasCalculados = calcularDiasLaborales(formVacaciones.fecha_inicio, formVacaciones.fecha_fin, jornada)
+    if (diasCalculados <= 0) {
+      alert(`El periodo seleccionado no comprende ningún día laboral según tu jornada (${jornada}).`)
+      return
+    }
+
+    if (!esAdminRH && diasCalculados > saldoDisponibles) {
+      alert(`No cuentas con saldo suficiente de vacaciones. Tu saldo disponible es de ${saldoDisponibles} día(s) y el periodo seleccionado requiere ${diasCalculados} día(s) laboral(es).`)
       return
     }
 
@@ -367,7 +435,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
       const payload = {
         fecha_inicio: formVacaciones.fecha_inicio,
         fecha_fin: formVacaciones.fecha_fin,
-        dias_solicitados: diasNum,
+        dias_solicitados: diasCalculados,
         motivo: formVacaciones.motivo || 'Registro mediante calendario institucional'
       }
 
@@ -427,11 +495,6 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
       default:
         return { bg: '#dbeafe', text: '#1d4ed8', border: '#bfdbfe', dot: '#3b82f6' }
     }
-  }
-
-  const esDiaLaboral = (fecha) => {
-    const diaNum = fecha.getDay()
-    return diaNum >= 1 && diaNum <= 5
   }
 
   return (
@@ -1014,7 +1077,24 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setTipoRegistro(item.id)}
+                    onClick={() => {
+                      setTipoRegistro(item.id)
+                      if (item.id === 'VACACIONES') {
+                        const inicio = (!formVacaciones.fecha_inicio || formVacaciones.fecha_inicio < strHoy)
+                          ? strHoy
+                          : formVacaciones.fecha_inicio
+                        const fin = (!formVacaciones.fecha_fin || formVacaciones.fecha_fin < inicio)
+                          ? inicio
+                          : formVacaciones.fecha_fin
+                        const dias = calcularDiasLaborales(inicio, fin)
+                        setFormVacaciones(prev => ({
+                          ...prev,
+                          fecha_inicio: inicio,
+                          fecha_fin: fin,
+                          dias_solicitados: dias
+                        }))
+                      }
+                    }}
                     style={{
                       padding: '0.3rem 0.2rem',
                       fontSize: '0.72rem',
@@ -1068,6 +1148,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                       </label>
                       <input
                         type="date"
+                        min={strHoy}
                         value={formVacaciones.fecha_inicio}
                         onChange={(e) => handleCambioFechaInicioVac(e.target.value)}
                         required
@@ -1088,6 +1169,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                       </label>
                       <input
                         type="date"
+                        min={formVacaciones.fecha_inicio || strHoy}
                         value={formVacaciones.fecha_fin}
                         onChange={(e) => handleCambioFechaFinVac(e.target.value)}
                         required
@@ -1106,27 +1188,39 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
 
                   <div>
                     <label style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.2rem' }}>
-                      Días solicitados:
+                      Días laborales efectivos a descontar:
                     </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formVacaciones.dias_solicitados}
-                      onChange={(e) => setFormVacaciones({ ...formVacaciones, dias_solicitados: e.target.value })}
-                      required
-                      style={{
-                        width: '100%',
-                        padding: '0.35rem 0.5rem',
-                        borderRadius: 'var(--radius)',
-                        border: '1px solid var(--border)',
-                        background: 'var(--input)',
-                        color: 'var(--foreground)',
-                        fontSize: '0.78rem'
-                      }}
-                    />
+                    <div style={{
+                      width: '100%',
+                      padding: '0.45rem 0.65rem',
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--input)',
+                      color: 'var(--foreground)',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <span>{formVacaciones.dias_solicitados} día(s) laboral(es)</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', fontWeight: 400 }}>
+                        Jornada: {perfil?.dias_laborales || 'Lunes a Viernes'}
+                      </span>
+                    </div>
+                    {!esDiaLaboral(formVacaciones.fecha_inicio) && formVacaciones.fecha_inicio && (
+                      <span style={{ fontSize: '0.68rem', color: '#b91c1c', marginTop: '0.25rem', display: 'block' }}>
+                        La fecha de inicio ({formVacaciones.fecha_inicio}) es fin de semana / descanso. Solo se admiten días laborales.
+                      </span>
+                    )}
+                    {!esDiaLaboral(formVacaciones.fecha_fin) && formVacaciones.fecha_fin && (
+                      <span style={{ fontSize: '0.68rem', color: '#b91c1c', marginTop: '0.25rem', display: 'block' }}>
+                        La fecha de fin ({formVacaciones.fecha_fin}) es fin de semana / descanso. Solo se admiten días laborales.
+                      </span>
+                    )}
                     {!esAdminRH && Number(formVacaciones.dias_solicitados) > saldoDisponibles && (
-                      <span style={{ fontSize: '0.68rem', color: '#b91c1c', marginTop: '0.2rem', display: 'block' }}>
-                        Atención: Los días solicitados superan tus días disponibles ({saldoDisponibles}).
+                      <span style={{ fontSize: '0.68rem', color: '#b91c1c', marginTop: '0.25rem', display: 'block' }}>
+                        Atención: Los días laborales requeridos ({formVacaciones.dias_solicitados}) superan tus días disponibles ({saldoDisponibles}).
                       </span>
                     )}
                   </div>

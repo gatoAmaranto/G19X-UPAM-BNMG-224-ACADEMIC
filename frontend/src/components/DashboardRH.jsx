@@ -60,6 +60,7 @@ export default function DashboardRH({ refreshTrigger }) {
           isOpen={modalVacacionesOpen}
           onClose={() => setModalVacacionesOpen(false)}
           saldoDisponibles={vacaciones.saldo.disponibles}
+          diasLaborales={perfil?.dias_laborales || 'Lunes a Viernes'}
           onSuccess={fetchData}
         />
       )}

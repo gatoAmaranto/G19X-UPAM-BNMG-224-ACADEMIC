@@ -16,7 +16,7 @@ const MENSAJE_BIENVENIDA = {
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export default function ChatWidget({ onRefreshData }) {
+export default function ChatWidget({ onRefreshData, perfil }) {
   const [messages, setMessages] = useState([MENSAJE_BIENVENIDA])
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
@@ -195,6 +195,7 @@ export default function ChatWidget({ onRefreshData }) {
         isOpen={modalVacacionesOpen}
         onClose={() => setModalVacacionesOpen(false)}
         saldoDisponibles={saldoVacaciones}
+        diasLaborales={perfil?.dias_laborales || 'Lunes a Viernes'}
         onSuccess={handleVacacionesSuccess}
       />
 
