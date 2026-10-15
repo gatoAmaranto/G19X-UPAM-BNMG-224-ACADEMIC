@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import {
   User, Calendar, Ticket, Bot, FileText, CheckCircle, Clock,
   Plus, Camera, Trash2, Mail, Briefcase, Building, Award,
-  AlertCircle, RefreshCw, Eye, Download, Shield, ExternalLink, CalendarDays
+  AlertCircle, RefreshCw, Eye, Download, Shield, ExternalLink, CalendarDays,
+  Sun, Moon
 } from 'lucide-react'
 import axios from 'axios'
 import ChatWidget from './ChatWidget.jsx'
@@ -11,10 +12,11 @@ import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 import TicketDetalleModal from './TicketDetalleModal.jsx'
 import CentroTicketsColaborador from './CentroTicketsColaborador.jsx'
 import CalendarioLaboral from './CalendarioLaboral.jsx'
+import UserAuthHeader from './UserAuthHeader.jsx'
 
 const API_BASE = 'http://localhost:8000/api'
 
-export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) {
+export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, isDarkMode, toggleDarkMode }) {
   const [activeTab, setActiveTab] = useState('chat') // 'chat' | 'calendario' | 'tickets' | 'constancia' | 'perfil'
   const [perfil, setPerfil] = useState(null)
   const [vacaciones, setVacaciones] = useState(null)
@@ -179,7 +181,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
     : 'Confidencial'
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '270px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+    <div style={{ display: 'flex', width: '100%', minHeight: '100vh', background: 'var(--background)', color: 'var(--foreground)' }}>
       {/* Modales operativos */}
       <TicketModal
         isOpen={modalTicketOpen}
@@ -198,246 +200,285 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
         onClose={() => setTicketSeleccionado(null)}
       />
 
-      {/* Sidenavbar Lateral del Colaborador */}
+      {/* Sidemenu Completo Lateral del Colaborador */}
       <aside
-        className="glass-panel"
         style={{
-          padding: '1.25rem',
+          width: '280px',
+          minWidth: '280px',
+          height: '100vh',
+          position: 'sticky',
+          top: 0,
+          background: 'var(--sidebar)',
+          borderRight: '1px solid var(--sidebar-border)',
+          boxShadow: '4px 0 20px rgba(0, 0, 0, 0.03)',
+          color: 'var(--sidebar-foreground)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.25rem',
-          position: 'sticky',
-          top: '1rem'
+          justifyContent: 'space-between',
+          padding: '1.25rem 1rem',
+          zIndex: 40,
+          overflowY: 'auto'
         }}
       >
-        {/* Encabezado del Menú Lateral */}
-        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.85rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.45rem', borderRadius: 'var(--radius)', display: 'flex' }}>
-              <Bot size={18} />
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+          {/* Tarjeta de Marca y Portal */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.75rem 0.85rem',
+              background: 'var(--card)',
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
+              marginBottom: '1.25rem'
+            }}
+          >
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: 'calc(var(--radius) - 4px)',
+              background: 'var(--background)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '4px',
+              border: '1px solid var(--border)',
+              flexShrink: 0
+            }}>
+              <img
+                src="/icon-512.png"
+                alt="Logo Develop Talent & Technology"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  if (e.currentTarget.nextSibling) {
+                    e.currentTarget.nextSibling.style.display = 'flex';
+                  }
+                }}
+                style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
+              />
+              <div style={{ display: 'none', color: 'var(--primary)', alignItems: 'center', justifyContent: 'center' }}>
+                <Bot size={20} />
+              </div>
             </div>
-            <div>
-              <h3 style={{ fontSize: '0.96rem', fontWeight: 700, color: 'var(--foreground)' }}>Portal Colaborador</h3>
-              <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)' }}>Autoservicio PluriOne</span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h2 style={{ fontSize: '0.94rem', fontWeight: 800, color: 'var(--foreground)', margin: 0, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Develop Talent
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  color: 'var(--muted-foreground)'
+                }}>
+                  Portal Colaborador
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Enlaces de Navegación del Sidenavbar */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-          {/* Opción 1: Asistente Virtual */}
-          <button
-            onClick={() => setActiveTab('chat')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'chat' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'chat' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'chat' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'chat' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <Bot size={18} />
-              <span>Asistente Virtual</span>
-            </div>
-            <span style={{
-              fontSize: '0.68rem',
-              padding: '0.15rem 0.45rem',
-              borderRadius: '10px',
-              background: activeTab === 'chat' ? 'var(--primary-foreground)' : 'var(--accent)',
-              color: activeTab === 'chat' ? 'var(--primary)' : 'var(--accent-foreground)',
-              fontWeight: 700
-            }}>
-              IA
+          {/* Sección de Menú Principal */}
+          <div style={{ padding: '0 0.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.67rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted-foreground)' }}>
+              Menú Principal
             </span>
-          </button>
-
-          {/* Opción 2: Mi Horario & Calendario */}
-          <button
-            onClick={() => setActiveTab('calendario')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'calendario' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'calendario' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'calendario' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'calendario' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <CalendarDays size={18} />
-              <span>Mi Horario & Calendario</span>
-            </div>
-            <span style={{
-              fontSize: '0.68rem',
-              padding: '0.15rem 0.45rem',
-              borderRadius: '8px',
-              background: activeTab === 'calendario' ? 'var(--primary-foreground)' : '#dcfce7',
-              color: activeTab === 'calendario' ? 'var(--primary)' : '#15803d',
-              fontWeight: 700
-            }}>
-              {diasDisponibles}d
+            <span style={{ fontSize: '0.65rem', background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.08rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>
+              5 módulos
             </span>
-          </button>
+          </div>
 
-          {/* Opción 3: Mis Tickets */}
-          <button
-            onClick={() => setActiveTab('tickets')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'tickets' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'tickets' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'tickets' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'tickets' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <Ticket size={18} />
-              <span>Mis Tickets</span>
-            </div>
-            {ticketsAbiertosCount > 0 && (
+          {/* Enlaces de Navegación del Sidemenu */}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+            {/* Opción 1: Asistente Virtual */}
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`sidemenu-nav-item ${activeTab === 'chat' ? 'active' : ''}`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                <div className="sidemenu-icon-wrapper">
+                  <Bot size={17} />
+                </div>
+                <span>Asistente Virtual</span>
+              </div>
               <span style={{
-                fontSize: '0.7rem',
-                padding: '0.15rem 0.45rem',
+                fontSize: '0.68rem',
+                padding: '0.15rem 0.5rem',
                 borderRadius: '10px',
-                background: activeTab === 'tickets' ? 'var(--primary-foreground)' : '#dbeafe',
-                color: activeTab === 'tickets' ? 'var(--primary)' : '#1d4ed8',
-                fontWeight: 700
+                background: activeTab === 'chat' ? 'rgba(255, 255, 255, 0.22)' : 'var(--accent)',
+                color: activeTab === 'chat' ? '#ffffff' : 'var(--accent-foreground)',
+                fontWeight: 700,
+                border: activeTab === 'chat' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent'
               }}>
-                {ticketsAbiertosCount}
+                IA
               </span>
-            )}
-          </button>
+            </button>
 
-          {/* Opción 4: Constancia PDF */}
-          <button
-            onClick={() => setActiveTab('constancia')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'constancia' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'constancia' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'constancia' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'constancia' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <FileText size={18} />
-              <span>Constancia PDF</span>
-            </div>
-            <span style={{
-              fontSize: '0.68rem',
-              padding: '0.15rem 0.45rem',
-              borderRadius: '8px',
-              background: activeTab === 'constancia' ? 'var(--primary-foreground)' : 'var(--muted)',
-              color: activeTab === 'constancia' ? 'var(--primary)' : 'var(--muted-foreground)',
-              fontWeight: 600
-            }}>
-              PDF
-            </span>
-          </button>
+            {/* Opción 2: Mi Horario & Calendario */}
+            <button
+              onClick={() => setActiveTab('calendario')}
+              className={`sidemenu-nav-item ${activeTab === 'calendario' ? 'active' : ''}`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                <div className="sidemenu-icon-wrapper">
+                  <CalendarDays size={17} />
+                </div>
+                <span>Horario & Calendario</span>
+              </div>
+              <span style={{
+                fontSize: '0.68rem',
+                padding: '0.15rem 0.5rem',
+                borderRadius: '8px',
+                background: activeTab === 'calendario' ? 'rgba(255, 255, 255, 0.22)' : '#dcfce7',
+                color: activeTab === 'calendario' ? '#ffffff' : '#15803d',
+                fontWeight: 700,
+                border: activeTab === 'calendario' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent'
+              }}>
+                {diasDisponibles}d
+              </span>
+            </button>
 
-          {/* Opción 5: Mi Perfil Laboral (Al final de la lista) */}
-          <button
-            onClick={() => setActiveTab('perfil')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'perfil' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'perfil' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'perfil' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'perfil' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <User size={18} />
-              <span>Mi Perfil Laboral</span>
-            </div>
-            {perfil?.foto_perfil_url ? (
-              <img
-                src={perfil.foto_perfil_url}
-                alt="Avatar"
-                style={{
-                  width: '22px',
-                  height: '22px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: activeTab === 'perfil' ? '1px solid var(--primary-foreground)' : '1px solid var(--border)'
-                }}
-              />
-            ) : (
+            {/* Opción 3: Mis Tickets */}
+            <button
+              onClick={() => setActiveTab('tickets')}
+              className={`sidemenu-nav-item ${activeTab === 'tickets' ? 'active' : ''}`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                <div className="sidemenu-icon-wrapper">
+                  <Ticket size={17} />
+                </div>
+                <span>Mis Tickets</span>
+              </div>
+              {ticketsAbiertosCount > 0 ? (
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '10px',
+                  background: activeTab === 'tickets' ? 'rgba(255, 255, 255, 0.22)' : '#dbeafe',
+                  color: activeTab === 'tickets' ? '#ffffff' : '#1d4ed8',
+                  fontWeight: 700,
+                  border: activeTab === 'tickets' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent'
+                }}>
+                  {ticketsAbiertosCount}
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '0.15rem 0.45rem',
+                  borderRadius: '8px',
+                  background: activeTab === 'tickets' ? 'rgba(255, 255, 255, 0.22)' : 'var(--muted)',
+                  color: activeTab === 'tickets' ? '#ffffff' : 'var(--muted-foreground)',
+                  fontWeight: 600
+                }}>
+                  0
+                </span>
+              )}
+            </button>
+
+            {/* Opción 4: Constancia PDF */}
+            <button
+              onClick={() => setActiveTab('constancia')}
+              className={`sidemenu-nav-item ${activeTab === 'constancia' ? 'active' : ''}`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                <div className="sidemenu-icon-wrapper">
+                  <FileText size={17} />
+                </div>
+                <span>Constancia PDF</span>
+              </div>
               <span style={{
                 fontSize: '0.68rem',
                 padding: '0.15rem 0.45rem',
                 borderRadius: '8px',
-                background: activeTab === 'perfil' ? 'var(--primary-foreground)' : 'var(--muted)',
-                color: activeTab === 'perfil' ? 'var(--primary)' : 'var(--muted-foreground)',
-                fontWeight: 600
+                background: activeTab === 'constancia' ? 'rgba(255, 255, 255, 0.22)' : 'var(--muted)',
+                color: activeTab === 'constancia' ? '#ffffff' : 'var(--muted-foreground)',
+                fontWeight: 600,
+                border: activeTab === 'constancia' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent'
               }}>
-                Foto
+                PDF
               </span>
-            )}
-          </button>
-        </nav>
+            </button>
 
-        {/* Resumen de Métricas / Estado */}
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          <div style={{ fontSize: '0.74rem', color: 'var(--muted-foreground)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-              <span>Días Disponibles:</span>
-              <strong style={{ color: diasDisponibles > 0 ? '#15803d' : 'var(--foreground)' }}>
-                {diasDisponibles} días
-              </strong>
+            {/* Opción 5: Mi Perfil Laboral */}
+            <button
+              onClick={() => setActiveTab('perfil')}
+              className={`sidemenu-nav-item ${activeTab === 'perfil' ? 'active' : ''}`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                <div className="sidemenu-icon-wrapper">
+                  <User size={17} />
+                </div>
+                <span>Mi Perfil Laboral</span>
+              </div>
+              {perfil?.foto_perfil_url ? (
+                <img
+                  src={perfil.foto_perfil_url}
+                  alt="Avatar"
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: activeTab === 'perfil' ? '2px solid rgba(255, 255, 255, 0.8)' : '1px solid var(--border)'
+                  }}
+                />
+              ) : (
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '0.15rem 0.45rem',
+                  borderRadius: '8px',
+                  background: activeTab === 'perfil' ? 'rgba(255, 255, 255, 0.22)' : 'var(--muted)',
+                  color: activeTab === 'perfil' ? '#ffffff' : 'var(--muted-foreground)',
+                  fontWeight: 600,
+                  border: activeTab === 'perfil' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent'
+                }}>
+                  Foto
+                </span>
+              )}
+            </button>
+          </nav>
+        </div>
+
+        {/* Resumen de Métricas / Estado al fondo del Sidemenu */}
+        <div style={{ borderTop: '1px solid var(--sidebar-border)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: 'auto' }}>
+          <div style={{
+            background: 'var(--card)',
+            padding: '0.85rem',
+            borderRadius: 'var(--radius)',
+            border: '1px solid var(--border)',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.55rem' }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted-foreground)' }}>
+                Mi Estado
+              </span>
+              <span style={{ fontSize: '0.68rem', color: '#15803d', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></span>
+                Activo
+              </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Tickets Activos:</span>
-              <strong style={{ color: ticketsAbiertosCount > 0 ? '#1d4ed8' : 'var(--foreground)' }}>
-                {ticketsAbiertosCount} pendientes
-              </strong>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              <div style={{ background: 'var(--background)', padding: '0.5rem 0.4rem', borderRadius: 'calc(var(--radius) - 4px)', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.67rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.15rem' }}>Vacaciones</span>
+                <strong style={{ fontSize: '0.92rem', color: diasDisponibles > 0 ? '#15803d' : 'var(--foreground)' }}>
+                  {diasDisponibles}d
+                </strong>
+              </div>
+              <div style={{ background: 'var(--background)', padding: '0.5rem 0.4rem', borderRadius: 'calc(var(--radius) - 4px)', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.67rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.15rem' }}>Tickets</span>
+                <strong style={{ fontSize: '0.92rem', color: ticketsAbiertosCount > 0 ? '#1d4ed8' : 'var(--foreground)' }}>
+                  {ticketsAbiertosCount}
+                </strong>
+              </div>
             </div>
           </div>
 
           <button
             onClick={fetchData}
             className="btn-secondary"
-            style={{ width: '100%', padding: '0.45rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginTop: '0.3rem' }}
+            style={{ width: '100%', padding: '0.55rem', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.02)' }}
           >
             <RefreshCw size={13} className={loading ? 'spin' : ''} />
             <span>Sincronizar datos</span>
@@ -445,19 +486,64 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
         </div>
       </aside>
 
-      {/* Área Principal de Contenido del Colaborador */}
-      <main className="glass-panel" style={{ padding: '1.5rem', minHeight: '640px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {/* Encabezado dinámico de la sección activa */}
-        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Contenedor Principal a la derecha con Sticky Topbar */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh', background: 'var(--background)' }}>
+        <header
+          style={{
+            height: '68px',
+            position: 'sticky',
+            top: 0,
+            zIndex: 30,
+            background: 'var(--card)',
+            borderBottom: '1px solid var(--border)',
+            padding: '0 2rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
           <div>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--foreground)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
+              <span>Portal Colaborador</span>
+              <span>/</span>
+              <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                {activeTab === 'chat' && 'Asistente Virtual'}
+                {activeTab === 'calendario' && 'Horario & Calendario'}
+                {activeTab === 'tickets' && 'Mis Tickets'}
+                {activeTab === 'constancia' && 'Constancia Laboral'}
+                {activeTab === 'perfil' && 'Mi Perfil Laboral'}
+              </span>
+            </div>
+            <h1 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--foreground)', margin: 0, lineHeight: 1.2 }}>
               {activeTab === 'chat' && 'Asistente Conversacional & Autoservicio con IA'}
               {activeTab === 'perfil' && 'Mi Expediente Laboral & Fotografía de Perfil'}
               {activeTab === 'calendario' && 'Horario Oficial de Trabajo y Calendario de Actividades'}
               {activeTab === 'tickets' && 'Centro Individual de Gestión y Seguimiento de Tickets'}
               {activeTab === 'constancia' && 'Emisión de Constancia Laboral Membretada'}
-            </h2>
-            <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
+            </h1>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <UserAuthHeader />
+            {toggleDarkMode && (
+              <button
+                className="btn-secondary"
+                onClick={toggleDarkMode}
+                title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+              >
+                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+                <span>{isDarkMode ? 'Claro' : 'Oscuro'}</span>
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Área Principal de Contenido del Colaborador */}
+        <main style={{ flex: 1, padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '1600px', width: '100%', margin: '0 auto' }}>
+          {/* Subtítulo contextual de la pestaña */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.65rem' }}>
+            <p style={{ fontSize: '0.86rem', color: 'var(--muted-foreground)', margin: 0 }}>
               {activeTab === 'chat' && 'Interactúa con el agente conversacional inteligente para resolver dudas o tramitar solicitudes.'}
               {activeTab === 'perfil' && 'Consulta tu información oficial, antigüedad calculada y administra tu fotografía institucional.'}
               {activeTab === 'calendario' && 'Visualiza tu jornada laboral registrada, revisa tus días de descanso o vacaciones y administra tus tareas y notas personales.'}
@@ -465,11 +551,10 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
               {activeTab === 'constancia' && 'Genera y descarga en tiempo real tu constancia laboral en formato PDF oficial.'}
             </p>
           </div>
-        </div>
 
         {/* Tab 1: Asistente Virtual Conversacional */}
         {activeTab === 'chat' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <ChatWidget onRefreshData={fetchData} />
           </div>
         )}
@@ -879,7 +964,13 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData }) 
             </div>
           </div>
         )}
-      </main>
+        </main>
+
+        {/* Footer */}
+        <footer style={{ borderTop: '1px solid var(--border)', padding: '0.9rem 2rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--muted-foreground)', background: 'var(--card)' }}>
+          © 2026 PluriOne S.A. de C.V. (Develop Talent & Technology) — Autenticación Segura con Auth0 SSO & RBAC.
+        </footer>
+      </div>
     </div>
   )
 }

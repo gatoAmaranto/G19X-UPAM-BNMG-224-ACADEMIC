@@ -3,11 +3,12 @@ import {
   CheckCircle, XCircle, MessageSquare, Plus, BookOpen, Calendar,
   Ticket, AlertCircle, RefreshCw, Upload, FileText, Briefcase,
   User, Camera, Trash2, Shield, Mail, Award, Check,
-  ChevronDown, ChevronUp, Search, Filter, Users, CalendarDays
+  ChevronDown, ChevronUp, Search, Filter, Users, CalendarDays,
+  Sun, Moon, Bot
 } from 'lucide-react'
 import axios from 'axios'
 import CalendarioLaboral from './CalendarioLaboral.jsx'
-
+import UserAuthHeader from './UserAuthHeader.jsx'
 
 const API_BASE = 'http://localhost:8000/api/hr/admin'
 
@@ -19,7 +20,7 @@ const resolveAvatarUrl = (url) => {
   return `http://localhost:8000${url.startsWith('/') ? '' : '/'}${url}`
 }
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
   const [activeTab, setActiveTab] = useState('vacaciones')
   const [vacaciones, setVacaciones] = useState([])
   const [tickets, setTickets] = useState([])
@@ -363,247 +364,299 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '270px 1fr', gap: '1.5rem', alignItems: 'start' }}>
-      {/* Sidenavbar Lateral de Recursos Humanos */}
+    <div style={{ display: 'flex', width: '100%', minHeight: '100vh', background: 'var(--background)', color: 'var(--foreground)' }}>
+      {/* Sidemenu Completo Lateral de Recursos Humanos */}
       <aside
-        className="glass-panel"
         style={{
-          padding: '1.25rem',
+          width: '280px',
+          minWidth: '280px',
+          height: '100vh',
+          position: 'sticky',
+          top: 0,
+          background: 'var(--sidebar)',
+          borderRight: '1px solid var(--sidebar-border)',
+          boxShadow: '4px 0 20px rgba(0, 0, 0, 0.03)',
+          color: 'var(--sidebar-foreground)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.25rem',
-          position: 'sticky',
-          top: '1rem'
+          justifyContent: 'space-between',
+          padding: '1.25rem 1rem',
+          zIndex: 40,
+          overflowY: 'auto'
         }}
       >
-        {/* Encabezado del Menú Lateral */}
-        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.85rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-            <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.4rem', borderRadius: 'var(--radius)', display: 'flex' }}>
-              <Briefcase size={18} />
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+          {/* Tarjeta de Marca y Portal RH */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              padding: '0.75rem 0.85rem',
+              background: 'var(--card)',
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
+              marginBottom: '1.25rem'
+            }}
+          >
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: 'calc(var(--radius) - 4px)',
+              background: 'var(--background)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '4px',
+              border: '1px solid var(--border)',
+              flexShrink: 0
+            }}>
+              <img
+                src="/icon-512.png"
+                alt="Logo Develop Talent & Technology"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  if (e.currentTarget.nextSibling) {
+                    e.currentTarget.nextSibling.style.display = 'flex';
+                  }
+                }}
+                style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
+              />
+              <div style={{ display: 'none', color: 'var(--primary)', alignItems: 'center', justifyContent: 'center' }}>
+                <Briefcase size={20} />
+              </div>
             </div>
-            <div>
-              <h3 style={{ fontSize: '0.96rem', fontWeight: 700, color: 'var(--foreground)' }}>Backoffice RH</h3>
-              <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)' }}>Gestión Institucional</span>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h2 style={{ fontSize: '0.94rem', fontWeight: 800, color: 'var(--foreground)', margin: 0, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Develop Talent
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }}></span>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  color: 'var(--muted-foreground)'
+                }}>
+                  Backoffice RH
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Enlaces de Navegación del Sidenavbar */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-          {/* Opción 1: Vacaciones */}
-          <button
-            onClick={() => setActiveTab('vacaciones')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'vacaciones' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'vacaciones' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'vacaciones' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'vacaciones' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <Calendar size={18} />
-              <span>Vacaciones</span>
-            </div>
-            {vacacionesPendientes.length > 0 && (
-              <span style={{
-                fontSize: '0.7rem',
-                padding: '0.15rem 0.45rem',
-                borderRadius: '10px',
-                background: activeTab === 'vacaciones' ? 'var(--primary-foreground)' : '#fef3c7',
-                color: activeTab === 'vacaciones' ? 'var(--primary)' : '#b45309',
-                fontWeight: 700
-              }}>
-                {vacacionesPendientes.length}
-              </span>
-            )}
-          </button>
-
-          {/* Opción 2: Tickets de Soporte */}
-          <button
-            onClick={() => setActiveTab('tickets')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'tickets' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'tickets' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'tickets' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'tickets' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <Ticket size={18} />
-              <span>Mesa de Tickets</span>
-            </div>
-            {ticketsAbiertos.length > 0 && (
-              <span style={{
-                fontSize: '0.7rem',
-                padding: '0.15rem 0.45rem',
-                borderRadius: '10px',
-                background: activeTab === 'tickets' ? 'var(--primary-foreground)' : '#dbeafe',
-                color: activeTab === 'tickets' ? 'var(--primary)' : '#1d4ed8',
-                fontWeight: 700
-              }}>
-                {ticketsAbiertos.length}
-              </span>
-            )}
-          </button>
-
-          {/* Opción 3: Base de Conocimiento RAG */}
-          <button
-            onClick={() => setActiveTab('faq')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'faq' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'faq' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'faq' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'faq' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <BookOpen size={18} />
-              <span>Base RAG & FAQs</span>
-            </div>
-            <span style={{
-              fontSize: '0.7rem',
-              padding: '0.15rem 0.45rem',
-              borderRadius: '10px',
-              background: activeTab === 'faq' ? 'var(--primary-foreground)' : 'var(--muted)',
-              color: activeTab === 'faq' ? 'var(--primary)' : 'var(--muted-foreground)',
-              fontWeight: 600
-            }}>
-              {faqs.length}
+          {/* Sección de Menú Institucional */}
+          <div style={{ padding: '0 0.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.67rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--muted-foreground)' }}>
+              Gestión RH
             </span>
-          </button>
-
-          {/* Opción 4: Horario & Calendario RH */}
-          <button
-            onClick={() => setActiveTab('calendario')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'calendario' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'calendario' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'calendario' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'calendario' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <CalendarDays size={18} />
-              <span>Horario & Calendario</span>
-            </div>
-            <span style={{
-              fontSize: '0.68rem',
-              padding: '0.15rem 0.45rem',
-              borderRadius: '8px',
-              background: activeTab === 'calendario' ? 'var(--primary-foreground)' : 'var(--muted)',
-              color: activeTab === 'calendario' ? 'var(--primary)' : 'var(--muted-foreground)',
-              fontWeight: 600
-            }}>
-              {perfilRH?.horario_entrada || '09:00'}
+            <span style={{ fontSize: '0.65rem', background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.08rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>
+              5 módulos
             </span>
-          </button>
+          </div>
 
-          {/* Opción 5: Mi Perfil RH */}
-          <button
-            onClick={() => setActiveTab('perfil')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.7rem 0.85rem',
-              borderRadius: 'var(--radius)',
-              border: activeTab === 'perfil' ? '1px solid var(--primary)' : '1px solid transparent',
-              background: activeTab === 'perfil' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'perfil' ? 'var(--primary-foreground)' : 'var(--foreground)',
-              cursor: 'pointer',
-              fontSize: '0.86rem',
-              fontWeight: activeTab === 'perfil' ? 600 : 500,
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <User size={18} />
-              <span>Mi Perfil RH</span>
-            </div>
-            {perfilRH?.foto_perfil_url ? (
-              <img
-                src={perfilRH.foto_perfil_url}
-                alt="Avatar RH"
-                style={{
-                  width: '22px',
-                  height: '22px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: activeTab === 'perfil' ? '1px solid var(--primary-foreground)' : '1px solid var(--border)'
-                }}
-              />
-            ) : (
+          {/* Enlaces de Navegación del Sidemenu */}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+            {/* Opción 1: Vacaciones */}
+            <button
+              onClick={() => setActiveTab('vacaciones')}
+              className={`sidemenu-nav-item ${activeTab === 'vacaciones' ? 'active' : ''}`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                <div className="sidemenu-icon-wrapper">
+                  <Calendar size={17} />
+                </div>
+                <span>Vacaciones</span>
+              </div>
+              {vacacionesPendientes.length > 0 ? (
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '10px',
+                  background: activeTab === 'vacaciones' ? 'rgba(255, 255, 255, 0.22)' : '#fef3c7',
+                  color: activeTab === 'vacaciones' ? '#ffffff' : '#b45309',
+                  fontWeight: 700,
+                  border: activeTab === 'vacaciones' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent'
+                }}>
+                  {vacacionesPendientes.length}
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '0.15rem 0.45rem',
+                  borderRadius: '8px',
+                  background: activeTab === 'vacaciones' ? 'rgba(255, 255, 255, 0.22)' : 'var(--muted)',
+                  color: activeTab === 'vacaciones' ? '#ffffff' : 'var(--muted-foreground)',
+                  fontWeight: 600
+                }}>
+                  0
+                </span>
+              )}
+            </button>
+
+            {/* Opción 2: Mesa de Tickets */}
+            <button
+              onClick={() => setActiveTab('tickets')}
+              className={`sidemenu-nav-item ${activeTab === 'tickets' ? 'active' : ''}`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                <div className="sidemenu-icon-wrapper">
+                  <Ticket size={17} />
+                </div>
+                <span>Mesa de Tickets</span>
+              </div>
+              {ticketsAbiertos.length > 0 ? (
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '0.15rem 0.5rem',
+                  borderRadius: '10px',
+                  background: activeTab === 'tickets' ? 'rgba(255, 255, 255, 0.22)' : '#dbeafe',
+                  color: activeTab === 'tickets' ? '#ffffff' : '#1d4ed8',
+                  fontWeight: 700,
+                  border: activeTab === 'tickets' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent'
+                }}>
+                  {ticketsAbiertos.length}
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '0.15rem 0.45rem',
+                  borderRadius: '8px',
+                  background: activeTab === 'tickets' ? 'rgba(255, 255, 255, 0.22)' : 'var(--muted)',
+                  color: activeTab === 'tickets' ? '#ffffff' : 'var(--muted-foreground)',
+                  fontWeight: 600
+                }}>
+                  0
+                </span>
+              )}
+            </button>
+
+            {/* Opción 3: Base de Conocimiento RAG */}
+            <button
+              onClick={() => setActiveTab('faq')}
+              className={`sidemenu-nav-item ${activeTab === 'faq' ? 'active' : ''}`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                <div className="sidemenu-icon-wrapper">
+                  <BookOpen size={17} />
+                </div>
+                <span>Base RAG & FAQs</span>
+              </div>
               <span style={{
                 fontSize: '0.68rem',
-                padding: '0.15rem 0.4rem',
-                borderRadius: '8px',
-                background: activeTab === 'perfil' ? 'var(--primary-foreground)' : 'var(--muted)',
-                color: activeTab === 'perfil' ? 'var(--primary)' : 'var(--muted-foreground)',
-                fontWeight: 600
+                padding: '0.15rem 0.5rem',
+                borderRadius: '10px',
+                background: activeTab === 'faq' ? 'rgba(255, 255, 255, 0.22)' : 'var(--accent)',
+                color: activeTab === 'faq' ? '#ffffff' : 'var(--accent-foreground)',
+                fontWeight: 700,
+                border: activeTab === 'faq' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent'
               }}>
-                RH
+                {faqs.length}
               </span>
-            )}
-          </button>
-        </nav>
+            </button>
 
-        {/* Resumen de Métricas / Estado */}
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          <div style={{ fontSize: '0.74rem', color: 'var(--muted-foreground)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-              <span>Pendientes de Revisión:</span>
-              <strong style={{ color: (vacacionesPendientes.length + ticketsAbiertos.length) > 0 ? '#b45309' : 'var(--foreground)' }}>
-                {vacacionesPendientes.length + ticketsAbiertos.length}
-              </strong>
+            {/* Opción 4: Horario & Calendario RH */}
+            <button
+              onClick={() => setActiveTab('calendario')}
+              className={`sidemenu-nav-item ${activeTab === 'calendario' ? 'active' : ''}`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                <div className="sidemenu-icon-wrapper">
+                  <CalendarDays size={17} />
+                </div>
+                <span>Horario & Calendario</span>
+              </div>
+              <span style={{
+                fontSize: '0.68rem',
+                padding: '0.15rem 0.45rem',
+                borderRadius: '8px',
+                background: activeTab === 'calendario' ? 'rgba(255, 255, 255, 0.22)' : 'var(--muted)',
+                color: activeTab === 'calendario' ? '#ffffff' : 'var(--muted-foreground)',
+                fontWeight: 600,
+                border: activeTab === 'calendario' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent'
+              }}>
+                {perfilRH?.horario_entrada || '09:00'}
+              </span>
+            </button>
+
+            {/* Opción 5: Mi Perfil RH */}
+            <button
+              onClick={() => setActiveTab('perfil')}
+              className={`sidemenu-nav-item ${activeTab === 'perfil' ? 'active' : ''}`}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                <div className="sidemenu-icon-wrapper">
+                  <User size={17} />
+                </div>
+                <span>Mi Perfil RH</span>
+              </div>
+              {perfilRH?.foto_perfil_url ? (
+                <img
+                  src={perfilRH.foto_perfil_url}
+                  alt="Avatar RH"
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: activeTab === 'perfil' ? '2px solid rgba(255, 255, 255, 0.8)' : '1px solid var(--border)'
+                  }}
+                />
+              ) : (
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '0.15rem 0.4rem',
+                  borderRadius: '8px',
+                  background: activeTab === 'perfil' ? 'rgba(255, 255, 255, 0.22)' : 'var(--muted)',
+                  color: activeTab === 'perfil' ? '#ffffff' : 'var(--muted-foreground)',
+                  fontWeight: 600,
+                  border: activeTab === 'perfil' ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid transparent'
+                }}>
+                  RH
+                </span>
+              )}
+            </button>
+          </nav>
+        </div>
+
+        {/* Resumen de Métricas / Estado al fondo del Sidemenu */}
+        <div style={{ borderTop: '1px solid var(--sidebar-border)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: 'auto' }}>
+          <div style={{
+            background: 'var(--card)',
+            padding: '0.85rem',
+            borderRadius: 'var(--radius)',
+            border: '1px solid var(--border)',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.55rem' }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--muted-foreground)' }}>
+                Operación RH
+              </span>
+              <span style={{ fontSize: '0.68rem', color: '#b45309', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }}></span>
+                En línea
+              </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Documentos RAG:</span>
-              <strong>{faqs.filter(f => f.activa).length} activos</strong>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              <div style={{ background: 'var(--background)', padding: '0.5rem 0.4rem', borderRadius: 'calc(var(--radius) - 4px)', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.67rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.15rem' }}>Pendientes</span>
+                <strong style={{ fontSize: '0.92rem', color: (vacacionesPendientes.length + ticketsAbiertos.length) > 0 ? '#b45309' : 'var(--foreground)' }}>
+                  {vacacionesPendientes.length + ticketsAbiertos.length}
+                </strong>
+              </div>
+              <div style={{ background: 'var(--background)', padding: '0.5rem 0.4rem', borderRadius: 'calc(var(--radius) - 4px)', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.67rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '0.15rem' }}>FAQs RAG</span>
+                <strong style={{ fontSize: '0.92rem', color: 'var(--foreground)' }}>
+                  {faqs.filter(f => f.activa).length}
+                </strong>
+              </div>
             </div>
           </div>
 
           <button
             onClick={fetchAdminData}
             className="btn-secondary"
-            style={{ width: '100%', padding: '0.45rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginTop: '0.3rem' }}
+            style={{ width: '100%', padding: '0.55rem', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.02)' }}
           >
             <RefreshCw size={13} className={loading ? 'spin' : ''} />
             <span>Sincronizar datos</span>
@@ -611,19 +664,64 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      {/* Área Principal de Contenido a la derecha */}
-      <main className="glass-panel" style={{ padding: '1.5rem', minHeight: '620px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {/* Encabezado dinámico de la sección */}
-        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Contenedor Principal a la derecha con Sticky Topbar */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh', background: 'var(--background)' }}>
+        <header
+          style={{
+            height: '68px',
+            position: 'sticky',
+            top: 0,
+            zIndex: 30,
+            background: 'var(--card)',
+            borderBottom: '1px solid var(--border)',
+            padding: '0 2rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
           <div>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--foreground)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
+              <span>Backoffice RH</span>
+              <span>/</span>
+              <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                {activeTab === 'vacaciones' && 'Vacaciones'}
+                {activeTab === 'tickets' && 'Mesa de Tickets'}
+                {activeTab === 'faq' && 'Base RAG & FAQs'}
+                {activeTab === 'calendario' && 'Horario & Calendario'}
+                {activeTab === 'perfil' && 'Mi Perfil RH'}
+              </span>
+            </div>
+            <h1 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--foreground)', margin: 0, lineHeight: 1.2 }}>
               {activeTab === 'vacaciones' && 'Aprobación y Gestión de Vacaciones'}
               {activeTab === 'tickets' && 'Mesa de Ayuda y Atención de Tickets'}
               {activeTab === 'faq' && 'Entrenamiento de Base de Conocimiento RAG'}
               {activeTab === 'calendario' && 'Horario Institucional y Calendario de Recursos Humanos'}
               {activeTab === 'perfil' && 'Perfil Institucional y Credenciales de Recursos Humanos'}
-            </h2>
-            <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
+            </h1>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <UserAuthHeader />
+            {toggleDarkMode && (
+              <button
+                className="btn-secondary"
+                onClick={toggleDarkMode}
+                title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+              >
+                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+                <span>{isDarkMode ? 'Claro' : 'Oscuro'}</span>
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Área Principal de Contenido a la derecha */}
+        <main style={{ flex: 1, padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '1600px', width: '100%', margin: '0 auto' }}>
+          {/* Subtítulo contextual de la pestaña */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.65rem' }}>
+            <p style={{ fontSize: '0.86rem', color: 'var(--muted-foreground)', margin: 0 }}>
               {activeTab === 'vacaciones' && 'Revisa y dictamina las solicitudes de descanso vacacional enviadas por los colaboradores.'}
               {activeTab === 'tickets' && 'Resuelve consultas y solicitudes especiales canalizadas por el agente conversacional.'}
               {activeTab === 'faq' && 'Carga reglamentos y actualiza preguntas frecuentes para alimentar el modelo de IA.'}
@@ -631,9 +729,6 @@ export default function AdminDashboard() {
               {activeTab === 'perfil' && 'Expediente del funcionario de RH, fotografía institucional y auditoría de permisos asignados.'}
             </p>
           </div>
-        </div>
-
-
       {/* Tab 1: Solicitudes de Vacaciones Agrupadas por Colaborador */}
       {activeTab === 'vacaciones' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -1661,7 +1756,13 @@ export default function AdminDashboard() {
         </div>
       )}
       </main>
+
+      {/* Footer */}
+      <footer style={{ borderTop: '1px solid var(--border)', padding: '0.9rem 2rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--muted-foreground)', background: 'var(--card)' }}>
+        © 2026 PluriOne S.A. de C.V. (Develop Talent & Technology) — Autenticación Segura con Auth0 SSO & RBAC.
+      </footer>
     </div>
-  )
+  </div>
+)
 }
 

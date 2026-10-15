@@ -189,7 +189,7 @@ export default function ChatWidget({ onRefreshData }) {
   }
 
   return (
-    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', height: '620px', overflow: 'hidden' }}>
+    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 225px)', height: '100%', overflow: 'hidden' }}>
       {/* Modales */}
       <VacacionesModal
         isOpen={modalVacacionesOpen}
@@ -347,11 +347,14 @@ export default function ChatWidget({ onRefreshData }) {
       </div>
 
       {/* Quick Action Chips */}
-      <div style={{ padding: '0.5rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--card)', display: 'flex', gap: '0.5rem', overflowX: 'auto' }}>
+      <div style={{ padding: '0.65rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--card)', display: 'flex', gap: '0.5rem', overflowX: 'auto', flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--muted-foreground)', marginRight: '0.2rem' }}>
+          Accesos rápidos:
+        </span>
         <button
           onClick={() => setModalVacacionesOpen(true)}
           className="btn-secondary"
-          style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
+          style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
         >
           <Calendar size={14} />
           Solicitar Vacaciones
@@ -360,7 +363,7 @@ export default function ChatWidget({ onRefreshData }) {
         <button
           onClick={() => handleSendMessage('Generar mi constancia laboral')}
           className="btn-secondary"
-          style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
+          style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
         >
           <Download size={14} />
           Constancia PDF
@@ -369,7 +372,7 @@ export default function ChatWidget({ onRefreshData }) {
         <button
           onClick={() => handleSendMessage('¿Cuál es el horario laboral oficial?')}
           className="btn-secondary"
-          style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
+          style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
         >
           <HelpCircle size={14} />
           Horario Laboral
@@ -378,7 +381,7 @@ export default function ChatWidget({ onRefreshData }) {
         <button
           onClick={() => setModalTicketOpen(true)}
           className="btn-secondary"
-          style={{ fontSize: '0.78rem', padding: '0.35rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
+          style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
         >
           <Ticket size={14} />
           Crear Ticket
@@ -395,21 +398,22 @@ export default function ChatWidget({ onRefreshData }) {
           rows={1}
           style={{
             flex: 1,
-            padding: '0.75rem 1rem',
+            padding: '0.85rem 1.15rem',
             borderRadius: 'var(--radius)',
             border: '1px solid var(--border)',
             background: 'var(--input)',
             color: 'var(--foreground)',
             outline: 'none',
             resize: 'none',
-            fontSize: '0.9rem'
+            fontSize: '0.94rem',
+            lineHeight: 1.4
           }}
         />
         <button
           onClick={() => handleSendMessage()}
           disabled={loading || !inputText.trim()}
           className="btn-primary"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', opacity: loading || !inputText.trim() ? 0.6 : 1 }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.85rem 1.4rem', fontSize: '0.92rem', fontWeight: 600, opacity: loading || !inputText.trim() ? 0.6 : 1 }}
         >
           <span>Enviar</span>
           <Send size={16} />
