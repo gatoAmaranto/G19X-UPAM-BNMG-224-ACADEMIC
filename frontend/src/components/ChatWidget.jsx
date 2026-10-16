@@ -16,6 +16,119 @@ const MENSAJE_BIENVENIDA = {
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
+function renderInlineMarkdown(text) {
+  if (!text) return null
+  const tokens = String(text).split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*\n]+\*)/g)
+  return tokens.map((token, idx) => {
+    if (token.startsWith('**') && token.endsWith('**') && token.length > 4) {
+      return <strong key={idx} style={{ fontWeight: 600 }}>{token.slice(2, -2)}</strong>
+    }
+    if (token.startsWith('`') && token.endsWith('`') && token.length > 2) {
+      return (
+        <code
+          key={idx}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            background: 'rgba(0, 0, 0, 0.08)',
+            padding: '0.1rem 0.35rem',
+            borderRadius: '4px',
+            fontSize: '0.86em'
+          }}
+        >
+          {token.slice(1, -1)}
+        </code>
+      )
+    }
+    if (token.startsWith('*') && token.endsWith('*') && token.length > 2) {
+      return <em key={idx}>{token.slice(1, -1)}</em>
+    }
+    return token
+  })
+}
+
+function renderMarkdownMessage(text) {
+  if (!text) return null
+  const lines = String(text).split('\n')
+  const elements = []
+  let listItems = []
+  let listType = null
+
+  const flushList = (keyPrefix) => {
+    if (listItems.length === 0) return
+    if (listType === 'ol') {
+      elements.push(
+        <ol
+          key={`list-${keyPrefix}`}
+          style={{ margin: '0.35rem 0', paddingLeft: '1.35rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}
+        >
+          {listItems.map((item, i) => (
+            <li key={i} style={{ lineHeight: 1.5 }}>{renderInlineMarkdown(item)}</li>
+          ))}
+        </ol>
+      )
+    } else {
+      elements.push(
+        <ul
+          key={`list-${keyPrefix}`}
+          style={{ margin: '0.35rem 0', paddingLeft: '1.35rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}
+        >
+          {listItems.map((item, i) => (
+            <li key={i} style={{ lineHeight: 1.5 }}>{renderInlineMarkdown(item)}</li>
+          ))}
+        </ul>
+      )
+    }
+    listItems = []
+    listType = null
+  }
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim()
+
+    const bulletMatch = trimmed.match(/^([*\-•])\s+(.*)$/)
+    if (bulletMatch) {
+      if (listType && listType !== 'ul') flushList(idx)
+      listType = 'ul'
+      listItems.push(bulletMatch[2])
+      return
+    }
+
+    const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/)
+    if (orderedMatch) {
+      if (listType && listType !== 'ol') flushList(idx)
+      listType = 'ol'
+      listItems.push(orderedMatch[2])
+      return
+    }
+
+    flushList(idx)
+
+    if (!trimmed) {
+      elements.push(<div key={`spacer-${idx}`} style={{ height: '0.45rem' }} />)
+      return
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,4})\s+(.*)$/)
+    if (headingMatch) {
+      elements.push(
+        <div key={`h-${idx}`} style={{ fontWeight: 700, marginTop: '0.4rem', marginBottom: '0.2rem', lineHeight: 1.4 }}>
+          {renderInlineMarkdown(headingMatch[2])}
+        </div>
+      )
+      return
+    }
+
+    elements.push(
+      <div key={`p-${idx}`} style={{ lineHeight: 1.5 }}>
+        {renderInlineMarkdown(line)}
+      </div>
+    )
+  })
+
+  flushList('end')
+  return elements
+}
+
 export default function ChatWidget({ onRefreshData, perfil }) {
   const [messages, setMessages] = useState([MENSAJE_BIENVENIDA])
   const [inputText, setInputText] = useState('')
@@ -268,11 +381,10 @@ export default function ChatWidget({ onRefreshData, perfil }) {
                 borderBottomRightRadius: msg.sender === 'user' ? '2px' : '12px',
                 borderBottomLeftRadius: msg.sender === 'bot' ? '2px' : '12px',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                fontSize: '0.92rem',
-                whiteSpace: 'pre-line'
+                fontSize: '0.92rem'
               }}
             >
-              <div>{msg.text}</div>
+              <div>{renderMarkdownMessage(msg.text)}</div>
 
               {/* Bot Action Cards */}
               {msg.actionType === 'ABRIR_FORMULARIO_VACACIONES' && (
