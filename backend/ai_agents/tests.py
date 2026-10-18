@@ -162,3 +162,20 @@ class ChatPersistenciaTests(TestCase):
         self.assertNotEqual(resultado['tipo_accion'], 'TICKET_CREADO')
         self.assertEqual(TicketRH.objects.filter(empleado=self.empleado).count(), 1)
 
+    def test_pregunta_con_palabra_problema_no_crea_ticket(self):
+        m1 = MensajeChat.objects.create(
+            empleado=self.empleado,
+            remitente='user',
+            texto='oye quiero abrir un ticket'
+        )
+        m2 = MensajeChat.objects.create(
+            empleado=self.empleado,
+            remitente='bot',
+            texto='Por favor comparteme asunto y descripcion para crear el ticket.'
+        )
+        mensaje = "una pregunta hay problema si como en horario laboral"
+        resultado = procesar_mensaje_agente(mensaje, self.empleado, historial=[m1, m2])
+
+        self.assertNotEqual(resultado['tipo_accion'], 'TICKET_CREADO')
+        self.assertEqual(TicketRH.objects.filter(empleado=self.empleado).count(), 0)
+
