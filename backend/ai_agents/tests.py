@@ -147,3 +147,18 @@ class ChatPersistenciaTests(TestCase):
         self.assertEqual(parsear_fecha_flexible('20/11/2026'), date(2026, 11, 20))
         self.assertEqual(parsear_fecha_flexible('20-11-2026'), date(2026, 11, 20))
         self.assertEqual(parsear_fecha_flexible('15 de diciembre de 2026'), date(2026, 12, 15))
+
+    def test_consultar_tickets_no_crea_nuevo_ticket(self):
+        TicketRH.objects.create(
+            empleado=self.empleado,
+            asunto='Cambio de horario',
+            descripcion='Solicitud previa resuelta',
+            estado='RESUELTO'
+        )
+        mensaje = "puedes decirme cuantos tickets tengo abiertos?"
+        resultado = procesar_mensaje_agente(mensaje, self.empleado)
+
+        # No debe crear un nuevo ticket
+        self.assertNotEqual(resultado['tipo_accion'], 'TICKET_CREADO')
+        self.assertEqual(TicketRH.objects.filter(empleado=self.empleado).count(), 1)
+
