@@ -90,9 +90,11 @@ class ChatPersistenciaTests(TestCase):
         self.assertIsNotNone(sol)
         self.assertEqual(sol.dias_solicitados, 5)
 
-        # Verificar descuento de dias
+        # Verificar que la solicitud queda PENDIENTE y el descuento se reserva para la aprobacion de RH
+        self.assertEqual(sol.estado, 'PENDIENTE')
         self.empleado.refresh_from_db()
-        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 5)  # 10 - 5 = 5
+        self.assertEqual(self.empleado.dias_vacaciones_tomados, 2)
+        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 10)
 
     def test_bloquear_vacaciones_retroactivas(self):
         fecha_pasada_ini = (date.today() - timedelta(days=10)).strftime('%Y-%m-%d')
@@ -178,4 +180,47 @@ class ChatPersistenciaTests(TestCase):
 
         self.assertNotEqual(resultado['tipo_accion'], 'TICKET_CREADO')
         self.assertEqual(TicketRH.objects.filter(empleado=self.empleado).count(), 0)
+
+    def test_pregunta_sobre_constancia_no_genera_documento(self):
+        # Una simple pregunta sobre constancias no debe generar un archivo PDF
+        mensaje = "¿Qué es una constancia laboral y para qué sirve?"
+        resultado = procesar_mensaje_agente(mensaje, self.empleado)
+
+        self.assertNotEqual(resultado['tipo_accion'], 'CONSTANCIA_GENERADA')
+        self.assertEqual(ConstanciaLaboral.objects.filter(empleado=self.empleado).count(), 0)
+
+    def test_flujo_completo_no_doble_descuento_vacaciones(self):
+        hoy = date.today()
+        dias_hasta_lunes = (7 - hoy.weekday()) % 7
+        if dias_hasta_lunes == 0:
+            dias_hasta_lunes = 7
+        proximo_lunes = hoy + timedelta(days=dias_hasta_lunes)
+        proximo_viernes = proximo_lunes + timedelta(days=4)
+
+        f_ini_str = proximo_lunes.strftime('%Y-%m-%d')
+        f_fin_str = proximo_viernes.strftime('%Y-%m-%d')
+
+        # 1. Crear solicitud por el agente conversacional
+        mensaje = f"Quiero solicitar vacaciones del {f_ini_str} al {f_fin_str}"
+        res_agente = procesar_mensaje_agente(mensaje, self.empleado)
+        self.assertEqual(res_agente['tipo_accion'], 'VACACIONES_CREADAS')
+
+        sol = SolicitudVacaciones.objects.filter(empleado=self.empleado, fecha_inicio=proximo_lunes).first()
+        self.assertIsNotNone(sol)
+        self.assertEqual(sol.estado, 'PENDIENTE')
+
+        # El saldo tomado sigue siendo 2 (no se descontó aún)
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.dias_vacaciones_tomados, 2)
+
+        # 2. Aprobar la solicitud desde la vista de Recursos Humanos
+        admin_user = User.objects.create_user(username='admin_test_rh', email='admin@develop.com.mx', is_staff=True)
+        self.client.force_authenticate(user=admin_user)
+        patch_res = self.client.patch(f'/api/hr/admin/vacaciones/{sol.id}/', {'estado': 'APROBADO'})
+        self.assertEqual(patch_res.status_code, 200)
+
+        # Ahora sí se descuentan los 5 días: 2 + 5 = 7 (NO 12 por doble descuento)
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.dias_vacaciones_tomados, 7)
+        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 5)
 

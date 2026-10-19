@@ -13,9 +13,15 @@ else:
     load_dotenv()
 
 # Quick-start development settings - unsuitable for production
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-o9ocfi(f*-55a&&v@_%s2kmprv8)8hd^g8qi&nv01cyen)oa&a')
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    import sys
+    if 'test' in sys.argv:
+        SECRET_KEY = 'django-insecure-test-key-only-for-local-unit-tests-plurione'
+    else:
+        raise ValueError("La variable de entorno SECRET_KEY es obligatoria y no fue configurada.")
 
-DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,backend').split(',') if host.strip()]
 if 'testserver' not in ALLOWED_HOSTS:
@@ -81,7 +87,7 @@ if USE_POSTGRES:
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.getenv('POSTGRES_DB', 'hr_autoservice_db'),
             'USER': os.getenv('POSTGRES_USER', 'hr_user'),
-            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'hr_password_secure_2026'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
             'HOST': DB_HOST,
             'PORT': os.getenv('POSTGRES_PORT', '5432'),
         }
@@ -127,7 +133,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS Settings
-CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     origin.strip() for origin in os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',') if origin.strip()
 ]
@@ -135,7 +140,7 @@ CORS_ALLOWED_ORIGINS = [
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'authentication.auth0.Auth0JSONWebTokenAuthentication',

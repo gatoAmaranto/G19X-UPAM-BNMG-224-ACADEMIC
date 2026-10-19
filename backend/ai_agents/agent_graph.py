@@ -6,6 +6,8 @@ from django.conf import settings
 from hr_services.models import BaseConocimientoRH, SolicitudVacaciones, ConstanciaLaboral, TicketRH
 from hr_services.utils_pdf import generar_pdf_constancia_laboral
 from hr_services.utils_laborales import es_dia_laboral, calcular_dias_laborales
+from hr_services.services import crear_solicitud_vacaciones
+from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 
 MODELOS_GEMINI = [
@@ -67,6 +69,35 @@ def parsear_fecha_flexible(valor):
     return None
 
 
+def es_solicitud_constancia_real(texto_lc):
+    """
+    Determina si el usuario solicita formalmente generar/descargar una constancia laboral,
+    y no solo hace una pregunta informativa sobre ella.
+    """
+    mencion = any(w in texto_lc for w in ['constancia', 'carta laboral', 'constancia de trabajo', 'carta patronal'])
+    if not mencion:
+        return False
+
+    # Si es una pregunta informativa, no generar automáticamente
+    es_pregunta = any(p in texto_lc for p in [
+        '?', '¿', 'que es', 'qué es', 'para que', 'para qué', 'como se', 'cómo se',
+        'donde se', 'dónde se', 'como tramit', 'cómo tramit', 'cuanto tarda', 'cuánto tarda',
+        'tengo una duda', 'una pregunta'
+    ])
+    if es_pregunta:
+        return False
+
+    # Debe contener verbos o intención de emisión/solicitud
+    verbos = [
+        'generar', 'genera', 'genérame', 'generame', 'emitir', 'emite', 'emíteme', 'emiteme',
+        'descargar', 'descarga', 'descárgame', 'descargame', 'tramitar', 'tramita', 'tramítame',
+        'tramitame', 'solicito', 'solicitar', 'puedes generar', 'necesito mi constancia',
+        'quiero mi constancia', 'mi constancia con sueldo', 'mi constancia sin sueldo',
+        'dame mi constancia', 'crear constancia', 'expedir'
+    ]
+    return any(v in texto_lc for v in verbos)
+
+
 def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
     """
     Procesa la consulta del colaborador utilizando el Agente Conversacional con herramientas
@@ -89,68 +120,38 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
         """
         Registra formalmente una solicitud de vacaciones para el colaborador en el sistema.
         Valida que las fechas no sean anteriores a hoy, que correspondan a dias laborales segun
-        su jornada y que tenga saldo suficiente. Descuenta automaticamente los dias habiles.
+        su jornada y que tenga saldo suficiente. La solicitud queda PENDIENTE de aprobacion por RH.
         Parametros:
         - fecha_inicio: Fecha de inicio en formato AAAA-MM-DD (ejemplo: '2026-11-20').
         - fecha_fin: Fecha de fin en formato AAAA-MM-DD (ejemplo: '2026-11-25').
         - motivo: Motivo opcional de la solicitud.
         """
-        f_ini = parsear_fecha_flexible(fecha_inicio)
-        f_fin = parsear_fecha_flexible(fecha_fin)
-
-        if not f_ini or not f_fin:
-            return "Error: No fue posible interpretar las fechas. Por favor especifica fechas validas (ejemplo: '2026-11-20' o '20 de noviembre')."
-
-        if f_ini < hoy:
-            return f"Error: La fecha de inicio ({f_ini.strftime('%Y-%m-%d')}) no puede ser anterior a la fecha actual ({hoy.strftime('%Y-%m-%d')}). No se permiten solicitudes retroactivas."
-
-        if f_fin < f_ini:
-            return f"Error: La fecha de fin ({f_fin.strftime('%Y-%m-%d')}) no puede ser anterior a la fecha de inicio ({f_ini.strftime('%Y-%m-%d')})."
-
-        # Validar si las fechas de inicio y fin caen en dias laborales
-        if not es_dia_laboral(f_ini, empleado.dias_laborales):
-            return f"Error: La fecha de inicio ({f_ini.strftime('%Y-%m-%d')}) no es un dia laboral segun tu horario ({empleado.dias_laborales}). Las vacaciones solo pueden comenzar en dias habiles de trabajo."
-
-        if not es_dia_laboral(f_fin, empleado.dias_laborales):
-            return f"Error: La fecha de fin ({f_fin.strftime('%Y-%m-%d')}) no es un dia laboral segun tu horario ({empleado.dias_laborales}). Las vacaciones solo pueden concluir en dias habiles de trabajo."
-
-        dias_habiles = calcular_dias_laborales(f_ini, f_fin, empleado.dias_laborales)
-        cantidad_dias = len(dias_habiles)
-
-        if cantidad_dias <= 0:
-            return "Error: El periodo indicado no contiene dias laborales habiles segun tu jornada laboral."
-
-        if empleado.dias_vacaciones_disponibles < cantidad_dias:
-            return (f"Error: Saldo insuficiente. Cuentas con {empleado.dias_vacaciones_disponibles} dias disponibles, "
-                    f"pero el periodo del {f_ini} al {f_fin} requiere {cantidad_dias} dias habiles laborales.")
-
-        # Descontar saldo registrando dias tomados
-        empleado.dias_vacaciones_tomados += cantidad_dias
-        empleado.save()
-
-        solicitud = SolicitudVacaciones.objects.create(
-            empleado=empleado,
-            fecha_inicio=f_ini,
-            fecha_fin=f_fin,
-            dias_solicitados=cantidad_dias,
-            motivo=motivo or "Solicitud creada mediante Agente Conversacional",
-            estado='PENDIENTE'
-        )
-
-        accion_detectada['tipo_accion'] = 'VACACIONES_CREADAS'
-        accion_detectada['datos'] = {
-            'id': solicitud.id,
-            'fecha_inicio': f_ini.strftime('%Y-%m-%d'),
-            'fecha_fin': f_fin.strftime('%Y-%m-%d'),
-            'dias_solicitados': cantidad_dias,
-            'saldo_restante': empleado.dias_vacaciones_disponibles,
-            'estado': solicitud.estado,
-            'motivo': solicitud.motivo
-        }
-
-        return (f"Exito: Solicitud de vacaciones #{solicitud.id} registrada correctamente para las fechas "
-                f"{f_ini.strftime('%Y-%m-%d')} al {f_fin.strftime('%Y-%m-%d')} ({cantidad_dias} dias habiles laborales). "
-                f"Tu saldo restante es de {empleado.dias_vacaciones_disponibles} dias. La solicitud esta pendiente de aprobacion por RH.")
+        try:
+            solicitud = crear_solicitud_vacaciones(
+                empleado=empleado,
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                motivo=motivo or "Solicitud creada mediante Agente Conversacional"
+            )
+            accion_detectada['tipo_accion'] = 'VACACIONES_CREADAS'
+            accion_detectada['datos'] = {
+                'id': solicitud.id,
+                'fecha_inicio': solicitud.fecha_inicio.strftime('%Y-%m-%d'),
+                'fecha_fin': solicitud.fecha_fin.strftime('%Y-%m-%d'),
+                'dias_solicitados': solicitud.dias_solicitados,
+                'saldo_restante': empleado.dias_vacaciones_disponibles,
+                'estado': solicitud.estado,
+                'motivo': solicitud.motivo
+            }
+            return (f"Exito: Solicitud de vacaciones #{solicitud.id} registrada correctamente para las fechas "
+                    f"{solicitud.fecha_inicio.strftime('%Y-%m-%d')} al {solicitud.fecha_fin.strftime('%Y-%m-%d')} "
+                    f"({solicitud.dias_solicitados} dias habiles laborales). "
+                    f"Tu saldo actual es de {empleado.dias_vacaciones_disponibles} dias. La solicitud esta pendiente de aprobacion por RH.")
+        except ValidationError as e:
+            msg = e.message if hasattr(e, 'message') else str(e)
+            return f"Error: {msg}"
+        except Exception as e:
+            return f"Error al procesar la solicitud de vacaciones: {str(e)}"
 
     def crear_ticket_soporte(asunto: str, descripcion: str, prioridad: str = "MEDIA") -> str:
         """
@@ -448,13 +449,20 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
     # Fallback inteligente con ejecucion de herramientas y memoria contextual (cuando Gemini no esta disponible)
     # 1. Deteccion de constancia laboral
     if any(w in mensaje_lc for w in ['constancia', 'carta laboral', 'constancia de trabajo', 'carta patronal']):
-        incluir_sueldo = 'sueldo' in mensaje_lc or 'salario' in mensaje_lc
-        generar_constancia_laboral(incluir_sueldo=incluir_sueldo)
-        return {
-            'respuesta': f"Hola {nombre_completo}, con gusto he generado tu constancia laboral oficial en formato PDF ({'con sueldo' if incluir_sueldo else 'sin sueldo'}). Puedes verla o descargarla a continuacion.",
-            'tipo_accion': accion_detectada['tipo_accion'],
-            'datos': accion_detectada['datos']
-        }
+        if es_solicitud_constancia_real(mensaje_lc):
+            incluir_sueldo = 'sueldo' in mensaje_lc or 'salario' in mensaje_lc
+            generar_constancia_laboral(incluir_sueldo=incluir_sueldo)
+            return {
+                'respuesta': f"Hola {nombre_completo}, con gusto he generado tu constancia laboral oficial en formato PDF ({'con sueldo' if incluir_sueldo else 'sin sueldo'}). Puedes verla o descargarla a continuacion.",
+                'tipo_accion': accion_detectada['tipo_accion'],
+                'datos': accion_detectada['datos']
+            }
+        else:
+            return {
+                'respuesta': f"Hola {nombre_completo}, las constancias laborales son documentos oficiales membretados emitidos por Recursos Humanos con firma digital autorizada. Puedes generarla con o sin desglose salarial solicitandomelo (por ejemplo: 'Genera mi constancia laboral con sueldo') o bien desde el modulo de Constancia Laboral.",
+                'tipo_accion': 'INFO_GENERAL',
+                'datos': {}
+            }
 
     # 2. Deteccion de fechas de vacaciones en el mensaje o con contexto anterior
     fechas_encontradas = re.findall(r'(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{4}|\d{1,2}\s+de\s+[a-z]+(?:\s+de\s+\d{4})?)', mensaje_lc)

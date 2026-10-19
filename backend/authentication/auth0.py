@@ -66,23 +66,14 @@ class Auth0JSONWebTokenAuthentication(authentication.BaseAuthentication):
             if not audience:
                 decode_options["verify_aud"] = False
 
-            try:
-                payload = jwt.decode(
-                    token,
-                    signing_key.key,
-                    algorithms=['RS256'],
-                    audience=audience if audience else None,
-                    issuer=f'https://{domain}/',
-                    options=decode_options
-                )
-            except (jwt.InvalidAudienceError, jwt.InvalidIssuerError):
-                # Tolerar pequeñas diferencias en formato de issuer o audience mientras la firma criptográfica JWKS sea válida
-                payload = jwt.decode(
-                    token,
-                    signing_key.key,
-                    algorithms=['RS256'],
-                    options={"verify_signature": True, "verify_aud": False, "verify_iss": False}
-                )
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=['RS256'],
+                audience=audience if audience else None,
+                issuer=f'https://{domain}/',
+                options=decode_options
+            )
         except Exception as e:
             # Token inválido o expirado
             return None

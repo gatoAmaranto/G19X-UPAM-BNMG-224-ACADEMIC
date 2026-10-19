@@ -1,6 +1,61 @@
-# Instalacion y Ejecucion
+# Sistema de Autoservicio para Colaboradores mediante Agentes Conversacionales
+## PluriOne — Develop Talent & Technology
 
-Guia de configuracion y ejecucion del repositorio en entorno local.
+Plataforma corporativa integral diseñada para transformar la experiencia del colaborador y optimizar la administración del capital humano. Integra un **Asistente Virtual Conversacional con Inteligencia Artificial**, arquitectura de microservicios contenerizada con Docker, autenticacion segura mediante Auth0 con control de acceso basado en roles (RBAC) y flujos automatizados de autoservicio de Recursos Humanos.
+
+---
+
+## Modulos del Sistema
+
+### 1. Asistente Conversacional Inteligente con IA
+- Impulsado por el modelo **Gemini 3.8 Flash** de Google con respaldo automatico entre modelos.
+- **Llamada a herramientas operativas (Function Calling):** Permite tramitar solicitudes de vacaciones, emitir constancias laborales en PDF, registrar tickets de soporte y consultar saldos y folios en tiempo real desde el chat.
+- **Memoria de contexto:** Recuerda los ultimos 10 mensajes para responder de forma coherente y adaptarse dinamicamente a cambios de tema.
+- **Guardrails de dominio:** Enfoque estricto en consultas y politicas laborales de la empresa, rechazando amablemente solicitudes fuera del ambito de RH.
+
+### 2. Gestion de Vacaciones
+- Solicitudes digitales tanto desde el formulario web como a traves del agente conversacional.
+- Validacion automatica de dias habiles conforme a la jornada de cada colaborador (ej. Lunes a Viernes).
+- Bloqueo de solicitudes retroactivas y verificacion de saldo disponible.
+- **Flujo de aprobacion por Recursos Humanos:** Regla unica de saldo donde los dias solicitados se descuentan exclusivamente al momento de ser aprobados por RH.
+
+### 3. Mesa de Tickets de Soporte
+- Apertura de folios institucionales (`TK-XXXXXXXX`) con categorizacion por prioridad (Baja, Media, Alta).
+- Monitoreo en tiempo real del estado de atencion (Abierto, En Proceso, Resuelto, Cerrado).
+- Resolucion y respuestas oficiales emitidas por Recursos Humanos visibles para el colaborador.
+
+### 4. Emision de Constancias Laborales
+- Generacion en tiempo real de cartas de trabajo oficiales en formato PDF membretado con folio unico y firma digital.
+- Modalidad configurable con o sin desglose salarial.
+- Descarga directa y previsualizador en modal.
+
+### 5. Horario Institucional y Calendario Laboral
+- Visualizacion de la jornada oficial de trabajo, esquemas de horario flexible (nucleo obligatorio de 10:00 a 16:00 hrs) y pausas activas.
+- Calendario interactivo mensual para registrar notas, tareas personales y fechas aprobadas de vacaciones.
+
+### 6. Expediente y Perfil del Colaborador
+- Consulta de expediente institucional: puesto, departamento, fecha de ingreso, salario y calculo automatico de antiguedad.
+- Carga, actualizacion y eliminacion de fotografia de perfil.
+
+### 7. Base de Conocimiento RAG & FAQs (Backoffice RH)
+- Ingesta masiva de documentos en formato `.pdf`, `.txt` o `.md` (reglamentos, contratos colectivos, politicas internas).
+- Segmentacion y almacenamiento para alimentar el contexto del agente inteligente de IA.
+
+---
+
+## Roles de Acceso y Como Entrar
+
+El sistema cuenta con dos perfiles de usuario diferenciados por permisos RBAC:
+
+### Rol Colaborador
+- **Funcionalidades:** Autoservicio completo, chat con el asistente de IA, consulta de saldo y solicitud de vacaciones, consulta de constancias, apertura y seguimiento de tickets, y calendario personal.
+- **Acceso con Auth0:** Inicia sesion con una cuenta que tenga asignado el rol `colaborador` en Auth0.
+- **Acceso en desarrollo local (Demo):** Si `DEBUG=True`, haz clic en el boton **"Probar como Colaborador"** en la cabecera superior. Ingresaras con el perfil de `demo_colaborador` (Juan Perez, EMP-0101).
+
+### Rol Recursos Humanos (Administrador / Backoffice)
+- **Funcionalidades:** Aprobacion o rechazo de solicitudes de vacaciones, mesa de ayuda para responder y resolver tickets, carga masiva de documentos RAG, alta de preguntas frecuentes y auditoria de expedientes.
+- **Acceso con Auth0:** Inicia sesion con una cuenta que tenga el rol `recursos humanos` en Auth0 (o que cuente con `is_staff=True` en Django).
+- **Acceso en desarrollo local (Demo):** Si `DEBUG=True`, haz clic en el boton **"Probar como Administrador RH"** en la cabecera superior. Ingresaras al panel de `demo_rh_admin` (Maria Rodriguez, RH-0001).
 
 ---
 
@@ -16,7 +71,7 @@ Para este proyecto se hace uso de Inteligencia Artificial mediante la herramient
 - **Docker Engine** (v24 o superior)
 - **Docker Compose** (v2 o superior)
 - Clave de API de **Google AI Studio** (`GEMINI_API_KEY`)
-- Cuenta de **Auth0** (o usar los valores predeterminados para pruebas locales)
+- Cuenta de **Auth0** (o usar las credenciales predeterminadas para desarrollo)
 
 ---
 
@@ -24,8 +79,8 @@ Para este proyecto se hace uso de Inteligencia Artificial mediante la herramient
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/gatoAmaranto/academy-rh.git
-cd academy-rh/proyecto
+git clone https://github.com/gatoAmaranto/G19X-UPAM-BNMG-224-ACADEMIC.git
+cd G19X-UPAM-BNMG-224-ACADEMIC/proyecto
 ```
 
 ### 2. Configurar variables de entorno
@@ -41,7 +96,7 @@ Abre el archivo `.env` y define tu clave de Google AI Studio:
 GEMINI_API_KEY=tu_clave_de_gemini
 ```
 
-Las variables para base de datos (PostgreSQL), cache (Redis) y autenticacion ya vienen con valores funcionales para desarrollo local.
+Las variables para base de datos (PostgreSQL), cache (Redis) y autenticacion ya vienen configuradas para el entorno de desarrollo local.
 
 ### 3. Levantar los servicios con Docker
 Ejecuta el siguiente comando en la raiz del proyecto:
@@ -50,15 +105,22 @@ Ejecuta el siguiente comando en la raiz del proyecto:
 docker compose up --build -d
 ```
 
-Este comando descargara las dependencias y levantara los cuatro contenedores necesarios:
-- **Frontend (React / Vite):** `http://localhost:5173`
-- **Backend (Django):** `http://localhost:8000`
-- **Base de datos (PostgreSQL):** puerto `5432`
-- **Cache (Redis):** puerto `6379`
+Este comando descargara las imagenes, compilara los contenedores y levantara los cuatro servicios:
+- **Frontend (React / Vite):** [http://localhost:5173](http://localhost:5173)
+- **Backend (Django REST Framework):** [http://localhost:8000](http://localhost:8000)
+- **Base de datos (PostgreSQL 16):** puerto `5432`
+- **Cache y Broker (Redis 7):** puerto `6379`
+
+### 4. Cargar datos iniciales y politicas RAG
+Ejecuta el comando de poblado para inicializar colaboradores de ejemplo y el catalogo de politicas laborales:
+
+```bash
+docker compose exec backend python manage.py poblar_datos_iniciales
+```
 
 ---
 
-## Configuracion de Auth0
+## Configuracion de Auth0 (Opcional para produccion)
 
 El sistema utiliza Auth0 para el inicio de sesion unico (SSO) y control de acceso basado en roles (RBAC). Si deseas utilizar tu propio tenant de Auth0, sigue estos pasos:
 
@@ -144,6 +206,11 @@ docker compose down -v
 ### Ejecutar migraciones de base de datos
 ```bash
 docker compose exec backend python manage.py migrate
+```
+
+### Poblar datos iniciales y politicas RAG
+```bash
+docker compose exec backend python manage.py poblar_datos_iniciales
 ```
 
 ### Crear un superusuario de Django

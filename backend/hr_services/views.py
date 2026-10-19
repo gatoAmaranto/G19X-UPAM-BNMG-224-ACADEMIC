@@ -16,6 +16,8 @@ from .serializers import (
 )
 from .utils_pdf import generar_pdf_constancia_laboral
 from .utils_laborales import es_dia_laboral, calcular_dias_laborales
+from .services import crear_solicitud_vacaciones
+from django.core.exceptions import ValidationError
 from authentication.permissions import IsRecursosHumanos
 
 
@@ -133,51 +135,22 @@ class VacacionesView(views.APIView):
 
         fecha_inicio = serializer.validated_data.get('fecha_inicio')
         fecha_fin = serializer.validated_data.get('fecha_fin')
+        motivo = serializer.validated_data.get('motivo', '')
 
-        import datetime
-        hoy = datetime.date.today()
-
-        # 1. Bloquear solicitudes en fechas anteriores a hoy
-        if fecha_inicio < hoy:
-            return Response({
-                'error': 'No es posible solicitar vacaciones para fechas anteriores al día de hoy.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        if fecha_fin < fecha_inicio:
-            return Response({
-                'error': 'La fecha de fin debe ser posterior o igual a la fecha de inicio.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # 2. Consultar horario laboral del colaborador y validar que inicio y fin sean dias habiles
-        jornada = empleado.dias_laborales or 'Lunes a Viernes'
-        if not es_dia_laboral(fecha_inicio, jornada):
-            return Response({
-                'error': f'La fecha de inicio ({fecha_inicio.strftime("%Y-%m-%d")}) no es un día laboral según tu jornada ({jornada}). Las vacaciones solo pueden iniciar en días laborales.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        if not es_dia_laboral(fecha_fin, jornada):
-            return Response({
-                'error': f'La fecha de fin ({fecha_fin.strftime("%Y-%m-%d")}) no es un día laboral según tu jornada ({jornada}). Las vacaciones solo pueden finalizar en días laborales.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # 3. Calcular dias laborales reales en el rango
-        dias_habiles = calcular_dias_laborales(fecha_inicio, fecha_fin, jornada)
-        dias_calculados = len(dias_habiles)
-
-        if dias_calculados <= 0:
-            return Response({
-                'error': f'El periodo seleccionado no comprende ningún día laboral según tu jornada ({jornada}).'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # 4. Validar saldo disponible de vacaciones
-        if dias_calculados > empleado.dias_vacaciones_disponibles:
-            return Response({
-                'error': f'No tienes suficientes días disponibles. Tienes {empleado.dias_vacaciones_disponibles} días y el periodo laboral seleccionado requiere {dias_calculados} días.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # 5. Persistir solicitud forzando dias_solicitados a los dias laborales reales calculados
-        solicitud = serializer.save(empleado=empleado, dias_solicitados=dias_calculados)
-        return Response(SolicitudVacacionesSerializer(solicitud, context={'request': request}).data, status=status.HTTP_201_CREATED)
+        try:
+            solicitud = crear_solicitud_vacaciones(
+                empleado=empleado,
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                motivo=motivo
+            )
+            return Response(
+                SolicitudVacacionesSerializer(solicitud, context={'request': request}).data,
+                status=status.HTTP_201_CREATED
+            )
+        except ValidationError as e:
+            msg = e.message if hasattr(e, 'message') else str(e)
+            return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
 
 
 from django.views.decorators.clickjacking import xframe_options_exempt
@@ -316,8 +289,12 @@ class AdminVacacionesView(views.APIView):
 
         if nuevo_estado in ['APROBADO', 'RECHAZADO']:
             if nuevo_estado == 'APROBADO' and solicitud.estado != 'APROBADO':
-                # Descontar días del saldo del empleado
+                # Descontar días del saldo del empleado al aprobar
                 solicitud.empleado.dias_vacaciones_tomados += solicitud.dias_solicitados
+                solicitud.empleado.save()
+            elif nuevo_estado == 'RECHAZADO' and solicitud.estado == 'APROBADO':
+                # Revertir descuento si la solicitud previamente aprobada se rechaza
+                solicitud.empleado.dias_vacaciones_tomados = max(0, solicitud.empleado.dias_vacaciones_tomados - solicitud.dias_solicitados)
                 solicitud.empleado.save()
 
             solicitud.estado = nuevo_estado
