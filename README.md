@@ -80,7 +80,7 @@ Para este proyecto se hace uso de Inteligencia Artificial mediante la herramient
 ### 1. Clonar el repositorio
 ```bash
 git clone https://github.com/gatoAmaranto/G19X-UPAM-BNMG-224-ACADEMIC.git
-cd G19X-UPAM-BNMG-224-ACADEMIC/proyecto
+cd G19X-UPAM-BNMG-224-ACADEMIC
 ```
 
 ### 2. Configurar variables de entorno
