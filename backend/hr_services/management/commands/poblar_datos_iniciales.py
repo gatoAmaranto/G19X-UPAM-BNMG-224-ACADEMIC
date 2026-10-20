@@ -1,7 +1,7 @@
 from datetime import date
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from hr_services.models import Empleado, BaseConocimientoRH, SolicitudVacaciones, TicketRH
+from hr_services.models import Empleado, BaseConocimientoRH
 
 class Command(BaseCommand):
     help = "Puebla la base de datos con colaboradores de prueba y el catalogo de preguntas frecuentes RAG."
@@ -229,53 +229,6 @@ class Command(BaseCommand):
             }
         )
 
-        # Colaborador QA Demo
-        user_qa, _ = User.objects.get_or_create(
-            username='colaborador_qa',
-            defaults={
-                'first_name': 'Ana',
-                'last_name': 'Morales',
-                'email': 'ana.morales@develop.com.mx'
-            }
-        )
-        emp_qa, _ = Empleado.objects.update_or_create(
-            user=user_qa,
-            defaults={
-                'numero_empleado': 'EMP-0102',
-                'puesto': 'Ingeniera de Calidad de Software (QA)',
-                'departamento': 'Tecnologia de la Informacion',
-                'fecha_ingreso': date(2024, 2, 15),
-                'salario_mensual': 31000.00,
-                'dias_vacaciones_totales': 12,
-                'dias_vacaciones_tomados': 0,
-                'horario_entrada': '09:00',
-                'horario_salida': '18:00',
-                'dias_laborales': 'Lunes a Viernes',
-                'modalidad_trabajo': 'Hibrido'
-            }
-        )
-
         self.stdout.write(self.style.SUCCESS("Colaboradores institucionales de prueba verificados."))
-
-        # 3. Tickets de Demostracion
-        if not TicketRH.objects.filter(empleado=emp_colab).exists():
-            TicketRH.objects.create(
-                empleado=emp_colab,
-                asunto='Aclaracion sobre registro biometrico',
-                descripcion='Solicito verificacion de checador de entrada del dia 12 del mes en curso por falla en sensor.',
-                prioridad='MEDIA',
-                estado='RESUELTO',
-                respuesta_rh='Se verifico el registro en bitacora y se regularizo tu asistencia en el sistema de control de tiempo.'
-            )
-
-        if not TicketRH.objects.filter(empleado=emp_qa).exists():
-            TicketRH.objects.create(
-                empleado=emp_qa,
-                asunto='Consulta sobre seguro de gastos medicos mayores',
-                descripcion='Deseo solicitar la credencial digital y confirmar el deducible para consultas especializadas.',
-                prioridad='BAJA',
-                estado='EN_PROCESO',
-                respuesta_rh='Tu solicitud esta siendo procesada con el broker de seguros; te enviaremos la credencial en PDF.'
-            )
-
         self.stdout.write(self.style.SUCCESS("Datos iniciales poblados satisfactoriamente."))
+
