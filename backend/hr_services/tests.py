@@ -167,6 +167,33 @@ class HRServicesTestCase(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(BaseConocimientoRH.objects.count(), 1)
 
+    def test_admin_toggle_faq_mantiene_orden_estable(self):
+        self.client.force_login(self.admin_user)
+        f1 = BaseConocimientoRH.objects.create(categoria='A', pregunta='P1', respuesta='R1', activa=True)
+        f2 = BaseConocimientoRH.objects.create(categoria='B', pregunta='P2', respuesta='R2', activa=True)
+        f3 = BaseConocimientoRH.objects.create(categoria='C', pregunta='P3', respuesta='R3', activa=True)
+
+        res_inicial = self.client.get('/api/hr/admin/faq/')
+        self.assertEqual([f['id'] for f in res_inicial.json()], [f1.id, f2.id, f3.id])
+
+        # Desactivar la tercera FAQ vía PATCH
+        res_patch = self.client.patch(f'/api/hr/admin/faq/{f3.id}/', data={'activa': False}, content_type='application/json')
+        self.assertEqual(res_patch.status_code, 200)
+        self.assertFalse(res_patch.json()['activa'])
+
+        # Comprobar que el orden no se altera y sigue siendo [f1, f2, f3]
+        res_post_patch = self.client.get('/api/hr/admin/faq/')
+        self.assertEqual([f['id'] for f in res_post_patch.json()], [f1.id, f2.id, f3.id])
+
+    def test_admin_eliminar_faq_permanentemente(self):
+        self.client.force_login(self.admin_user)
+        f = BaseConocimientoRH.objects.create(categoria='Temp', pregunta='Eliminar', respuesta='Temp', activa=True)
+        self.assertTrue(BaseConocimientoRH.objects.filter(id=f.id).exists())
+
+        res_delete = self.client.delete(f'/api/hr/admin/faq/{f.id}/')
+        self.assertEqual(res_delete.status_code, 200)
+        self.assertFalse(BaseConocimientoRH.objects.filter(id=f.id).exists())
+
     def test_admin_upload_document(self):
         self.client.force_login(self.admin_user)
         from django.core.files.uploadedfile import SimpleUploadedFile

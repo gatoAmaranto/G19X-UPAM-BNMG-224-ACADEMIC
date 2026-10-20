@@ -352,7 +352,7 @@ class AdminFAQView(views.APIView):
     permission_classes = [IsRecursosHumanos]
 
     def get(self, request):
-        faqs = BaseConocimientoRH.objects.all().order_by('-fecha_actualizacion')
+        faqs = BaseConocimientoRH.objects.all().order_by('id')
         serializer = BaseConocimientoRHSerializer(faqs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -363,11 +363,19 @@ class AdminFAQView(views.APIView):
             return Response(BaseConocimientoRHSerializer(faq).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def patch(self, request, pk):
+        faq = get_object_or_404(BaseConocimientoRH, pk=pk)
+        if 'activa' in request.data:
+            faq.activa = bool(request.data['activa'])
+        else:
+            faq.activa = not faq.activa
+        faq.save()
+        return Response(BaseConocimientoRHSerializer(faq).data, status=status.HTTP_200_OK)
+
     def delete(self, request, pk):
         faq = get_object_or_404(BaseConocimientoRH, pk=pk)
-        faq.activa = not faq.activa
-        faq.save()
-        return Response({'id': faq.id, 'activa': faq.activa}, status=status.HTTP_200_OK)
+        faq.delete()
+        return Response({'message': 'Reglamento eliminado correctamente de la base de conocimientos.'}, status=status.HTTP_200_OK)
 
 
 class AdminDocumentUploadView(views.APIView):

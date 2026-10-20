@@ -353,13 +353,28 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
     }
   }
 
-  // Activar / Desactivar FAQ
-  const handleToggleFaq = async (id) => {
+  // Activar / Desactivar FAQ (manteniendo estrictamente la posición en la lista)
+  const handleToggleFaq = async (id, estadoActual) => {
+    try {
+      const res = await axios.patch(`${API_BASE}/faq/${id}/`, { activa: !estadoActual })
+      setFaqs(prev => prev.map(f => f.id === id ? { ...f, activa: res.data.activa } : f))
+    } catch (err) {
+      alert('Error al modificar el estado de la regla en la base de conocimientos.')
+    }
+  }
+
+  // Eliminar permanentemente una regla de la base de conocimientos RAG con confirmación
+  const handleDeleteFaq = async (id, pregunta) => {
+    const confirmar = window.confirm(
+      `¿Estás seguro de que deseas eliminar permanentemente esta regla de la base de conocimientos?\n\n"${pregunta}"\n\nEsta acción no se puede deshacer y el asistente virtual ya no podrá consultarla.`
+    )
+    if (!confirmar) return
+
     try {
       await axios.delete(`${API_BASE}/faq/${id}/`)
-      fetchAdminData()
+      setFaqs(prev => prev.filter(f => f.id !== id))
     } catch (err) {
-      alert('Error al modificar el estado de la FAQ.')
+      alert('Error al eliminar la regla de la base de conocimientos.')
     }
   }
 
@@ -1390,21 +1405,59 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
           {/* Lista de FAQs */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {faqs.map((f) => (
-              <div key={f.id} style={{ background: 'var(--card)', padding: '0.85rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <span style={{ fontSize: '0.72rem', background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
-                    {f.categoria}
-                  </span>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '0.3rem', color: 'var(--foreground)' }}>{f.pregunta}</h4>
-                  <p style={{ fontSize: '0.83rem', color: 'var(--muted-foreground)', marginTop: '0.2rem' }}>{f.respuesta}</p>
+              <div key={f.id} style={{ background: 'var(--card)', padding: '0.85rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.72rem', background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
+                      {f.categoria}
+                    </span>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      padding: '0.1rem 0.45rem',
+                      borderRadius: '4px',
+                      background: f.activa ? '#dcfce7' : '#fee2e2',
+                      color: f.activa ? '#15803d' : '#b91c1c',
+                      border: `1px solid ${f.activa ? '#bbf7d0' : '#fecaca'}`
+                    }}>
+                      {f.activa ? 'Activo en Agente' : 'Inactivo'}
+                    </span>
+                  </div>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginTop: '0.35rem', color: 'var(--foreground)' }}>{f.pregunta}</h4>
+                  <p style={{ fontSize: '0.83rem', color: 'var(--muted-foreground)', marginTop: '0.2rem', whiteSpace: 'pre-line' }}>{f.respuesta}</p>
                 </div>
-                <button
-                  onClick={() => handleToggleFaq(f.id)}
-                  className="btn-secondary"
-                  style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', color: f.activa ? '#dc2626' : '#16a34a' }}
-                >
-                  {f.activa ? 'Desactivar' : 'Activar'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+                  <button
+                    onClick={() => handleToggleFaq(f.id, f.activa)}
+                    className="btn-secondary"
+                    title={f.activa ? 'Desactivar para que el agente conversacional no la consulte' : 'Activar para que el agente conversacional la consulte'}
+                    style={{
+                      fontSize: '0.75rem',
+                      padding: '0.35rem 0.7rem',
+                      color: f.activa ? '#dc2626' : '#16a34a',
+                      border: `1px solid ${f.activa ? '#fca5a5' : '#86efac'}`
+                    }}
+                  >
+                    {f.activa ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteFaq(f.id, f.pregunta)}
+                    className="btn-secondary"
+                    title="Eliminar permanentemente este reglamento de la base de conocimientos"
+                    style={{
+                      fontSize: '0.75rem',
+                      padding: '0.35rem 0.6rem',
+                      color: '#dc2626',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      border: '1px solid #fecaca'
+                    }}
+                  >
+                    <Trash2 size={13} />
+                    <span>Eliminar</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
