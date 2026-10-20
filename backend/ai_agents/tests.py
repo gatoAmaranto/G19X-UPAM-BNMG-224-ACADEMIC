@@ -90,11 +90,12 @@ class ChatPersistenciaTests(TestCase):
         self.assertIsNotNone(sol)
         self.assertEqual(sol.dias_solicitados, 5)
 
-        # Verificar que la solicitud queda PENDIENTE y el descuento se reserva para la aprobacion de RH
+        # Verificar que la solicitud queda PENDIENTE y los 5 dias se retienen del saldo disponible
         self.assertEqual(sol.estado, 'PENDIENTE')
         self.empleado.refresh_from_db()
         self.assertEqual(self.empleado.dias_vacaciones_tomados, 2)
-        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 10)
+        self.assertEqual(self.empleado.dias_vacaciones_retenidos, 5)
+        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 5)
 
     def test_bloquear_vacaciones_retroactivas(self):
         fecha_pasada_ini = (date.today() - timedelta(days=10)).strftime('%Y-%m-%d')
@@ -209,9 +210,11 @@ class ChatPersistenciaTests(TestCase):
         self.assertIsNotNone(sol)
         self.assertEqual(sol.estado, 'PENDIENTE')
 
-        # El saldo tomado sigue siendo 2 (no se descontó aún)
+        # El saldo tomado sigue siendo 2, pero los 5 días quedan retenidos temporalmente
         self.empleado.refresh_from_db()
         self.assertEqual(self.empleado.dias_vacaciones_tomados, 2)
+        self.assertEqual(self.empleado.dias_vacaciones_retenidos, 5)
+        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 5)
 
         # 2. Aprobar la solicitud desde la vista de Recursos Humanos
         admin_user = User.objects.create_user(username='admin_test_rh', email='admin@develop.com.mx', is_staff=True)
@@ -219,8 +222,95 @@ class ChatPersistenciaTests(TestCase):
         patch_res = self.client.patch(f'/api/hr/admin/vacaciones/{sol.id}/', {'estado': 'APROBADO'})
         self.assertEqual(patch_res.status_code, 200)
 
-        # Ahora sí se descuentan los 5 días: 2 + 5 = 7 (NO 12 por doble descuento)
+        # Ahora sí se descuentan los 5 días tomados: 2 + 5 = 7, retenidos vuelve a 0 y disponibles se mantiene en 5
         self.empleado.refresh_from_db()
         self.assertEqual(self.empleado.dias_vacaciones_tomados, 7)
+        self.assertEqual(self.empleado.dias_vacaciones_retenidos, 0)
         self.assertEqual(self.empleado.dias_vacaciones_disponibles, 5)
+
+    def test_bloquear_solicitud_vacaciones_solapadas_con_pendiente(self):
+        hoy = date.today()
+        dias_hasta_lunes = (7 - hoy.weekday()) % 7
+        if dias_hasta_lunes == 0:
+            dias_hasta_lunes = 7
+        proximo_lunes = hoy + timedelta(days=dias_hasta_lunes)
+        proximo_viernes = proximo_lunes + timedelta(days=4)
+
+        f_ini_str = proximo_lunes.strftime('%Y-%m-%d')
+        f_fin_str = proximo_viernes.strftime('%Y-%m-%d')
+
+        # 1. Crear primera solicitud PENDIENTE
+        res1 = procesar_mensaje_agente(f"Quiero vacaciones del {f_ini_str} al {f_fin_str}", self.empleado)
+        self.assertEqual(res1['tipo_accion'], 'VACACIONES_CREADAS')
+
+        # 2. Intentar solicitar en las mismas fechas o fechas solapadas
+        res2 = procesar_mensaje_agente(f"Solicito vacaciones del {f_ini_str} al {f_fin_str}", self.empleado)
+        self.assertTrue(any(w in res2['respuesta'].lower() for w in ['pendiente', 'aprobación', 'aprobacion', 'esperando', 'coincide', 'proceso']))
+
+        # Solo debe existir 1 solicitud registrada
+        self.assertEqual(SolicitudVacaciones.objects.filter(empleado=self.empleado).count(), 1)
+
+    def test_retencion_de_dias_impide_solicitar_mas_del_saldo_disponible(self):
+        # El empleado tiene 12 totales, 2 tomados = 10 disponibles
+        hoy = date.today()
+        dias_hasta_lunes = (7 - hoy.weekday()) % 7
+        if dias_hasta_lunes == 0:
+            dias_hasta_lunes = 7
+        lunes1 = hoy + timedelta(days=dias_hasta_lunes)
+        viernes1 = lunes1 + timedelta(days=4) # 5 días hábiles
+
+        lunes2 = lunes1 + timedelta(days=7)
+        viernes2 = lunes2 + timedelta(days=4) # 5 días hábiles
+
+        lunes3 = lunes2 + timedelta(days=7)
+        viernes3 = lunes3 + timedelta(days=4) # 5 días hábiles
+
+        # Semana 1: Solicitar 5 días (queda PENDIENTE)
+        res1 = procesar_mensaje_agente(f"Vacaciones del {lunes1.strftime('%Y-%m-%d')} al {viernes1.strftime('%Y-%m-%d')}", self.empleado)
+        self.assertEqual(res1['tipo_accion'], 'VACACIONES_CREADAS')
+
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.dias_vacaciones_retenidos, 5)
+        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 5)
+
+        # Semana 2: Solicitar otros 5 días (queda PENDIENTE)
+        res2 = procesar_mensaje_agente(f"Vacaciones del {lunes2.strftime('%Y-%m-%d')} al {viernes2.strftime('%Y-%m-%d')}", self.empleado)
+        self.assertEqual(res2['tipo_accion'], 'VACACIONES_CREADAS')
+
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.dias_vacaciones_retenidos, 10)
+        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 0)
+
+        # Semana 3: Intentar pedir 5 días más -> Debe ser rechazado porque disponibles es 0 (10 retenidos)
+        res3 = procesar_mensaje_agente(f"Vacaciones del {lunes3.strftime('%Y-%m-%d')} al {viernes3.strftime('%Y-%m-%d')}", self.empleado)
+        self.assertTrue(any(w in res3['respuesta'].lower() for w in ['disponibles', 'retenidos', 'suficientes', 'saldo']))
+        self.assertEqual(SolicitudVacaciones.objects.filter(empleado=self.empleado).count(), 2)
+
+    def test_rechazo_de_solicitud_pendiente_libera_dias_retenidos(self):
+        hoy = date.today()
+        dias_hasta_lunes = (7 - hoy.weekday()) % 7
+        if dias_hasta_lunes == 0:
+            dias_hasta_lunes = 7
+        proximo_lunes = hoy + timedelta(days=dias_hasta_lunes)
+        proximo_viernes = proximo_lunes + timedelta(days=4)
+
+        # Solicitar 5 días
+        procesar_mensaje_agente(f"Vacaciones del {proximo_lunes.strftime('%Y-%m-%d')} al {proximo_viernes.strftime('%Y-%m-%d')}", self.empleado)
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.dias_vacaciones_retenidos, 5)
+        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 5)
+
+        sol = SolicitudVacaciones.objects.filter(empleado=self.empleado).first()
+
+        # RH rechaza la solicitud
+        admin_user = User.objects.create_user(username='admin_test_rh_libera', email='admin_libera@develop.com.mx', is_staff=True)
+        self.client.force_authenticate(user=admin_user)
+        patch_res = self.client.patch(f'/api/hr/admin/vacaciones/{sol.id}/', {'estado': 'RECHAZADO'})
+        self.assertEqual(patch_res.status_code, 200)
+
+        # Los 5 días retenidos se liberan y vuelven a estar disponibles
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.dias_vacaciones_retenidos, 0)
+        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 10)
+
 

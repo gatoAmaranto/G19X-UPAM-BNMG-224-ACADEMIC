@@ -160,7 +160,7 @@ export default function DashboardRH({ refreshTrigger }) {
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', textAlign: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', textAlign: 'center', marginBottom: '1rem' }}>
             <div style={{ background: 'var(--muted)', padding: '0.6rem', borderRadius: 'var(--radius)' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', display: 'block' }}>Totales</span>
               <strong style={{ fontSize: '1rem' }}>{vacaciones.saldo.totales}</strong>
@@ -168,6 +168,10 @@ export default function DashboardRH({ refreshTrigger }) {
             <div style={{ background: 'var(--muted)', padding: '0.6rem', borderRadius: 'var(--radius)' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', display: 'block' }}>Tomados</span>
               <strong style={{ fontSize: '1rem' }}>{vacaciones.saldo.tomados}</strong>
+            </div>
+            <div style={{ background: 'var(--muted)', padding: '0.6rem', borderRadius: 'var(--radius)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)', display: 'block' }}>Retenidos</span>
+              <strong style={{ fontSize: '1rem', color: '#b45309' }}>{vacaciones.saldo.retenidos ?? 0}</strong>
             </div>
             <div style={{ background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.6rem', borderRadius: 'var(--radius)' }}>
               <span style={{ fontSize: '0.75rem', display: 'block' }}>Disponibles</span>

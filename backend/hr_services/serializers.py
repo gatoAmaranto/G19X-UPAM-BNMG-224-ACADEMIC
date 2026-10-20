@@ -10,6 +10,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class EmpleadoSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    dias_vacaciones_retenidos = serializers.IntegerField(read_only=True)
     dias_vacaciones_disponibles = serializers.IntegerField(read_only=True)
     antiguedad_anios = serializers.IntegerField(read_only=True)
     foto_perfil_url = serializers.SerializerMethodField()
@@ -19,11 +20,11 @@ class EmpleadoSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'numero_empleado', 'puesto', 'departamento',
             'fecha_ingreso', 'salario_mensual', 'dias_vacaciones_totales',
-            'dias_vacaciones_tomados', 'dias_vacaciones_disponibles',
+            'dias_vacaciones_tomados', 'dias_vacaciones_retenidos', 'dias_vacaciones_disponibles',
             'antiguedad_anios', 'foto_perfil', 'foto_perfil_url',
             'horario_entrada', 'horario_salida', 'dias_laborales', 'modalidad_trabajo'
         ]
-        read_only_fields = ['id', 'user', 'numero_empleado', 'dias_vacaciones_disponibles', 'antiguedad_anios', 'foto_perfil_url']
+        read_only_fields = ['id', 'user', 'numero_empleado', 'dias_vacaciones_retenidos', 'dias_vacaciones_disponibles', 'antiguedad_anios', 'foto_perfil_url']
 
     def get_foto_perfil_url(self, obj):
         if obj.foto_perfil:
@@ -44,6 +45,7 @@ class SolicitudVacacionesSerializer(serializers.ModelSerializer):
     empleado_departamento = serializers.ReadOnlyField(source='empleado.departamento')
     empleado_avatar = serializers.SerializerMethodField()
     empleado_dias_disponibles = serializers.ReadOnlyField(source='empleado.dias_vacaciones_disponibles')
+    empleado_dias_retenidos = serializers.ReadOnlyField(source='empleado.dias_vacaciones_retenidos')
     empleado_dias_laborales = serializers.ReadOnlyField(source='empleado.dias_laborales')
     dias_solicitados = serializers.IntegerField(required=False)
 
@@ -52,7 +54,7 @@ class SolicitudVacacionesSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'empleado', 'empleado_nombre', 'empleado_numero',
             'empleado_puesto', 'empleado_departamento', 'empleado_avatar',
-            'empleado_dias_disponibles', 'empleado_dias_laborales', 'fecha_inicio', 'fecha_fin',
+            'empleado_dias_disponibles', 'empleado_dias_retenidos', 'empleado_dias_laborales', 'fecha_inicio', 'fecha_fin',
             'dias_solicitados', 'motivo', 'estado', 'fecha_creacion'
         ]
         read_only_fields = ['empleado', 'estado', 'fecha_creacion']

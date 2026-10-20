@@ -399,7 +399,7 @@ export default function PerfilModal({ isOpen, onClose, perfil, onProfileUpdated 
               {perfil.dias_vacaciones_disponibles} días disponibles
             </span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
             <div style={{ background: 'var(--card)', padding: '0.45rem', borderRadius: 'calc(var(--radius) - 2px)' }}>
               <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block' }}>Asignados</span>
               <strong style={{ fontSize: '0.9rem' }}>{perfil.dias_vacaciones_totales}</strong>
@@ -407,6 +407,10 @@ export default function PerfilModal({ isOpen, onClose, perfil, onProfileUpdated 
             <div style={{ background: 'var(--card)', padding: '0.45rem', borderRadius: 'calc(var(--radius) - 2px)' }}>
               <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block' }}>Disfrutados</span>
               <strong style={{ fontSize: '0.9rem' }}>{perfil.dias_vacaciones_tomados}</strong>
+            </div>
+            <div style={{ background: 'var(--card)', padding: '0.45rem', borderRadius: 'calc(var(--radius) - 2px)' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block' }}>Retenidos</span>
+              <strong style={{ fontSize: '0.9rem', color: '#b45309' }}>{perfil.dias_vacaciones_retenidos ?? 0}</strong>
             </div>
             <div style={{ background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.45rem', borderRadius: 'calc(var(--radius) - 2px)' }}>
               <span style={{ fontSize: '0.7rem', display: 'block' }}>Disponibles</span>

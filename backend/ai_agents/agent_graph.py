@@ -140,13 +140,15 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
                 'fecha_fin': solicitud.fecha_fin.strftime('%Y-%m-%d'),
                 'dias_solicitados': solicitud.dias_solicitados,
                 'saldo_restante': empleado.dias_vacaciones_disponibles,
+                'dias_retenidos': empleado.dias_vacaciones_retenidos,
                 'estado': solicitud.estado,
                 'motivo': solicitud.motivo
             }
             return (f"Exito: Solicitud de vacaciones #{solicitud.id} registrada correctamente para las fechas "
                     f"{solicitud.fecha_inicio.strftime('%Y-%m-%d')} al {solicitud.fecha_fin.strftime('%Y-%m-%d')} "
                     f"({solicitud.dias_solicitados} dias habiles laborales). "
-                    f"Tu saldo actual es de {empleado.dias_vacaciones_disponibles} dias. La solicitud esta pendiente de aprobacion por RH.")
+                    f"Los {solicitud.dias_solicitados} dias quedan retenidos temporalmente en espera de aprobacion por Recursos Humanos. "
+                    f"Tu saldo disponible para nuevas solicitudes es de {empleado.dias_vacaciones_disponibles} dias.")
         except ValidationError as e:
             msg = e.message if hasattr(e, 'message') else str(e)
             return f"Error: {msg}"
@@ -220,8 +222,9 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
         Consulta el saldo oficial y actualizado de vacaciones del colaborador.
         """
         return (f"Colaborador {nombre_completo}: Dias totales asignados: {empleado.dias_vacaciones_totales}, "
-                f"Dias disfrutados: {empleado.dias_vacaciones_tomados}, "
-                f"Dias disponibles actuales: {empleado.dias_vacaciones_disponibles}. "
+                f"Dias disfrutados/aprobados: {empleado.dias_vacaciones_tomados}, "
+                f"Dias retenidos en solicitudes pendientes: {empleado.dias_vacaciones_retenidos}, "
+                f"Dias disponibles actuales para solicitar: {empleado.dias_vacaciones_disponibles}. "
                 f"Horario laboral registrado: {empleado.dias_laborales}.")
 
     def consultar_tickets_soporte() -> str:
@@ -353,8 +356,9 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             f"- Numero de Empleado: {empleado.numero_empleado}\n"
             f"- Horario Laboral Oficial: {empleado.dias_laborales}\n"
             f"- Dias Totales de Vacaciones: {empleado.dias_vacaciones_totales}\n"
-            f"- Dias Disfrutados: {empleado.dias_vacaciones_tomados}\n"
-            f"- Dias Disponibles Actuales: {empleado.dias_vacaciones_disponibles}\n\n"
+            f"- Dias Disfrutados / Aprobados: {empleado.dias_vacaciones_tomados}\n"
+            f"- Dias Retenidos en Solicitudes Pendientes: {empleado.dias_vacaciones_retenidos}\n"
+            f"- Dias Disponibles Actuales para Solicitar: {empleado.dias_vacaciones_disponibles}\n\n"
             f"HISTORIAL RECIENTE DE LA CONVERSACION (Ultimos mensajes):\n"
             f"{historial_context}\n\n"
             f"TICKETS DE ATENCION Y SOPORTE REGISTRADOS:\n"
@@ -362,7 +366,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             f"BASE DE CONOCIMIENTOS DE POLITICAS Y DUDAS FRECUENTES (RAG):\n"
             f"{faqs_context}\n\n"
             f"REGLAS OBLIGATORIAS DE HERRAMIENTAS:\n"
-            f"1. HERRAMIENTA `solicitar_vacaciones`: ES OBLIGATORIO llamarla cuando el usuario indique fechas de inicio y fin para vacaciones (ej: 'quiero vacaciones del 2026-11-20 al 2026-11-25', 'del 10 al 14 de diciembre', o si en mensajes previos preguntaste las fechas y el usuario ahora las proporciona). Las fechas deben ser formato AAAA-MM-DD. Si no especifico fechas de inicio y fin, preguntale con calidez que dias desea tomar, recordandole que deben ser a partir de hoy y en sus dias laborales ({empleado.dias_laborales}).\n"
+            f"1. HERRAMIENTA `solicitar_vacaciones`: ES OBLIGATORIO llamarla cuando el usuario indique fechas de inicio y fin para vacaciones (ej: 'quiero vacaciones del 2026-11-20 al 2026-11-25', 'del 10 al 14 de diciembre', o si en mensajes previos preguntaste las fechas y el usuario ahora las proporciona). Las fechas deben ser formato AAAA-MM-DD. Si no especifico fechas de inicio y fin, preguntale con calidez que dias desea tomar, recordandole que deben ser a partir de hoy y en sus dias laborales ({empleado.dias_laborales}). Toma en cuenta que los dias en solicitudes pendientes se retienen temporalmente y el sistema bloqueara solicitudes con fechas ya en espera de aprobacion o que superen los dias disponibles actuales.\n"
             f"2. HERRAMIENTA `crear_ticket_soporte`: Llamala UNICAMENTE cuando el usuario reporte una incidencia real que requiera atencion de RH (ej: 'tengo un problema con el recibo de nomina', 'no se reflejo mi pago', etc.) y proporcione la descripcion del caso. PROHIBIDO llamar a `crear_ticket_soporte` si el usuario solo hace una pregunta sobre politicas o dudas generales (ej: '¿hay algun problema si como en horario laboral?', '¿una pregunta hay problema si...?') o si pregunta por el estado/cantidad de sus tickets.\n"
             f"3. HERRAMIENTA `consultar_tickets_soporte`: Utilizala cuando el colaborador pregunte cuantos tickets tiene abiertos/resueltos, pida ver el estado de sus tickets o pregunte que le respondio RH.\n"
             f"4. HERRAMIENTA `generar_constancia_laboral`: ES OBLIGATORIO llamarla cuando solicite una constancia laboral o carta patronal, detectando si requiere reflejar su salario mensual o no.\n"

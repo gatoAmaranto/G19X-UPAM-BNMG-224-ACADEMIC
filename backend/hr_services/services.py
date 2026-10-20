@@ -38,6 +38,27 @@ def crear_solicitud_vacaciones(empleado, fecha_inicio, fecha_fin, motivo=""):
             f"La fecha de fin ({f_fin.strftime('%Y-%m-%d')}) no es un día laboral según tu jornada ({jornada}). Las vacaciones solo pueden finalizar en días laborales."
         )
 
+    # Validar que el periodo no se cruce con solicitudes previas en espera o aprobadas
+    solapadas = SolicitudVacaciones.objects.filter(
+        empleado=empleado,
+        estado__in=['PENDIENTE', 'APROBADO'],
+        fecha_inicio__lte=f_fin,
+        fecha_fin__gte=f_ini
+    )
+    if solapadas.exists():
+        conflicto = solapadas.first()
+        if conflicto.estado == 'PENDIENTE':
+            raise ValidationError(
+                f"Ya cuentas con una solicitud de vacaciones en proceso de aprobación que coincide con estas fechas "
+                f"({conflicto.fecha_inicio.strftime('%Y-%m-%d')} al {conflicto.fecha_fin.strftime('%Y-%m-%d')}). "
+                f"No es posible solicitar vacaciones en un periodo que ya está esperando aprobación."
+            )
+        else:
+            raise ValidationError(
+                f"Ya cuentas con un periodo de vacaciones previamente aprobado que coincide con estas fechas "
+                f"({conflicto.fecha_inicio.strftime('%Y-%m-%d')} al {conflicto.fecha_fin.strftime('%Y-%m-%d')})."
+            )
+
     dias_habiles = calcular_dias_laborales(f_ini, f_fin, jornada)
     dias_calculados = len(dias_habiles)
 
@@ -46,10 +67,21 @@ def crear_solicitud_vacaciones(empleado, fecha_inicio, fecha_fin, motivo=""):
             f"El periodo seleccionado no comprende ningún día laboral según tu jornada ({jornada})."
         )
 
-    if dias_calculados > empleado.dias_vacaciones_disponibles:
-        raise ValidationError(
-            f"No tienes suficientes días disponibles. Tienes {empleado.dias_vacaciones_disponibles} días y el periodo laboral seleccionado requiere {dias_calculados} días."
-        )
+    dias_disponibles = empleado.dias_vacaciones_disponibles
+    if dias_calculados > dias_disponibles:
+        dias_retenidos = empleado.dias_vacaciones_retenidos
+        if dias_retenidos > 0:
+            raise ValidationError(
+                f"No cuentas con suficientes días disponibles. Tienes {dias_disponibles} días disponibles para solicitar "
+                f"({dias_retenidos} días retenidos temporalmente en solicitudes pendientes de aprobación) "
+                f"y el periodo laboral seleccionado requiere {dias_calculados} días."
+            )
+        else:
+            raise ValidationError(
+                f"No cuentas con suficientes días disponibles. Tienes {dias_disponibles} días disponibles "
+                f"y el periodo laboral seleccionado requiere {dias_calculados} días."
+            )
+
 
     solicitud = SolicitudVacaciones.objects.create(
         empleado=empleado,

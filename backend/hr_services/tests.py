@@ -59,6 +59,43 @@ class HRServicesTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('saldo', response.json())
         self.assertEqual(response.json()['saldo']['disponibles'], 10)
+        self.assertEqual(response.json()['saldo']['retenidos'], 0)
+
+    def test_crear_vacaciones_endpoint_retiene_dias_y_bloquea_solapamiento(self):
+        # 1. Crear solicitud de 5 días hábiles (lunes a viernes)
+        res1 = self.client.post('/api/hr/vacaciones/', {
+            'fecha_inicio': '2026-11-09',
+            'fecha_fin': '2026-11-13',
+            'motivo': 'Descanso personal'
+        })
+        self.assertEqual(res1.status_code, 201)
+
+        # Verificar que el saldo disponible se reduce temporalmente (retenido)
+        res_saldo = self.client.get('/api/hr/vacaciones/')
+        self.assertEqual(res_saldo.json()['saldo']['disponibles'], 5)
+        self.assertEqual(res_saldo.json()['saldo']['retenidos'], 5)
+
+        # 2. Intentar solicitar en fechas que se solapan (ej. 2026-11-11 al 2026-11-17)
+        res_solapada = self.client.post('/api/hr/vacaciones/', {
+            'fecha_inicio': '2026-11-11',
+            'fecha_fin': '2026-11-17',
+            'motivo': 'Intento de solapamiento'
+        })
+        self.assertEqual(res_solapada.status_code, 400)
+        self.assertIn('error', res_solapada.json())
+        self.assertTrue('coincide' in res_solapada.json()['error'] or 'esperando aprobación' in res_solapada.json()['error'])
+
+        # 3. Intentar solicitar más días de los disponibles teniendo 5 retenidos (ej. pedir 6 días)
+        # 2026-11-23 al 2026-11-30 son 6 días laborales (L, M, X, J, V, L)
+        res_exceso = self.client.post('/api/hr/vacaciones/', {
+            'fecha_inicio': '2026-11-23',
+            'fecha_fin': '2026-11-30',
+            'motivo': 'Intento de exceder saldo disponible'
+        })
+        self.assertEqual(res_exceso.status_code, 400)
+        self.assertIn('error', res_exceso.json())
+        self.assertTrue('suficientes' in res_exceso.json()['error'] or 'retenidos' in res_exceso.json()['error'])
+
 
     def test_admin_aprobar_vacaciones(self):
         self.client.force_login(self.admin_user)

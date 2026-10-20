@@ -18,8 +18,20 @@ class Empleado(models.Model):
     modalidad_trabajo = models.CharField(max_length=20, default="Híbrido", verbose_name="Modalidad de Trabajo")
 
     @property
+    def dias_vacaciones_pendientes(self):
+        from django.db.models import Sum
+        total_pendientes = self.solicitudes_vacaciones.filter(estado='PENDIENTE').aggregate(
+            total=Sum('dias_solicitados')
+        )['total'] or 0
+        return total_pendientes
+
+    @property
+    def dias_vacaciones_retenidos(self):
+        return self.dias_vacaciones_pendientes
+
+    @property
     def dias_vacaciones_disponibles(self):
-        return max(0, self.dias_vacaciones_totales - self.dias_vacaciones_tomados)
+        return max(0, self.dias_vacaciones_totales - self.dias_vacaciones_tomados - self.dias_vacaciones_retenidos)
 
     @property
     def antiguedad_anios(self):

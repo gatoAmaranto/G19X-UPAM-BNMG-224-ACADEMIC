@@ -122,6 +122,7 @@ class VacacionesView(views.APIView):
             'saldo': {
                 'totales': empleado.dias_vacaciones_totales,
                 'tomados': empleado.dias_vacaciones_tomados,
+                'retenidos': empleado.dias_vacaciones_retenidos,
                 'disponibles': empleado.dias_vacaciones_disponibles
             },
             'solicitudes': serializer.data
@@ -275,6 +276,18 @@ class AdminVacacionesView(views.APIView):
             jornada = empleado.dias_laborales or 'Lunes a Viernes'
             dias_habiles = calcular_dias_laborales(fecha_inicio, fecha_fin, jornada)
             dias_calculados = len(dias_habiles) if dias_habiles else serializer.validated_data.get('dias_solicitados', 1)
+            # Validar solapamiento con solicitudes existentes para este colaborador
+            solapadas = SolicitudVacaciones.objects.filter(
+                empleado=empleado,
+                estado__in=['PENDIENTE', 'APROBADO'],
+                fecha_inicio__lte=fecha_fin,
+                fecha_fin__gte=fecha_inicio
+            )
+            if solapadas.exists():
+                return Response({
+                    'error': 'Ya existe una solicitud pendiente o aprobada para el colaborador que coincide con las fechas seleccionadas.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             estado = request.data.get('estado', 'APROBADO')
             solicitud = serializer.save(empleado=empleado, estado=estado, dias_solicitados=dias_calculados)
             if estado == 'APROBADO':
@@ -289,6 +302,12 @@ class AdminVacacionesView(views.APIView):
 
         if nuevo_estado in ['APROBADO', 'RECHAZADO']:
             if nuevo_estado == 'APROBADO' and solicitud.estado != 'APROBADO':
+                # Validar que el colaborador cuente con saldo total suficiente antes de aprobar
+                saldo_restante_legal = max(0, solicitud.empleado.dias_vacaciones_totales - solicitud.empleado.dias_vacaciones_tomados)
+                if solicitud.dias_solicitados > saldo_restante_legal:
+                    return Response({
+                        'error': f'No es posible aprobar la solicitud. El colaborador solo cuenta con {saldo_restante_legal} días y la solicitud requiere {solicitud.dias_solicitados} días.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
                 # Descontar días del saldo del empleado al aprobar
                 solicitud.empleado.dias_vacaciones_tomados += solicitud.dias_solicitados
                 solicitud.empleado.save()

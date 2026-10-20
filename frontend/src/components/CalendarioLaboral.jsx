@@ -51,6 +51,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
   // Saldo oficial de vacaciones
   const saldoTotales = vacaciones?.saldo?.totales ?? perfil?.dias_vacaciones_totales ?? 0
   const saldoDisfrutados = vacaciones?.saldo?.tomados ?? perfil?.dias_vacaciones_tomados ?? 0
+  const saldoRetenidos = vacaciones?.saldo?.retenidos ?? perfil?.dias_vacaciones_retenidos ?? 0
   const saldoDisponibles = vacaciones?.saldo?.disponibles ?? perfil?.dias_vacaciones_disponibles ?? 0
 
   // Formateador estándar de fechas YYYY-MM-DD
@@ -421,8 +422,22 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
       return
     }
 
+    // Validar que las fechas no se solapen con una solicitud en espera o aprobada
+    const listaExistente = Array.isArray(vacaciones) ? vacaciones : (vacaciones?.solicitudes || [])
+    const solapada = listaExistente.find(v => {
+      if (v.estado === 'RECHAZADO') return false
+      if (esAdminRH && formVacaciones.empleado_id && v.empleado && v.empleado !== formVacaciones.empleado_id) return false
+      return v.fecha_inicio <= formVacaciones.fecha_fin && v.fecha_fin >= formVacaciones.fecha_inicio
+    })
+    if (solapada) {
+      const estadoTxt = solapada.estado === 'PENDIENTE' ? 'en espera de aprobación' : 'ya aprobada'
+      alert(`Ya cuentas con una solicitud ${estadoTxt} que coincide con las fechas seleccionadas (${solapada.fecha_inicio} al ${solapada.fecha_fin}). No es posible solicitar periodos con fechas ya en espera o aprobadas.`)
+      return
+    }
+
     if (!esAdminRH && diasCalculados > saldoDisponibles) {
-      alert(`No cuentas con saldo suficiente de vacaciones. Tu saldo disponible es de ${saldoDisponibles} día(s) y el periodo seleccionado requiere ${diasCalculados} día(s) laboral(es).`)
+      const txtRetenidos = saldoRetenidos > 0 ? ` (${saldoRetenidos} día(s) retenidos en solicitudes pendientes)` : ''
+      alert(`No cuentas con saldo suficiente de vacaciones. Tu saldo disponible para solicitar es de ${saldoDisponibles} día(s)${txtRetenidos} y el periodo seleccionado requiere ${diasCalculados} día(s) laboral(es).`)
       return
     }
 
@@ -644,6 +659,15 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
               </span>
               <strong style={{ fontSize: '1.15rem', color: 'var(--foreground)' }}>{saldoDisfrutados}</strong>
             </div>
+
+            {saldoRetenidos > 0 && (
+              <div style={{ background: '#fef3c7', color: '#b45309', padding: '0.45rem 0.95rem', borderRadius: 'var(--radius)', border: '1px solid #fde68a', textAlign: 'center', minWidth: '95px' }}>
+                <span style={{ fontSize: '0.7rem', display: 'block', fontWeight: 700, color: '#92400e' }}>
+                  Días Retenidos
+                </span>
+                <strong style={{ fontSize: '1.15rem', color: '#b45309' }}>{saldoRetenidos}</strong>
+              </div>
+            )}
 
             <div style={{ background: '#dcfce7', color: '#15803d', padding: '0.45rem 1.05rem', borderRadius: 'var(--radius)', border: '1px solid #bbf7d0', textAlign: 'center', minWidth: '100px' }}>
               <span style={{ fontSize: '0.7rem', display: 'block', fontWeight: 700, color: '#166534' }}>
