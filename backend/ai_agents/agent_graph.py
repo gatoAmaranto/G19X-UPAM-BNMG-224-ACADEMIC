@@ -5,7 +5,7 @@ from datetime import datetime, date, timedelta
 from django.conf import settings
 from hr_services.models import BaseConocimientoRH, SolicitudVacaciones, ConstanciaLaboral, TicketRH
 from hr_services.utils_pdf import generar_pdf_constancia_laboral
-from hr_services.utils_laborales import es_dia_laboral, calcular_dias_laborales
+from hr_services.utils_laborales import es_dia_laboral, calcular_dias_laborales, parsear_fecha_flexible
 from hr_services.services import crear_solicitud_vacaciones
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
@@ -17,56 +17,6 @@ MODELOS_GEMINI = [
     'gemini-flash-latest',
     'gemini-3.1-flash-lite',
 ]
-
-MESES_ES = {
-    'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
-    'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
-}
-
-def parsear_fecha_flexible(valor):
-    """
-    Interpreta fechas en formatos YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY
-    o lenguaje natural en espanol (ej. '20 de noviembre de 2026').
-    """
-    if not valor:
-        return None
-    if isinstance(valor, date):
-        return valor
-    if isinstance(valor, datetime):
-        return valor.date()
-
-    txt = str(valor).strip().lower()
-
-    # Formato ISO: YYYY-MM-DD
-    m_iso = re.search(r'(\d{4})-(\d{1,2})-(\d{1,2})', txt)
-    if m_iso:
-        try:
-            return date(int(m_iso.group(1)), int(m_iso.group(2)), int(m_iso.group(3)))
-        except ValueError:
-            pass
-
-    # Formato latino: DD/MM/YYYY o DD-MM-YYYY
-    m_lat = re.search(r'(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})', txt)
-    if m_lat:
-        try:
-            return date(int(m_lat.group(3)), int(m_lat.group(2)), int(m_lat.group(1)))
-        except ValueError:
-            pass
-
-    # Texto natural en espanol: '20 de noviembre de 2026' o '20 de noviembre'
-    m_nat = re.search(r'(\d{1,2})\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?', txt)
-    if m_nat:
-        dia = int(m_nat.group(1))
-        mes_str = m_nat.group(2)
-        mes = MESES_ES.get(mes_str)
-        anio = int(m_nat.group(3)) if m_nat.group(3) else date.today().year
-        if mes:
-            try:
-                return date(anio, mes, dia)
-            except ValueError:
-                pass
-
-    return None
 
 
 def es_solicitud_constancia_real(texto_lc):

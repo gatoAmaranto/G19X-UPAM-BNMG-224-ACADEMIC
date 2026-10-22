@@ -7,6 +7,7 @@ from rest_framework.exceptions import NotAuthenticated
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
+from django.db import transaction
 
 from .models import Empleado, SolicitudVacaciones, ConstanciaLaboral, TicketRH, BaseConocimientoRH, NotaTareaColaborador
 from .serializers import (
@@ -270,54 +271,69 @@ class AdminVacacionesView(views.APIView):
             empleado = get_demo_or_current_empleado(request)
 
         serializer = SolicitudVacacionesSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            fecha_inicio = serializer.validated_data.get('fecha_inicio')
-            fecha_fin = serializer.validated_data.get('fecha_fin')
-            jornada = empleado.dias_laborales or 'Lunes a Viernes'
-            dias_habiles = calcular_dias_laborales(fecha_inicio, fecha_fin, jornada)
-            dias_calculados = len(dias_habiles) if dias_habiles else serializer.validated_data.get('dias_solicitados', 1)
-            # Validar solapamiento con solicitudes existentes para este colaborador
-            solapadas = SolicitudVacaciones.objects.filter(
-                empleado=empleado,
-                estado__in=['PENDIENTE', 'APROBADO'],
-                fecha_inicio__lte=fecha_fin,
-                fecha_fin__gte=fecha_inicio
-            )
-            if solapadas.exists():
-                return Response({
-                    'error': 'Ya existe una solicitud pendiente o aprobada para el colaborador que coincide con las fechas seleccionadas.'
-                }, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            estado = request.data.get('estado', 'APROBADO')
-            solicitud = serializer.save(empleado=empleado, estado=estado, dias_solicitados=dias_calculados)
-            if estado == 'APROBADO':
-                empleado.dias_vacaciones_tomados += dias_calculados
-                empleado.save()
-            return Response(SolicitudVacacionesSerializer(solicitud, context={'request': request}).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        fecha_inicio = serializer.validated_data.get('fecha_inicio')
+        fecha_fin = serializer.validated_data.get('fecha_fin')
+        motivo = serializer.validated_data.get('motivo', '')
+        estado_deseado = request.data.get('estado', 'PENDIENTE')
+
+        try:
+            solicitud = crear_solicitud_vacaciones(
+                empleado=empleado,
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                motivo=motivo
+            )
+        except ValidationError as e:
+            msg = e.message if hasattr(e, 'message') else str(e)
+            return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        if estado_deseado == 'APROBADO':
+            with transaction.atomic():
+                empleado_lock = Empleado.objects.select_for_update().get(pk=empleado.pk)
+                saldo_restante_legal = max(0, empleado_lock.dias_vacaciones_totales - empleado_lock.dias_vacaciones_tomados)
+                if solicitud.dias_solicitados > saldo_restante_legal:
+                    solicitud.delete()
+                    return Response({
+                        'error': f'No es posible aprobar la solicitud. El colaborador solo cuenta con {saldo_restante_legal} días y la solicitud requiere {solicitud.dias_solicitados} días.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                empleado_lock.dias_vacaciones_tomados += solicitud.dias_solicitados
+                empleado_lock.save()
+                solicitud.estado = 'APROBADO'
+                solicitud.save()
+        elif estado_deseado == 'RECHAZADO':
+            solicitud.estado = 'RECHAZADO'
+            solicitud.save()
+
+        return Response(SolicitudVacacionesSerializer(solicitud, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
     def patch(self, request, pk):
         solicitud = get_object_or_404(SolicitudVacaciones, pk=pk)
         nuevo_estado = request.data.get('estado')
 
         if nuevo_estado in ['APROBADO', 'RECHAZADO']:
-            if nuevo_estado == 'APROBADO' and solicitud.estado != 'APROBADO':
-                # Validar que el colaborador cuente con saldo total suficiente antes de aprobar
-                saldo_restante_legal = max(0, solicitud.empleado.dias_vacaciones_totales - solicitud.empleado.dias_vacaciones_tomados)
-                if solicitud.dias_solicitados > saldo_restante_legal:
-                    return Response({
-                        'error': f'No es posible aprobar la solicitud. El colaborador solo cuenta con {saldo_restante_legal} días y la solicitud requiere {solicitud.dias_solicitados} días.'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                # Descontar días del saldo del empleado al aprobar
-                solicitud.empleado.dias_vacaciones_tomados += solicitud.dias_solicitados
-                solicitud.empleado.save()
-            elif nuevo_estado == 'RECHAZADO' and solicitud.estado == 'APROBADO':
-                # Revertir descuento si la solicitud previamente aprobada se rechaza
-                solicitud.empleado.dias_vacaciones_tomados = max(0, solicitud.empleado.dias_vacaciones_tomados - solicitud.dias_solicitados)
-                solicitud.empleado.save()
+            with transaction.atomic():
+                empleado = Empleado.objects.select_for_update().get(pk=solicitud.empleado_id)
+                if nuevo_estado == 'APROBADO' and solicitud.estado != 'APROBADO':
+                    # Validar que el colaborador cuente con saldo total suficiente antes de aprobar
+                    saldo_restante_legal = max(0, empleado.dias_vacaciones_totales - empleado.dias_vacaciones_tomados)
+                    if solicitud.dias_solicitados > saldo_restante_legal:
+                        return Response({
+                            'error': f'No es posible aprobar la solicitud. El colaborador solo cuenta con {saldo_restante_legal} días y la solicitud requiere {solicitud.dias_solicitados} días.'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    # Descontar días del saldo del empleado al aprobar
+                    empleado.dias_vacaciones_tomados += solicitud.dias_solicitados
+                    empleado.save()
+                elif nuevo_estado == 'RECHAZADO' and solicitud.estado == 'APROBADO':
+                    # Revertir descuento si la solicitud previamente aprobada se rechaza
+                    empleado.dias_vacaciones_tomados = max(0, empleado.dias_vacaciones_tomados - solicitud.dias_solicitados)
+                    empleado.save()
 
-            solicitud.estado = nuevo_estado
-            solicitud.save()
+                solicitud.estado = nuevo_estado
+                solicitud.save()
+
             return Response(SolicitudVacacionesSerializer(solicitud, context={'request': request}).data, status=status.HTTP_200_OK)
 
         return Response({'error': 'Estado no válido.'}, status=status.HTTP_400_BAD_REQUEST)

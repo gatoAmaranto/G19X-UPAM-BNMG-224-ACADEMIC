@@ -117,6 +117,49 @@ class HRServicesTestCase(TestCase):
         self.empleado.refresh_from_db()
         self.assertEqual(self.empleado.dias_vacaciones_tomados, 5)
 
+    def test_admin_rechazar_vacaciones_pendiente(self):
+        self.client.force_login(self.admin_user)
+        solicitud = SolicitudVacaciones.objects.create(
+            empleado=self.empleado,
+            fecha_inicio='2026-11-02',
+            fecha_fin='2026-11-04',
+            dias_solicitados=3,
+            estado='PENDIENTE'
+        )
+        self.assertEqual(self.empleado.dias_vacaciones_retenidos, 3)
+        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 7)
+
+        response = self.client.patch(
+            f'/api/hr/admin/vacaciones/{solicitud.id}/',
+            data={'estado': 'RECHAZADO'},
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        solicitud.refresh_from_db()
+        self.assertEqual(solicitud.estado, 'RECHAZADO')
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.dias_vacaciones_tomados, 2)
+        self.assertEqual(self.empleado.dias_vacaciones_retenidos, 0)
+        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 10)
+
+    def test_admin_crear_vacaciones_default_pendiente(self):
+        self.client.force_login(self.admin_user)
+        response = self.client.post(
+            '/api/hr/admin/vacaciones/',
+            data={
+                'empleado_id': self.empleado.id,
+                'fecha_inicio': '2026-12-14',
+                'fecha_fin': '2026-12-16',
+                'motivo': 'Permiso personal'
+            },
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()['estado'], 'PENDIENTE')
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.dias_vacaciones_tomados, 2)
+        self.assertEqual(self.empleado.dias_vacaciones_retenidos, 3)
+
     def test_admin_crear_vacaciones(self):
         self.client.force_login(self.admin_user)
         response = self.client.post(

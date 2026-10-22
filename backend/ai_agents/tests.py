@@ -3,7 +3,8 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from hr_services.models import Empleado, SolicitudVacaciones, TicketRH, ConstanciaLaboral
 from .models import MensajeChat
-from .agent_graph import procesar_mensaje_agente, parsear_fecha_flexible
+from .agent_graph import procesar_mensaje_agente
+from hr_services.utils_laborales import parsear_fecha_flexible
 from rest_framework.test import APIClient
 from rest_framework import status
 

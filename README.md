@@ -60,8 +60,17 @@ El sistema cuenta con dos perfiles de usuario diferenciados por permisos RBAC:
 ---
 
 ## Uso de Inteligencia Artificial
-
 Para este proyecto se hace uso de Inteligencia Artificial mediante la herramienta **Antigravity** y el modelo **Gemini 3.8 Flash High**.
+
+---
+
+## Funcionamiento de la Base de Conocimiento (RAG en el MVP)
+Para la etapa actual del sistema (MVP), la arquitectura de **Recuperacion y Generacion Aumentada (RAG)** opera mediante **inyeccion dinamica en contexto** (*In-Context Prompt Injection*):
+
+1. **Recuperacion en tiempo real:** En cada interaccion del colaborador con el agente (`agent_graph.py`), el backend consulta la tabla `BaseConocimientoRH` filtrando unicamente los registros activos (`activa=True`).
+2. **Inyeccion de contexto al LLM:** Las preguntas frecuentes, respuestas y directrices normativas vigentes son formateadas e incorporadas directamente dentro del prompt de sistema (*System Prompt*) de Gemini.
+3. **Generacion fundamentada:** El modelo responde consultas laborales utilizando estrictamente dicho contexto institucional, previniendo alucinaciones y asegurando apego a las politicas oficiales de la organizacion.
+4. **Sincronizacion inmediata:** Debido a que no depende de indices vectoriales desactualizados ni reentrenamientos, cualquier cambio realizado desde el panel de RH (alta de reglamentos, edicion, desactivacion o eliminacion) tiene efecto inmediato en el comportamiento del asistente. Para fases de escalamiento masivo con cientos de documentos, la arquitectura esta diseñada para incorporar busqueda semantica vectorial con `pgvector` y embeddings.
 
 ---
 
@@ -111,7 +120,14 @@ Este comando descargara las imagenes, compilara los contenedores y levantara los
 - **Base de datos (PostgreSQL 16):** puerto `5432`
 - **Cache y Broker (Redis 7):** puerto `6379`
 
-### 4. Cargar datos iniciales y politicas RAG
+### 4. Ejecutar migraciones de base de datos
+Aplica las migraciones iniciales para crear las tablas en la base de datos PostgreSQL:
+
+```bash
+docker compose exec backend python manage.py migrate
+```
+
+### 5. Cargar datos iniciales y politicas RAG
 Ejecuta el comando de poblado para inicializar colaboradores de ejemplo y el catalogo de politicas laborales:
 
 ```bash
