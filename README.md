@@ -238,3 +238,36 @@ docker compose exec backend python manage.py createsuperuser
 ```bash
 docker compose exec backend python manage.py test
 ```
+
+---
+
+## Despliegue y Consideraciones para Produccion
+
+El proyecto incluye soporte diferenciado para desarrollo local y entornos de produccion empresarial.
+
+### 1. Variables de entorno seguras para produccion (`.env`)
+Antes de desplegar en un servidor accesible por colaboradores o usuarios reales, asegúrate de configurar en tu archivo `.env`:
+
+- `DEBUG=False`: Deshabilita el modo de depuracion y bloquea tokens de prueba locales.
+- `SECRET_KEY`: Genera una clave aleatoria y segura de al menos 50 caracteres (no utilices el valor por defecto).
+- `ALLOWED_HOSTS`: Define el nombre de dominio o IP publica de tu servidor (ej. `autoservicio.tuempresa.com,192.168.1.100`).
+- `CORS_ALLOWED_ORIGINS`: Especifica la URL HTTPS publica del frontend (ej. `https://autoservicio.tuempresa.com`).
+- `USE_POSTGRES=True`: Garantiza la persistencia en el motor PostgreSQL institucional.
+
+### 2. Persistencia de Datos y Archivos Multimedia
+El sistema define volumenes administrados por Docker para evitar perdida de informacion al recrear contenedores:
+- `postgres_data`: Persistencia de usuarios, expedientes, tickets, vacaciones y base de conocimiento.
+- `media_data`: Persistencia de fotografias de perfil (`/media/avatares/`) y constancias laborales PDF firmadas (`/media/constancias/`).
+- `redis_data`: Persistencia de snapshots de cache y colas en memoria de Redis.
+
+### 3. Servidor WSGI y Proxy Inverso Nginx
+- **Backend:** En produccion se ejecuta con **Gunicorn** (`core.wsgi:application`) utilizando 3 procesos worker independientes para atender multiples solicitudes concurrentes sin bloqueos.
+- **Frontend:** La aplicacion React es precompilada en artefactos estaticos (`npm run build`) y servida a traves de un contenedor optimizado con **Nginx** (puerto `80`), el cual actua como proxy inverso hacia `/api/` y `/media/`.
+- **Seguridad de Red:** Los puertos de PostgreSQL (`5432`) y Redis (`6379`) no se exponen al exterior en produccion, manteniendose estrictamente en la red interna aislada de Docker.
+
+### 4. Comando para levantar el entorno de produccion
+Para compilar y ejecutar el stack con las configuraciones optimizadas de produccion:
+
+```bash
+docker compose -f docker-compose.prod.yml up --build -d
+```
