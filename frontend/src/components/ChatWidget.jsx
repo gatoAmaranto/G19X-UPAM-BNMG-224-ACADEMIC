@@ -6,7 +6,7 @@ import VacacionesModal from './VacacionesModal.jsx'
 import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 
-const API_BASE = 'http://localhost:8000/api'
+const API_BASE = '/api'
 
 const MENSAJE_BIENVENIDA = {
   id: 'welcome',
@@ -424,7 +424,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
                     <span>Ver Vista Previa</span>
                   </button>
                   <a
-                    href={`http://localhost:8000/api/hr/constancia/?download=true`}
+                    href={`/api/hr/constancia/?download=true`}
                     target="_blank"
                     rel="noreferrer"
                     className="btn-secondary"

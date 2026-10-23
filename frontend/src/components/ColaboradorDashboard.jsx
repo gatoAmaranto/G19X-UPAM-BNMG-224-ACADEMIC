@@ -14,7 +14,7 @@ import CentroTicketsColaborador from './CentroTicketsColaborador.jsx'
 import CalendarioLaboral from './CalendarioLaboral.jsx'
 import UserAuthHeader from './UserAuthHeader.jsx'
 
-const API_BASE = 'http://localhost:8000/api'
+const API_BASE = '/api'
 
 export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, isDarkMode, toggleDarkMode }) {
   const [activeTab, setActiveTab] = useState('chat') // 'chat' | 'calendario' | 'tickets' | 'constancia' | 'perfil'

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Calendar, X, Check, AlertTriangle, Send } from 'lucide-react'
 import axios from 'axios'
 
-const API_BASE = 'http://localhost:8000/api/hr'
+const API_BASE = '/api/hr'
 
 export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, diasLaborales = 'Lunes a Viernes', onSuccess }) {
   const [fechaInicio, setFechaInicio] = useState('')

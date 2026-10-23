@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Ticket, X, AlertTriangle, Send } from 'lucide-react'
 import axios from 'axios'
 
-const API_BASE = 'http://localhost:8000/api/hr'
+const API_BASE = '/api/hr'
 
 export default function TicketModal({ isOpen, onClose, onSuccess }) {
   const [asunto, setAsunto] = useState('')

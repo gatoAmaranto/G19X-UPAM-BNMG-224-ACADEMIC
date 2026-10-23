@@ -8,7 +8,7 @@ import TicketDetalleModal from './TicketDetalleModal.jsx'
 import PerfilModal from './PerfilModal.jsx'
 
 
-const API_BASE = 'http://localhost:8000/api'
+const API_BASE = '/api'
 
 export default function DashboardRH({ refreshTrigger }) {
   const [perfil, setPerfil] = useState(null)

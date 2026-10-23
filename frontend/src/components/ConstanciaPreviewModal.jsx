@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { FileText, X, Download, Eye } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 
-const API_BASE = 'http://localhost:8000/api/hr'
+const API_BASE = '/api/hr'
 
 export default function ConstanciaPreviewModal({ isOpen, onClose }) {
   const { getToken } = useAuth()

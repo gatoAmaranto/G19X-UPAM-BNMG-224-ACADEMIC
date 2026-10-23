@@ -3,7 +3,7 @@ import { LogIn, LogOut, Shield, UserCheck } from 'lucide-react'
 import axios from 'axios'
 import { useAuth } from '../auth/AuthContext.jsx'
 
-const API_BASE = 'http://localhost:8000/api'
+const API_BASE = '/api'
 
 export default function UserAuthHeader() {
   const { isAuthenticated, user, isRhAdmin, login, logout, switchRole, isAuth0Live } = useAuth()

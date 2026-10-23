@@ -10,14 +10,14 @@ import axios from 'axios'
 import CalendarioLaboral from './CalendarioLaboral.jsx'
 import UserAuthHeader from './UserAuthHeader.jsx'
 
-const API_BASE = 'http://localhost:8000/api/hr/admin'
+const API_BASE = '/api/hr/admin'
 
 const resolveAvatarUrl = (url) => {
   if (!url) return null
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url
   }
-  return `http://localhost:8000${url.startsWith('/') ? '' : '/'}${url}`
+  return `${url.startsWith('/') ? '' : '/'}${url}`
 }
 
 export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {

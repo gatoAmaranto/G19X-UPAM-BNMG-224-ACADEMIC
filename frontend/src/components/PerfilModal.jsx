@@ -6,7 +6,7 @@ import {
 import axios from 'axios'
 import apiClient from '../api/apiClient.js'
 
-const API_BASE = 'http://localhost:8000/api'
+const API_BASE = '/api'
 
 export default function PerfilModal({ isOpen, onClose, perfil, onProfileUpdated }) {
   if (!isOpen || !perfil) return null
