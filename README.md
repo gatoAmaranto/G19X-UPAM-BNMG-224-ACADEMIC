@@ -200,6 +200,24 @@ VITE_AUTH0_AUDIENCE=https://tu_dominio.us.auth0.com/api/v2/
 - **API REST (Backend):** [http://localhost:8000/api/](http://localhost:8000/api/)
 - **Panel Administrativo Django:** [http://localhost:8000/admin/](http://localhost:8000/admin/)
 
+### Conexion desde otros dispositivos en la red local (LAN)
+
+Para ingresar a la aplicacion desde otro dispositivo conectado a la misma red local (como un telefono movil u otra computadora):
+
+1. **Obtener la IP local del equipo anfitrion:**
+   En Linux, ejecuta `ip -4 addr show` o `hostname -I` (ejemplo de direccion asignada: `192.168.100.90`).
+2. **Acceder desde el navegador del dispositivo:**
+   Ingresa a `http://<IP_LOCAL>:5173` (por ejemplo, `http://192.168.100.90:5173`).
+   *Nota importante:* No utilices la IP que Vite imprime bajo "Network" dentro del contenedor (`172.19.0.x`), ya que corresponde a la red interna virtual de Docker y no es accesible desde fuera del host.
+3. **Configuracion de Firewall (si aplica):**
+   Si el sistema anfitrion tiene activo un cortafuegos (ej. `ufw`), permite el trafico entrante al puerto del frontend:
+   ```bash
+   sudo ufw allow 5173/tcp
+   ```
+4. **Si utilizas Auth0 en lugar de los perfiles demo:**
+   Recuerda agregar `http://<IP_LOCAL>:5173` en el Dashboard de Auth0 dentro de los campos **Allowed Callback URLs**, **Allowed Logout URLs** y **Allowed Web Origins**.
+
+
 ---
 
 ## Comandos Utiles

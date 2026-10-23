@@ -28,13 +28,11 @@ class EmpleadoSerializer(serializers.ModelSerializer):
 
     def get_foto_perfil_url(self, obj):
         if obj.foto_perfil:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.foto_perfil.url)
             url = obj.foto_perfil.url
             if url.startswith('http'):
-                return url
-            return f"http://localhost:8000{url if url.startswith('/') else '/' + url}"
+                import re
+                return re.sub(r'^https?://[^/]+', '', url)
+            return url if url.startswith('/') else f"/{url}"
         return None
 
 
@@ -64,13 +62,11 @@ class SolicitudVacacionesSerializer(serializers.ModelSerializer):
 
     def get_empleado_avatar(self, obj):
         if getattr(obj, 'empleado', None) and obj.empleado.foto_perfil:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.empleado.foto_perfil.url)
             url = obj.empleado.foto_perfil.url
             if url.startswith('http'):
-                return url
-            return f"http://localhost:8000{url if url.startswith('/') else '/' + url}"
+                import re
+                return re.sub(r'^https?://[^/]+', '', url)
+            return url if url.startswith('/') else f"/{url}"
         return None
 
 
@@ -108,13 +104,11 @@ class TicketRHSerializer(serializers.ModelSerializer):
 
     def get_empleado_avatar(self, obj):
         if getattr(obj, 'empleado', None) and obj.empleado.foto_perfil:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.empleado.foto_perfil.url)
             url = obj.empleado.foto_perfil.url
             if url.startswith('http'):
-                return url
-            return f"http://localhost:8000{url if url.startswith('/') else '/' + url}"
+                import re
+                return re.sub(r'^https?://[^/]+', '', url)
+            return url if url.startswith('/') else f"/{url}"
         return None
 
 
