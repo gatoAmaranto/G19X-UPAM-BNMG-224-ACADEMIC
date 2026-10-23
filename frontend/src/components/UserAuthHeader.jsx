@@ -6,7 +6,7 @@ import { useAuth } from '../auth/AuthContext.jsx'
 const API_BASE = '/api'
 
 export default function UserAuthHeader() {
-  const { isAuthenticated, user, isRhAdmin, login, logout, switchRole, isAuth0Live } = useAuth()
+  const { isAuthenticated, user, isRhAdmin, login, logout, switchRole, isAuth0Live, insecureOriginDetected, isForceLocal, resetForceLocal } = useAuth()
   const [avatarCustomUrl, setAvatarCustomUrl] = useState(null)
   const [puestoUsuario, setPuestoUsuario] = useState('')
   const [nombreUsuario, setNombreUsuario] = useState('')
@@ -142,6 +142,37 @@ export default function UserAuthHeader() {
             <span>Recursos Humanos</span>
           </button>
         </div>
+      )}
+
+      {insecureOriginDetected && (
+        <span
+          title="El navegador restringe Web Crypto en conexiones HTTP por IP. Auth0 requiere HTTPS o localhost. Modo de prueba local habilitado."
+          style={{
+            fontSize: '0.74rem',
+            background: 'var(--muted)',
+            color: 'var(--muted-foreground)',
+            padding: '0.25rem 0.6rem',
+            borderRadius: 'var(--radius)',
+            border: '1px dashed var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem'
+          }}
+        >
+          <Shield size={12} />
+          <span>Demo LAN</span>
+        </span>
+      )}
+
+      {isForceLocal && (
+        <button
+          onClick={resetForceLocal}
+          className="btn-secondary"
+          title="Volver a intentar inicio de sesión con Auth0"
+          style={{ padding: '0.25rem 0.55rem', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+        >
+          <span>Reconectar Auth0</span>
+        </button>
       )}
 
       {/* User Info Avatar Badge con Foto y Puesto de Trabajo */}

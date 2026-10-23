@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Bot, Sun, Moon, Lock, LogIn } from 'lucide-react'
 
 import ColaboradorDashboard from './components/ColaboradorDashboard.jsx'
@@ -17,7 +17,8 @@ export default function App() {
   })
 
   const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const { isAuthenticated, user, isRhAdmin, login, isLoading } = useAuth()
+  const { isAuthenticated, user, isRhAdmin, login, isLoading, isAuth0Live } = useAuth()
+  const hasAttemptedAutoLogin = useRef(false)
 
   // Aplicar clase .dark en <html>
   useEffect(() => {
@@ -42,12 +43,13 @@ export default function App() {
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [])
 
-  // 2. Redirección automática a Auth0 si no está autenticado
+  // 2. Redirección automática a Auth0 únicamente si está en modo en vivo y no se ha intentado
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (isAuth0Live && !isLoading && !isAuthenticated && !hasAttemptedAutoLogin.current) {
+      hasAttemptedAutoLogin.current = true
       login()
     }
-  }, [isLoading, isAuthenticated, login])
+  }, [isAuth0Live, isLoading, isAuthenticated, login])
 
   const toggleDarkMode = () => {
     setIsDarkMode(prev => {

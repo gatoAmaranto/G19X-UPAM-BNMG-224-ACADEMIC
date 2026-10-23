@@ -15,11 +15,17 @@ export const AUTH0_CONFIG = {
   }
 }
 
-// Proveedor Híbrido que activa Auth0 en vivo
+// Proveedor Híbrido que activa Auth0 en vivo o recurre a modo local si el origen no es seguro (HTTP por IP)
 export function AuthProvider({ children }) {
+  const isSecureContextAvailable = typeof window !== 'undefined' && Boolean(window.crypto && window.crypto.subtle)
+  const isForceLocal = typeof window !== 'undefined' && sessionStorage.getItem('force_local_auth') === 'true'
   const isAuth0Configured = Boolean(AUTH0_CONFIG.domain && AUTH0_CONFIG.clientId)
 
-  if (isAuth0Configured) {
+  // Auth0 SPA JS requiere Web Crypto API (crypto.subtle) para PKCE, la cual los navegadores
+  // sólo habilitan en orígenes seguros (HTTPS o localhost / 127.0.0.1).
+  // Si se accede mediante una IP de red local (ej. http://192.168.x.x:5173),
+  // se activa automáticamente el LocalAuthProvider para prevenir la pantalla blanca.
+  if (!isForceLocal && isAuth0Configured && isSecureContextAvailable) {
     return (
       <Auth0Provider
         domain={AUTH0_CONFIG.domain}
@@ -31,12 +37,66 @@ export function AuthProvider({ children }) {
     )
   }
 
-  return <LocalAuthProvider>{children}</LocalAuthProvider>
+  return (
+    <LocalAuthProvider
+      insecureOriginDetected={isAuth0Configured && !isSecureContextAvailable}
+    >
+      {children}
+    </LocalAuthProvider>
+  )
 }
 
 // Wrapper para extraer claims y los roles oficiales: "colaborador" y "recursos humanos"
 function Auth0WrappedChild({ children }) {
-  const { user, isAuthenticated, isLoading, loginWithRedirect, logout, getAccessTokenSilently } = useAuth0()
+  const { user, isAuthenticated, isLoading, error, loginWithRedirect, logout, getAccessTokenSilently } = useAuth0()
+
+  if (error) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--background, #0f172a)',
+        color: 'var(--foreground, #f8fafc)',
+        padding: '2rem'
+      }}>
+        <div className="glass-panel" style={{
+          maxWidth: '520px',
+          width: '100%',
+          padding: '2.5rem',
+          textAlign: 'center',
+          borderRadius: 'var(--radius, 12px)'
+        }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ef4444', marginBottom: '0.75rem' }}>
+            Error de Autenticacion con Auth0
+          </h2>
+          <p style={{ fontSize: '0.9rem', color: 'var(--muted-foreground, #94a3b8)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+            {error.message || 'No fue posible completar la verificacion de sesion en Auth0.'}
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => loginWithRedirect()}
+              className="btn-primary"
+              style={{ padding: '0.65rem 1.25rem' }}
+            >
+              Reintentar inicio de sesion
+            </button>
+            <button
+              onClick={() => {
+                sessionStorage.setItem('force_local_auth', 'true')
+                window.location.href = window.location.origin
+              }}
+              className="btn-secondary"
+              style={{ padding: '0.65rem 1.25rem' }}
+            >
+              Continuar en modo local (demo)
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Extraer roles de cualquier claim inyectado por la Action de Auth0
   let rawRoles = []
@@ -110,14 +170,15 @@ function Auth0WrappedChild({ children }) {
     login: () => loginWithRedirect(),
     logout: () => logout({ logoutParams: { returnTo: window.location.origin } }),
     getToken: getAccessTokenSilently,
-    isAuth0Live: true
+    isAuth0Live: true,
+    insecureOriginDetected: false
   }
 
   return <AuthCustomContext.Provider value={value}>{children}</AuthCustomContext.Provider>
 }
 
 // Proveedor Simulado para fallback
-function LocalAuthProvider({ children }) {
+function LocalAuthProvider({ children, insecureOriginDetected = false }) {
   const [activeRole, setActiveRole] = useState('colaborador') // 'colaborador' | 'recursos humanos'
   const [isAuthenticated, setIsAuthenticated] = useState(true)
 
@@ -158,6 +219,13 @@ function LocalAuthProvider({ children }) {
     }
   }, [isAuthenticated, activeRole])
 
+  const resetForceLocal = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('force_local_auth')
+      window.location.reload()
+    }
+  }
+
   const value = {
     isAuthenticated,
     isLoading: false,
@@ -169,7 +237,10 @@ function LocalAuthProvider({ children }) {
     switchRole: (role) => setActiveRole(role),
     activeRole,
     getToken: async () => 'mock-jwt-token-plurione',
-    isAuth0Live: false
+    isAuth0Live: false,
+    insecureOriginDetected,
+    isForceLocal: typeof window !== 'undefined' && sessionStorage.getItem('force_local_auth') === 'true',
+    resetForceLocal
   }
 
   return <AuthCustomContext.Provider value={value}>{children}</AuthCustomContext.Provider>
