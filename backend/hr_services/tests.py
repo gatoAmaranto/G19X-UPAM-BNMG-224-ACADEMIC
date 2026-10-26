@@ -466,6 +466,57 @@ class HRServicesTestCase(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()['dias_solicitados'], 6)
 
+    def test_crear_solicitud_vacaciones_bloquea_exceso_por_saldo_retenido(self):
+        from hr_services.services import crear_solicitud_vacaciones
+        from django.core.exceptions import ValidationError
+
+        # self.empleado tiene 12 totales, 2 tomados -> 10 disponibles
+        # Primera solicitud: 2026-11-02 a 2026-11-09 (6 días laborales). Quedan 4 disponibles
+        s1 = crear_solicitud_vacaciones(
+            self.empleado,
+            fecha_inicio='2026-11-02',
+            fecha_fin='2026-11-09',
+            motivo='Primera solicitud'
+        )
+        self.assertEqual(s1.estado, 'PENDIENTE')
+        self.assertEqual(s1.dias_solicitados, 6)
+
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.dias_vacaciones_retenidos, 6)
+        self.assertEqual(self.empleado.dias_vacaciones_disponibles, 4)
+
+        # Segunda solicitud intenta pedir 5 días (2026-11-16 a 2026-11-20), pero solo quedan 4
+        with self.assertRaises(ValidationError) as ctx:
+            crear_solicitud_vacaciones(
+                self.empleado,
+                fecha_inicio='2026-11-16',
+                fecha_fin='2026-11-20',
+                motivo='Segunda solicitud excesiva'
+            )
+        self.assertIn('No cuentas con suficientes días disponibles', str(ctx.exception))
+        self.assertIn('4 días disponibles', str(ctx.exception))
+
+    def test_crear_solicitud_vacaciones_bloquea_solapamiento_con_pendiente(self):
+        from hr_services.services import crear_solicitud_vacaciones
+        from django.core.exceptions import ValidationError
+
+        crear_solicitud_vacaciones(
+            self.empleado,
+            fecha_inicio='2026-11-02',
+            fecha_fin='2026-11-06',
+            motivo='Periodo original'
+        )
+
+        # Intento de solicitud que se empalma parcialmente (2026-11-05 a 2026-11-10)
+        with self.assertRaises(ValidationError) as ctx:
+            crear_solicitud_vacaciones(
+                self.empleado,
+                fecha_inicio='2026-11-05',
+                fecha_fin='2026-11-10',
+                motivo='Periodo empalmado'
+            )
+        self.assertIn('Ya cuentas con una solicitud de vacaciones en proceso de aprobación', str(ctx.exception))
+
 
 
 

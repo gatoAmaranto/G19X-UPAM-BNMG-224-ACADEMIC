@@ -1,8 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import (
+from .views_colaborador import (
     PerfilEmpleadoView, PerfilAvatarUploadView, VacacionesView, GenerarConstanciaView,
-    TicketsViewSet, BaseConocimientoViewSet, NotaTareaViewSet,
+    TicketsViewSet, BaseConocimientoViewSet, NotaTareaViewSet
+)
+from .views_rh import (
     AdminVacacionesView, AdminTicketsView, AdminFAQView, AdminDocumentUploadView
 )
 

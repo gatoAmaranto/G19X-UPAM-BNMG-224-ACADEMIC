@@ -86,9 +86,10 @@ class Auth0JSONWebTokenAuthentication(authentication.BaseAuthentication):
         sub = payload.get('sub', 'auth0_user')
 
         # Extraer roles del JWT (reclamaciones inyectadas por Auth0 Actions o reglas)
+        # Se restringe estrictamente a 'roles' o claims con sufijo '/roles' (ej. https://tu_dominio/roles)
         raw_roles = []
         for key, val in payload.items():
-            if key.endswith('/roles') or key == 'roles' or 'role' in key:
+            if key.endswith('/roles') or key == 'roles':
                 if isinstance(val, list):
                     raw_roles.extend(val)
                 elif isinstance(val, str):

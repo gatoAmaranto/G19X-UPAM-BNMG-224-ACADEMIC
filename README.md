@@ -105,7 +105,7 @@ Abre el archivo `.env` y define tu clave de Google AI Studio:
 GEMINI_API_KEY=tu_clave_de_gemini
 ```
 
-Las variables para base de datos (PostgreSQL), cache (Redis) y autenticacion ya vienen configuradas para el entorno de desarrollo local.
+Las variables para base de datos (PostgreSQL) y cache (Redis) ya vienen configuradas para el entorno de desarrollo local. Las variables de Auth0 se encuentran comentadas por defecto en el archivo `.env` para que tomen automáticamente los valores de desarrollo definidos en `docker-compose.yml` y `core/settings.py` (o utilices los botones de acceso demo en la cabecera); solo debes descomentarlas si vas a conectar tu propio tenant de Auth0.
 
 ### 3. Levantar los servicios con Docker
 Ejecuta el siguiente comando en la raiz del proyecto:
