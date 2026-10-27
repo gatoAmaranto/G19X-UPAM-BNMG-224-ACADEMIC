@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { FileText, X, Download, Eye } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { API_BASE_URL } from '../api/apiClient.js'
@@ -21,8 +22,7 @@ export default function ConstanciaPreviewModal({ isOpen, onClose }) {
   const previewUrl = `${API_BASE_URL}/hr/constancia/?preview=true${tokenParam}`
   const downloadUrl = `${API_BASE_URL}/hr/constancia/?download=true${tokenParam}`
 
-
-  return (
+  const modalContent = (
     <div
       onClick={onClose}
       style={{
@@ -31,12 +31,14 @@ export default function ConstanciaPreviewModal({ isOpen, onClose }) {
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.7)',
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(0, 0, 0, 0.75)',
         backdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 9999,
+        zIndex: 99999,
         padding: '1rem'
       }}
     >
@@ -110,4 +112,6 @@ export default function ConstanciaPreviewModal({ isOpen, onClose }) {
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

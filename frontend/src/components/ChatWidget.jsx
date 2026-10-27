@@ -239,7 +239,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
   }
 
   return (
-    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 225px)', height: '100%', overflow: 'hidden' }}>
+    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', minHeight: 0, overflow: 'hidden' }}>
       {/* Modal de Vista Previa de Constancia Laboral */}
       <ConstanciaPreviewModal
         isOpen={modalConstanciaOpen}
@@ -247,7 +247,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
       />
 
       {/* Chat Header */}
-      <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--card)' }}>
+      <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--card)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.4rem', borderRadius: 'var(--radius)', display: 'flex' }}>
             <Bot size={20} />
@@ -273,57 +273,8 @@ export default function ChatWidget({ onRefreshData, perfil }) {
         </button>
       </div>
 
-      {/* Barra anclada fija para constancia laboral si fue generada en la conversación */}
-      {messages.some(m => m.actionType === 'CONSTANCIA_GENERADA') && (
-        <div style={{
-          padding: '0.65rem 1.25rem',
-          background: 'var(--card)',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '0.75rem',
-          flexWrap: 'wrap',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-            <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.3rem', borderRadius: 'var(--radius)', display: 'flex' }}>
-              <FileText size={15} />
-            </div>
-            <div>
-              <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--foreground)' }}>
-                Constancia Laboral Oficial disponible
-              </span>
-              <p style={{ fontSize: '0.74rem', color: 'var(--muted-foreground)', margin: 0 }}>
-                Emitida por Recursos Humanos en formato PDF
-              </p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <button
-              onClick={() => setModalConstanciaOpen(true)}
-              className="btn-primary"
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-            >
-              <Eye size={14} />
-              <span>Ver Vista Previa</span>
-            </button>
-            <a
-              href={`${API_BASE_URL}/hr/constancia/?download=true`}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-secondary"
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-            >
-              <Download size={14} />
-              <span>Descargar PDF</span>
-            </a>
-          </div>
-        </div>
-      )}
-
       {/* Messages Feed */}
-      <div style={{ flex: 1, padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ flex: 1, minHeight: 0, padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -528,7 +479,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
 
 
       {/* Input Form */}
-      <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--card)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+      <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--card)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }}>
         <textarea
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}

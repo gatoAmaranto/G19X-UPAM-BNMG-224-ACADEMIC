@@ -485,7 +485,16 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
       </aside>
 
       {/* Contenedor Principal a la derecha con Sticky Topbar */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh', background: 'var(--background)' }}>
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        height: '100vh',
+        maxHeight: '100vh',
+        overflow: activeTab === 'chat' ? 'hidden' : 'auto',
+        background: 'var(--background)'
+      }}>
         <header
           style={{
             height: '68px',
@@ -497,7 +506,8 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
             padding: '0 2rem',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            flexShrink: 0
           }}
         >
           <div>
@@ -538,9 +548,20 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
         </header>
 
         {/* Área Principal de Contenido del Colaborador */}
-        <main style={{ flex: 1, padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '1600px', width: '100%', margin: '0 auto' }}>
+        <main style={{
+          flex: 1,
+          padding: activeTab === 'chat' ? '1rem 2rem 1.25rem' : '1.5rem 2rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          maxWidth: '1600px',
+          width: '100%',
+          margin: '0 auto',
+          minHeight: 0,
+          overflow: activeTab === 'chat' ? 'hidden' : 'visible'
+        }}>
           {/* Subtítulo contextual de la pestaña */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.65rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', flexShrink: 0 }}>
             <p style={{ fontSize: '0.86rem', color: 'var(--muted-foreground)', margin: 0 }}>
               {activeTab === 'chat' && 'Interactúa con el agente conversacional inteligente para resolver dudas o tramitar solicitudes.'}
               {activeTab === 'perfil' && 'Consulta tu información oficial, antigüedad calculada y administra tu fotografía institucional.'}
@@ -552,7 +573,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
 
         {/* Tab 1: Asistente Virtual Conversacional */}
         {activeTab === 'chat' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
             <ChatWidget onRefreshData={fetchData} perfil={perfil} />
           </div>
         )}
