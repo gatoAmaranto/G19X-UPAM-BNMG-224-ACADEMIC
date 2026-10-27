@@ -34,7 +34,7 @@ services:
     container_name: hr_django_backend_prod
     restart: always
     volumes:
-      - media_data:/app/media
+      - ./backend/media:/app/media
     env_file:
       - .env
     environment:
@@ -63,5 +63,4 @@ services:
 
 volumes:
   postgres_data:
-  media_data:
   redis_data:

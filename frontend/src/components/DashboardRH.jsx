@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { User, Calendar, FileText, Ticket, Plus, CheckCircle, Clock, Eye, Download } from 'lucide-react'
-import apiClient from '../api/apiClient.js'
+import apiClient, { resolveAvatarUrl } from '../api/apiClient.js'
 import VacacionesModal from './VacacionesModal.jsx'
 import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
@@ -99,7 +99,7 @@ export default function DashboardRH({ refreshTrigger }) {
             >
               {perfil.foto_perfil_url ? (
                 <img
-                  src={perfil.foto_perfil_url}
+                  src={resolveAvatarUrl(perfil.foto_perfil_url)}
                   alt={`${perfil.user.first_name} ${perfil.user.last_name}`}
                   style={{
                     width: '52px',

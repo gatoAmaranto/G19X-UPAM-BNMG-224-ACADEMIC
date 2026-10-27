@@ -6,19 +6,11 @@ import {
   ChevronDown, ChevronUp, Search, Filter, Users, CalendarDays,
   Sun, Moon, Bot
 } from 'lucide-react'
-import apiClient from '../api/apiClient.js'
+import apiClient, { resolveAvatarUrl } from '../api/apiClient.js'
 import CalendarioLaboral from './CalendarioLaboral.jsx'
 import UserAuthHeader from './UserAuthHeader.jsx'
 
 const API_BASE = '/hr/admin'
-
-const resolveAvatarUrl = (url) => {
-  if (!url) return null
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-    return url
-  }
-  return `${url.startsWith('/') ? '' : '/'}${url}`
-}
 
 export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
   const [activeTab, setActiveTab] = useState('vacaciones')
@@ -606,7 +598,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
               </div>
               {perfilRH?.foto_perfil_url ? (
                 <img
-                  src={perfilRH.foto_perfil_url}
+                  src={resolveAvatarUrl(perfilRH.foto_perfil_url)}
                   alt="Avatar RH"
                   style={{
                     width: '24px',
@@ -1499,7 +1491,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
                 <div style={{ position: 'relative', width: '96px', height: '96px', flexShrink: 0 }}>
                   {previewFotoRH || perfilRH.foto_perfil_url ? (
                     <img
-                      src={previewFotoRH || perfilRH.foto_perfil_url}
+                      src={previewFotoRH || resolveAvatarUrl(perfilRH.foto_perfil_url)}
                       alt={`${perfilRH.user.first_name} ${perfilRH.user.last_name}`}
                       style={{
                         width: '96px',

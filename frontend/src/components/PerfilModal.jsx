@@ -3,7 +3,7 @@ import {
   X, User, Camera, Trash2, Mail, Briefcase,
   Building, Calendar, DollarSign, Award, CheckCircle, AlertCircle, RefreshCw
 } from 'lucide-react'
-import apiClient from '../api/apiClient.js'
+import apiClient, { resolveAvatarUrl } from '../api/apiClient.js'
 
 export default function PerfilModal({ isOpen, onClose, perfil, onProfileUpdated }) {
   if (!isOpen || !perfil) return null
@@ -105,7 +105,7 @@ export default function PerfilModal({ isOpen, onClose, perfil, onProfileUpdated 
     ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(perfil.salario_mensual)
     : 'Confidencial'
 
-  const currentAvatarSrc = previewUrl || perfil.foto_perfil_url
+  const currentAvatarSrc = previewUrl || resolveAvatarUrl(perfil.foto_perfil_url)
 
   return (
     <div

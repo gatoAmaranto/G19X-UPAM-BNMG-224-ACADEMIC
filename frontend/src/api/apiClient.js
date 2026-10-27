@@ -26,6 +26,54 @@ export const getStoredToken = async () => {
 
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '')
 
+/**
+ * Resuelve y normaliza URLs de imágenes de avatar y multimedia de colaboradores y administradores RH.
+ * Soporta URLs relativas, absolutas, orígenes externos, data/blob URLs y compatibilidad
+ * tanto con el entorno de desarrollo (con o sin proxy Vite) como con producción.
+ */
+export const resolveAvatarUrl = (url) => {
+  if (!url || typeof url !== 'string') return null
+  const trimmed = url.trim()
+  if (!trimmed) return null
+
+  // Data URLs o Blob URLs generadas localmente por previsualizaciones
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed
+  }
+
+  // Descartar prefijos de host internos o puertos fijos si vinieron en la BD o serializador
+  let cleanPath = trimmed.replace(/^https?:\/\/(backend|localhost|127\.0\.0\.1)(:\d+)?/i, '')
+
+  // Si tras remover hosts internos sigue siendo una URL absoluta (ej. CDN, Unsplash, Auth0), retornarla directamente
+  if (/^https?:\/\//i.test(cleanPath)) {
+    return cleanPath
+  }
+
+  // Asegurar barra diagonal inicial
+  if (!cleanPath.startsWith('/')) {
+    cleanPath = `/${cleanPath}`
+  }
+
+  // Normalizar rutas que inicien directamente con /avatares/ para anteponer /media
+  if (cleanPath.startsWith('/avatares/')) {
+    cleanPath = `/media${cleanPath}`
+  }
+
+  // Si API_BASE_URL es una URL absoluta (ej. http://localhost:8000/api o http://192.168.x.x:8000/api),
+  // extraer su origen y anteponerlo para que la imagen apunte directamente al backend
+  if (/^https?:\/\//i.test(API_BASE_URL)) {
+    try {
+      const origin = new URL(API_BASE_URL).origin
+      return `${origin}${cleanPath}`
+    } catch {
+      // Si falla la extracción de URL, continuar con la ruta relativa
+    }
+  }
+
+  return cleanPath
+}
+
+
 // Instancia centralizada de API Client para PluriOne
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

@@ -5,7 +5,7 @@ import {
   AlertCircle, RefreshCw, Eye, Download, Shield, ExternalLink, CalendarDays,
   Sun, Moon
 } from 'lucide-react'
-import apiClient from '../api/apiClient.js'
+import apiClient, { resolveAvatarUrl } from '../api/apiClient.js'
 import ChatWidget from './ChatWidget.jsx'
 import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
@@ -411,7 +411,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
               </div>
               {perfil?.foto_perfil_url ? (
                 <img
-                  src={perfil.foto_perfil_url}
+                  src={resolveAvatarUrl(perfil.foto_perfil_url)}
                   alt="Avatar"
                   style={{
                     width: '24px',
@@ -582,7 +582,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                   <div style={{ position: 'relative', width: '96px', height: '96px', flexShrink: 0 }}>
                     {previewFoto || perfil.foto_perfil_url ? (
                       <img
-                        src={previewFoto || perfil.foto_perfil_url}
+                        src={previewFoto || resolveAvatarUrl(perfil.foto_perfil_url)}
                         alt={`${perfil.user.first_name} ${perfil.user.last_name}`}
                         style={{
                           width: '96px',

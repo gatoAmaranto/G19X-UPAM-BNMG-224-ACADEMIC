@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { LogIn, LogOut, Shield, UserCheck } from 'lucide-react'
-import apiClient from '../api/apiClient.js'
+import apiClient, { resolveAvatarUrl } from '../api/apiClient.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 
 export default function UserAuthHeader() {
@@ -85,7 +85,9 @@ export default function UserAuthHeader() {
     user.picture.includes('gravatar.com/avatar')
   )
 
-  const displayAvatar = avatarCustomUrl || (!isAuth0Initials && user?.picture) || fallbackAvatar
+  const customAvatarResolved = resolveAvatarUrl(avatarCustomUrl)
+  const auth0AvatarResolved = !isAuth0Initials && user?.picture ? resolveAvatarUrl(user.picture) : null
+  const displayAvatar = customAvatarResolved || auth0AvatarResolved || fallbackAvatar
 
   const displayPuesto = isRhAdmin
     ? (puestoUsuario && puestoUsuario.toLowerCase().includes('recursos') ? puestoUsuario : 'Especialista de Recursos Humanos')
