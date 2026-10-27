@@ -3,10 +3,7 @@ import {
   X, User, Camera, Trash2, Mail, Briefcase,
   Building, Calendar, DollarSign, Award, CheckCircle, AlertCircle, RefreshCw
 } from 'lucide-react'
-import axios from 'axios'
 import apiClient from '../api/apiClient.js'
-
-const API_BASE = '/api'
 
 export default function PerfilModal({ isOpen, onClose, perfil, onProfileUpdated }) {
   if (!isOpen || !perfil) return null
@@ -48,7 +45,7 @@ export default function PerfilModal({ isOpen, onClose, perfil, onProfileUpdated 
       setUploading(true)
       setStatusMessage(null)
 
-      const response = await axios.post(`${API_BASE}/hr/perfil/avatar/`, formData, {
+      const response = await apiClient.post('/hr/perfil/avatar/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -89,7 +86,7 @@ export default function PerfilModal({ isOpen, onClose, perfil, onProfileUpdated 
       setUploading(true)
       setStatusMessage(null)
 
-      const response = await axios.delete(`${API_BASE}/hr/perfil/avatar/`)
+      const response = await apiClient.delete('/hr/perfil/avatar/')
       setStatusMessage({ type: 'success', text: 'Fotografía de perfil eliminada.' })
       setSelectedFile(null)
       setPreviewUrl(null)

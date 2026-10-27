@@ -93,7 +93,11 @@ cd G19X-UPAM-BNMG-224-ACADEMIC
 ```
 
 ### 2. Configurar variables de entorno
-Copia la plantilla de ejemplo para crear el archivo `.env`:
+El proyecto incluye dos plantillas de variables de entorno para desacoplar el entorno de desarrollo local del entorno de produccion:
+- `.env.example`: Diseñada para iniciar de inmediato en desarrollo local con `DEBUG=True`, base de datos y puertos de prueba, y variables de Auth0 comentadas para permitir el inicio de sesion con perfiles demo o credenciales de prueba locales sin depender de un tenant externo.
+- `.env.prod.example`: Plantilla con directivas de produccion (`DEBUG=False`, claves criptograficas robustas, dominios en produccion, `VITE_API_BASE_URL=/api` y orígenes CORS restringidos).
+
+Para desarrollo local, copia la plantilla de desarrollo:
 
 ```bash
 cp .env.example .env
@@ -105,7 +109,7 @@ Abre el archivo `.env` y define tu clave de Google AI Studio:
 GEMINI_API_KEY=tu_clave_de_gemini
 ```
 
-Las variables para base de datos (PostgreSQL) y cache (Redis) ya vienen configuradas para el entorno de desarrollo local. Las variables de Auth0 se encuentran comentadas por defecto en el archivo `.env` para que tomen automáticamente los valores de desarrollo definidos en `docker-compose.yml` y `core/settings.py` (o utilices los botones de acceso demo en la cabecera); solo debes descomentarlas si vas a conectar tu propio tenant de Auth0.
+Las variables para base de datos (PostgreSQL) y cache (Redis) ya vienen configuradas para el entorno de desarrollo local. Las variables de Auth0 se encuentran comentadas por defecto en el archivo `.env` para que tomen automaticamente los valores de desarrollo definidos en `docker-compose.yml` y `core/settings.py` (o utilices los botones de acceso demo en la cabecera); solo debes descomentarlas si vas a conectar tu propio tenant de Auth0.
 
 ### 3. Levantar los servicios con Docker
 Ejecuta el siguiente comando en la raiz del proyecto:
@@ -144,9 +148,10 @@ El sistema utiliza Auth0 para el inicio de sesion unico (SSO) y control de acces
 1. Ve a **Applications > Applications** en el dashboard de Auth0 y haz clic en **Create Application**.
 2. Selecciona **Single Page Web Applications** (SPA) y asigna un nombre.
 3. En la pestaña **Settings** de la aplicacion, configura las siguientes URLs:
-   - **Allowed Callback URLs:** `http://localhost:5173`
-   - **Allowed Logout URLs:** `http://localhost:5173`
-   - **Allowed Web Origins:** `http://localhost:5173`
+   - **Allowed Callback URLs:** `http://localhost:5173, http://localhost`
+   - **Allowed Logout URLs:** `http://localhost:5173, http://localhost`
+   - **Allowed Web Origins:** `http://localhost:5173, http://localhost`
+   *(Nota: Se incluye `http://localhost` para admitir el stack de produccion servido por Nginx en el puerto 80).*
 4. Guarda los cambios (**Save Changes**).
 5. Copia el **Domain** y el **Client ID**.
 
@@ -263,27 +268,43 @@ docker compose exec backend python manage.py test
 
 El proyecto incluye soporte diferenciado para desarrollo local y entornos de produccion empresarial.
 
-### 1. Variables de entorno seguras para produccion (`.env`)
-Antes de desplegar en un servidor accesible por colaboradores o usuarios reales, asegúrate de configurar en tu archivo `.env`:
+### 1. Variables de entorno seguras para produccion (`.env` / `.env.prod.example`)
+Antes de desplegar en un servidor accesible por colaboradores o usuarios reales, copia la plantilla de produccion `.env.prod.example` a tu `.env` y configura los valores requeridos:
 
 - `DEBUG=False`: Deshabilita el modo de depuracion y bloquea tokens de prueba locales.
-- `SECRET_KEY`: Genera una clave aleatoria y segura de al menos 50 caracteres (no utilices el valor por defecto).
-- `ALLOWED_HOSTS`: Define el nombre de dominio o IP publica de tu servidor (ej. `autoservicio.tuempresa.com,192.168.1.100`).
-- `CORS_ALLOWED_ORIGINS`: Especifica la URL HTTPS publica del frontend (ej. `https://autoservicio.tuempresa.com`).
+- `SECRET_KEY`: Genera una clave criptografica aleatoria y segura de al menos 50 caracteres (no utilices el valor por defecto).
+- `ALLOWED_HOSTS`: Define el nombre de dominio o IP publica de tu servidor (ej. `autoservicio.tuempresa.com,localhost,backend`).
+- `CORS_ALLOWED_ORIGINS`: Especifica los origenes web autorizados para interactuar con la API (incluye `http://localhost` para peticiones locales y tu dominio HTTPS de produccion).
 - `USE_POSTGRES=True`: Garantiza la persistencia en el motor PostgreSQL institucional.
+- `VITE_API_BASE_URL=/api`: Ruta relativa para que el frontend compilado dirija todas las peticiones a traves del proxy inverso Nginx.
 
-### 2. Persistencia de Datos y Archivos Multimedia
+### 2. Unificacion de URL de la API en el Frontend (`apiClient`)
+Para garantizar que el frontend opere de manera homogenea tanto en desarrollo (con Vite proxy o servidor local) como en produccion (a traves de Nginx en el puerto 80), todos los componentes del sistema utilizan una unica instancia centralizada de Axios exportada desde `src/api/apiClient.js`:
+- Se eliminaron las rutas absolutas fijas (`http://localhost:8000/api`) de los 10 componentes del cliente (`ChatWidget.jsx`, `AdminDashboard.jsx`, `DashboardRH.jsx`, `VacacionesModal.jsx`, `TicketModal.jsx`, `ConstanciaPreviewModal.jsx`, `CalendarioLaboral.jsx`, `ColaboradorDashboard.jsx`, `PerfilModal.jsx` y `UserAuthHeader.jsx`).
+- Los componentes consumen rutas relativas (`/hr/...`, `/agent/...`), las cuales se concatenan automaticamente con `VITE_API_BASE_URL` (`/api`).
+- `apiClient` inyecta automaticamente el token Bearer RS256 de Auth0 y gestiona respuestas de autorizacion (403 Forbidden).
+
+### 3. Persistencia de Datos y Archivos Multimedia
 El sistema define volumenes administrados por Docker para evitar perdida de informacion al recrear contenedores:
 - `postgres_data`: Persistencia de usuarios, expedientes, tickets, vacaciones y base de conocimiento.
 - `media_data`: Persistencia de fotografias de perfil (`/media/avatares/`) y constancias laborales PDF firmadas (`/media/constancias/`).
-- `redis_data`: Persistencia de snapshots de cache y colas en memoria de Redis.
+- `redis_data`: Persistencia de snapshots y volumen de Redis.
 
-### 3. Servidor WSGI y Proxy Inverso Nginx
+### 4. Servidor WSGI y Proxy Inverso Nginx
 - **Backend:** En produccion se ejecuta con **Gunicorn** (`core.wsgi:application`) utilizando 3 procesos worker independientes para atender multiples solicitudes concurrentes sin bloqueos.
-- **Frontend:** La aplicacion React es precompilada en artefactos estaticos (`npm run build`) y servida a traves de un contenedor optimizado con **Nginx** (puerto `80`), el cual actua como proxy inverso hacia `/api/` y `/media/`.
+- **Frontend:** Construccion multi-etapa en `frontend/Dockerfile.prod` (etapa 1 con `node:22-alpine` para `npm run build` y etapa 2 con `nginx:alpine`). Los argumentos de construccion `ARG` (`VITE_API_BASE_URL`, `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, `VITE_AUTH0_AUDIENCE`) se reciben desde `docker-compose.prod.yml` y se incrustan en tiempo de compilacion en los bundles estaticos de React.
+- **Nginx:** Escucha en el puerto `80`, sirve la aplicacion SPA con fallback a `index.html`, y actua como proxy inverso hacia `http://backend:8000/api/` y `http://backend:8000/media/`.
 - **Seguridad de Red:** Los puertos de PostgreSQL (`5432`) y Redis (`6379`) no se exponen al exterior en produccion, manteniendose estrictamente en la red interna aislada de Docker.
 
-### 4. Comando para levantar el entorno de produccion
+### 5. Estado de la Cache de Redis
+Respecto a la memoria cache de Redis (`REDIS_URL`): se encuentra configurada en `core/settings.py` como infraestructura para sesiones y almacenamiento en memoria (`django.core.cache.backends.redis.RedisCache`). En la version actual del codigo, ninguna vista ni servicio realiza llamadas directas a `cache.get()` o `cache.set()`, por lo que opera actualmente como soporte de infraestructura preparado para futuras politicas de almacenamiento en cache y colas asincronas.
+
+### 6. Protecciones de Concurrencia y Seguridad en Backend
+- **Creacion Segura de Vacaciones:** En `hr_services/services.py`, la funcion `crear_solicitud_vacaciones` implementa `transaction.atomic()` y bloqueo pesimista con `select_for_update()` sobre el registro del empleado, evitando condiciones de carrera por solicitudes simultaneas (ej. solicitud via chat y via formulario web al mismo instante).
+- **Filtro Estricto de Roles en Auth0:** En `authentication/auth0.py`, la extraccion de roles verifica con exactitud `key.endswith('/roles')` o `key == 'roles'`, impidiendo la inyeccion indebida de claims arbitrarios que contengan la subcadena 'role'.
+- **Modularizacion de Vistas de Recursos Humanos:** El archivo `hr_services/views.py` fue dividido en dos modulos especializados: `views_colaborador.py` (portal de autoservicio) y `views_rh.py` (administracion y backoffice de RH).
+
+### 7. Comando para compilar y levantar produccion
 Para compilar y ejecutar el stack con las configuraciones optimizadas de produccion:
 
 ```bash

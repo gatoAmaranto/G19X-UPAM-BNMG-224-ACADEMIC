@@ -1,12 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, Download, Calendar, Ticket, Loader2, Eye, RotateCcw } from 'lucide-react'
-import axios from 'axios'
+import apiClient from '../api/apiClient.js'
 
 import VacacionesModal from './VacacionesModal.jsx'
 import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
-
-const API_BASE = '/api'
 
 const MENSAJE_BIENVENIDA = {
   id: 'welcome',
@@ -153,7 +151,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
   useEffect(() => {
     const fetchHistorial = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/agent/historial/`)
+        const res = await apiClient.get('/agent/historial/')
         if (res.data && Array.isArray(res.data) && res.data.length > 0) {
           const formatted = res.data.map(m => ({
             id: m.id,
@@ -176,7 +174,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
   useEffect(() => {
     const fetchSaldo = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/hr/vacaciones/`)
+        const res = await apiClient.get('/hr/vacaciones/')
         if (res.data && res.data.saldo) {
           setSaldoVacaciones(res.data.saldo.disponibles)
         }
@@ -194,7 +192,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
     if (!confirmar) return
 
     try {
-      await axios.delete(`${API_BASE}/agent/historial/`)
+      await apiClient.delete('/agent/historial/')
       setMessages([MENSAJE_BIENVENIDA])
     } catch (err) {
       console.error('Error al reiniciar el historial de chat:', err)
@@ -218,7 +216,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
     setLoading(true)
 
     try {
-      const response = await axios.post(`${API_BASE}/agent/chat/`, { mensaje: text })
+      const response = await apiClient.post('/agent/chat/', { mensaje: text })
       const data = response.data
 
       const botMessage = {

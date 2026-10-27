@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { FileText, X, Download, Eye } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx'
-
-const API_BASE = '/api/hr'
+import { API_BASE_URL } from '../api/apiClient.js'
 
 export default function ConstanciaPreviewModal({ isOpen, onClose }) {
   const { getToken } = useAuth()
@@ -19,8 +18,8 @@ export default function ConstanciaPreviewModal({ isOpen, onClose }) {
   if (!isOpen) return null
 
   const tokenParam = token ? `&token=${encodeURIComponent(token)}` : ''
-  const previewUrl = `${API_BASE}/constancia/?preview=true${tokenParam}`
-  const downloadUrl = `${API_BASE}/constancia/?download=true${tokenParam}`
+  const previewUrl = `${API_BASE_URL}/hr/constancia/?preview=true${tokenParam}`
+  const downloadUrl = `${API_BASE_URL}/hr/constancia/?download=true${tokenParam}`
 
 
   return (

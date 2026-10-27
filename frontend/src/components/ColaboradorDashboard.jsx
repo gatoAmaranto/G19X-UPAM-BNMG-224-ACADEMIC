@@ -5,7 +5,7 @@ import {
   AlertCircle, RefreshCw, Eye, Download, Shield, ExternalLink, CalendarDays,
   Sun, Moon
 } from 'lucide-react'
-import axios from 'axios'
+import apiClient from '../api/apiClient.js'
 import ChatWidget from './ChatWidget.jsx'
 import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
@@ -13,8 +13,6 @@ import TicketDetalleModal from './TicketDetalleModal.jsx'
 import CentroTicketsColaborador from './CentroTicketsColaborador.jsx'
 import CalendarioLaboral from './CalendarioLaboral.jsx'
 import UserAuthHeader from './UserAuthHeader.jsx'
-
-const API_BASE = '/api'
 
 export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, isDarkMode, toggleDarkMode }) {
   const [activeTab, setActiveTab] = useState('chat') // 'chat' | 'calendario' | 'tickets' | 'constancia' | 'perfil'
@@ -44,9 +42,9 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
     try {
       setLoading(true)
       const [resPerfil, resVacaciones, resTickets] = await Promise.all([
-        axios.get(`${API_BASE}/hr/perfil/`),
-        axios.get(`${API_BASE}/hr/vacaciones/`),
-        axios.get(`${API_BASE}/hr/tickets/`)
+        apiClient.get('/hr/perfil/'),
+        apiClient.get('/hr/vacaciones/'),
+        apiClient.get('/hr/tickets/')
       ])
       setPerfil(resPerfil.data)
       if (resPerfil?.data) {
@@ -95,7 +93,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
       setSubiendoFoto(true)
       setMsgFoto(null)
 
-      const res = await axios.post(`${API_BASE}/hr/perfil/avatar/`, formData, {
+      const res = await apiClient.post('/hr/perfil/avatar/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
@@ -133,7 +131,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
       setSubiendoFoto(true)
       setMsgFoto(null)
 
-      const res = await axios.delete(`${API_BASE}/hr/perfil/avatar/`)
+      const res = await apiClient.delete('/hr/perfil/avatar/')
       setPerfil(res.data)
       setArchivoFoto(null)
       setPreviewFoto(null)
@@ -151,7 +149,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
   const handleDescargarConstanciaDirecta = async () => {
     try {
       setGenerandoPdf(true)
-      const res = await axios.post(`${API_BASE}/hr/constancia/?download=true`, {
+      const res = await apiClient.post('/hr/constancia/?download=true', {
         dirigido_a: dirigidoConstancia,
         incluir_sueldo: incluirSueldoConstancia
       }, { responseType: 'blob' })

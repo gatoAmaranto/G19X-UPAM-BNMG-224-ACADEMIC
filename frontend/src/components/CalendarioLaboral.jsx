@@ -5,9 +5,7 @@ import {
   FileText, AlertCircle, Filter, Building, Sun, Tag, User,
   CalendarCheck, Clock3
 } from 'lucide-react'
-import axios from 'axios'
-
-const API_BASE = '/api'
+import apiClient from '../api/apiClient.js'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -159,7 +157,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
       setCargandoTareas(true)
       const anio = fechaActual.getFullYear()
       const mes = fechaActual.getMonth() + 1
-      const res = await axios.get(`${API_BASE}/hr/calendario/?anio=${anio}&mes=${mes}`)
+      const res = await apiClient.get(`/hr/calendario/?anio=${anio}&mes=${mes}`)
       setTareas(res.data)
     } catch (err) {
       console.error('Error al cargar notas y tareas del calendario:', err)
@@ -360,7 +358,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
 
     try {
       setGuardando(true)
-      const res = await axios.post(`${API_BASE}/hr/calendario/`, {
+      const res = await apiClient.post('/hr/calendario/', {
         titulo: formTarea.titulo.trim(),
         descripcion: formTarea.descripcion.trim(),
         fecha: strFechaSeleccionada,
@@ -444,8 +442,8 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
     try {
       setGuardando(true)
       const endpoint = esAdminRH
-        ? `${API_BASE}/hr/admin/vacaciones/`
-        : `${API_BASE}/hr/vacaciones/`
+        ? '/hr/admin/vacaciones/'
+        : '/hr/vacaciones/'
 
       const payload = {
         fecha_inicio: formVacaciones.fecha_inicio,
@@ -461,7 +459,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
         }
       }
 
-      await axios.post(endpoint, payload)
+      await apiClient.post(endpoint, payload)
       if (onRefreshData) await onRefreshData()
       setModalNuevo(false)
     } catch (err) {
@@ -476,7 +474,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
   // Alternar estado de completada
   const handleToggleCompletada = async (tarea) => {
     try {
-      const res = await axios.patch(`${API_BASE}/hr/calendario/${tarea.id}/`, {
+      const res = await apiClient.patch(`/hr/calendario/${tarea.id}/`, {
         completada: !tarea.completada
       })
       setTareas(prev => prev.map(t => t.id === tarea.id ? res.data : t))
@@ -489,7 +487,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
   const handleEliminarTarea = async (id) => {
     if (!window.confirm('¿Deseas eliminar este registro del calendario?')) return
     try {
-      await axios.delete(`${API_BASE}/hr/calendario/${id}/`)
+      await apiClient.delete(`/hr/calendario/${id}/`)
       setTareas(prev => prev.filter(t => t.id !== id))
     } catch (err) {
       console.error('Error al eliminar tarea:', err)

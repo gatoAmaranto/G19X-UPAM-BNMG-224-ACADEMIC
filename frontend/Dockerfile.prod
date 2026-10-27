@@ -2,6 +2,19 @@
 FROM node:22-alpine AS build
 
 WORKDIR /app
+
+# Argumentos de construccion para Vite en produccion
+ARG VITE_API_BASE_URL=/api
+ARG VITE_AUTH0_DOMAIN
+ARG VITE_AUTH0_CLIENT_ID
+ARG VITE_AUTH0_AUDIENCE
+
+# Asignacion a variables de entorno en tiempo de construccion
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_AUTH0_DOMAIN=$VITE_AUTH0_DOMAIN
+ENV VITE_AUTH0_CLIENT_ID=$VITE_AUTH0_CLIENT_ID
+ENV VITE_AUTH0_AUDIENCE=$VITE_AUTH0_AUDIENCE
+
 COPY package*.json ./
 RUN npm install
 COPY . .

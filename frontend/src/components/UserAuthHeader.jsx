@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { LogIn, LogOut, Shield, UserCheck } from 'lucide-react'
-import axios from 'axios'
+import apiClient from '../api/apiClient.js'
 import { useAuth } from '../auth/AuthContext.jsx'
-
-const API_BASE = '/api'
 
 export default function UserAuthHeader() {
   const { isAuthenticated, user, isRhAdmin, login, logout, switchRole, isAuth0Live, insecureOriginDetected, isForceLocal, resetForceLocal } = useAuth()
@@ -18,9 +16,9 @@ export default function UserAuthHeader() {
     const fetchPerfil = async () => {
       try {
         const endpoint = isRhAdmin
-          ? `${API_BASE}/hr/admin/perfil/`
-          : `${API_BASE}/hr/perfil/`
-        const res = await axios.get(endpoint)
+          ? '/hr/admin/perfil/'
+          : '/hr/perfil/'
+        const res = await apiClient.get(endpoint)
         if (res.data) {
           if (res.data.foto_perfil_url) {
             setAvatarCustomUrl(res.data.foto_perfil_url)

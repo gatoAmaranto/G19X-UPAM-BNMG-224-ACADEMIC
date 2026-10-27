@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { User, Calendar, FileText, Ticket, Plus, CheckCircle, Clock, Eye, Download } from 'lucide-react'
-import axios from 'axios'
+import apiClient from '../api/apiClient.js'
 import VacacionesModal from './VacacionesModal.jsx'
 import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 import TicketDetalleModal from './TicketDetalleModal.jsx'
 import PerfilModal from './PerfilModal.jsx'
-
-
-const API_BASE = '/api'
 
 export default function DashboardRH({ refreshTrigger }) {
   const [perfil, setPerfil] = useState(null)
@@ -26,9 +23,9 @@ export default function DashboardRH({ refreshTrigger }) {
     try {
       setLoading(true)
       const [resPerfil, resVacaciones, resTickets] = await Promise.all([
-        axios.get(`${API_BASE}/hr/perfil/`),
-        axios.get(`${API_BASE}/hr/vacaciones/`),
-        axios.get(`${API_BASE}/hr/tickets/`)
+        apiClient.get('/hr/perfil/'),
+        apiClient.get('/hr/vacaciones/'),
+        apiClient.get('/hr/tickets/')
       ])
       setPerfil(resPerfil.data)
       setVacaciones(resVacaciones.data)

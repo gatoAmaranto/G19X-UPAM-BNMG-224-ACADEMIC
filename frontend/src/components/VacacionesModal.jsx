@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { Calendar, X, Check, AlertTriangle, Send } from 'lucide-react'
-import axios from 'axios'
+import apiClient from '../api/apiClient.js'
 
-const API_BASE = '/api/hr'
+const API_BASE = '/hr'
 
 export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, diasLaborales = 'Lunes a Viernes', onSuccess }) {
   const [fechaInicio, setFechaInicio] = useState('')
@@ -96,7 +96,7 @@ export default function VacacionesModal({ isOpen, onClose, saldoDisponibles, dia
 
     try {
       setLoading(true)
-      const response = await axios.post(`${API_BASE}/vacaciones/`, {
+      const response = await apiClient.post(`${API_BASE}/vacaciones/`, {
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
         dias_solicitados: diasSolicitados,

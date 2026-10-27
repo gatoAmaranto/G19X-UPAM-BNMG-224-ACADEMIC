@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { Ticket, X, AlertTriangle, Send } from 'lucide-react'
-import axios from 'axios'
+import apiClient from '../api/apiClient.js'
 
-const API_BASE = '/api/hr'
+const API_BASE = '/hr'
 
 export default function TicketModal({ isOpen, onClose, onSuccess }) {
   const [asunto, setAsunto] = useState('')
@@ -24,7 +24,7 @@ export default function TicketModal({ isOpen, onClose, onSuccess }) {
 
     try {
       setLoading(true)
-      const response = await axios.post(`${API_BASE}/tickets/`, {
+      const response = await apiClient.post(`${API_BASE}/tickets/`, {
         asunto: asunto,
         prioridad: prioridad,
         descripcion: descripcion

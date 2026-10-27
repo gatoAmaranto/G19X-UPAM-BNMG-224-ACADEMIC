@@ -6,11 +6,11 @@ import {
   ChevronDown, ChevronUp, Search, Filter, Users, CalendarDays,
   Sun, Moon, Bot
 } from 'lucide-react'
-import axios from 'axios'
+import apiClient from '../api/apiClient.js'
 import CalendarioLaboral from './CalendarioLaboral.jsx'
 import UserAuthHeader from './UserAuthHeader.jsx'
 
-const API_BASE = '/api/hr/admin'
+const API_BASE = '/hr/admin'
 
 const resolveAvatarUrl = (url) => {
   if (!url) return null
@@ -60,10 +60,10 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
     try {
       setLoading(true)
       const [resVac, resTick, resFaq, resPerfil] = await Promise.all([
-        axios.get(`${API_BASE}/vacaciones/`),
-        axios.get(`${API_BASE}/tickets/`),
-        axios.get(`${API_BASE}/faq/`),
-        axios.get(`${API_BASE}/perfil/`).catch(() => null)
+        apiClient.get(`${API_BASE}/vacaciones/`),
+        apiClient.get(`${API_BASE}/tickets/`),
+        apiClient.get(`${API_BASE}/faq/`),
+        apiClient.get(`${API_BASE}/perfil/`).catch(() => null)
       ])
       setVacaciones(resVac.data)
       setTickets(resTick.data)
@@ -220,7 +220,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
     try {
       setSubiendoDoc(true)
       setMsgUpload('Procesando e ingiriendo documento...')
-      const res = await axios.post(`${API_BASE}/faq/upload/`, formData, {
+      const res = await apiClient.post(`${API_BASE}/faq/upload/`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       setMsgUpload(`${res.data.mensaje} (${res.data.registros_creados} secciones creadas)`)
@@ -263,7 +263,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
       setSubiendoFotoRH(true)
       setMsgFotoRH(null)
 
-      const res = await axios.post(`${API_BASE}/perfil/avatar/`, formData, {
+      const res = await apiClient.post(`${API_BASE}/perfil/avatar/`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
@@ -301,7 +301,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
       setSubiendoFotoRH(true)
       setMsgFotoRH(null)
 
-      const res = await axios.delete(`${API_BASE}/perfil/avatar/`)
+      const res = await apiClient.delete(`${API_BASE}/perfil/avatar/`)
       setPerfilRH(res.data)
       setArchivoFotoRH(null)
       setPreviewFotoRH(null)
@@ -318,7 +318,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
   // Aprobar / Rechazar Vacaciones
   const handleAprobarRechazarVacaciones = async (id, nuevoEstado) => {
     try {
-      await axios.patch(`${API_BASE}/vacaciones/${id}/`, { estado: nuevoEstado })
+      await apiClient.patch(`${API_BASE}/vacaciones/${id}/`, { estado: nuevoEstado })
       fetchAdminData()
     } catch (err) {
       alert('Error al actualizar el estado de las vacaciones.')
@@ -329,7 +329,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
   const handleEnviarRespuestaTicket = async (id) => {
     if (!ticketRespuesta.respuesta_rh.trim()) return
     try {
-      await axios.patch(`${API_BASE}/tickets/${id}/`, {
+      await apiClient.patch(`${API_BASE}/tickets/${id}/`, {
         respuesta_rh: ticketRespuesta.respuesta_rh,
         estado: 'RESUELTO'
       })
@@ -345,7 +345,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
     e.preventDefault()
     if (!nuevaFaq.pregunta.trim() || !nuevaFaq.respuesta.trim()) return
     try {
-      await axios.post(`${API_BASE}/faq/`, nuevaFaq)
+      await apiClient.post(`${API_BASE}/faq/`, nuevaFaq)
       setNuevaFaq({ categoria: 'Políticas Generales', pregunta: '', respuesta: '' })
       fetchAdminData()
     } catch (err) {
@@ -356,7 +356,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
   // Activar / Desactivar FAQ (manteniendo estrictamente la posición en la lista)
   const handleToggleFaq = async (id, estadoActual) => {
     try {
-      const res = await axios.patch(`${API_BASE}/faq/${id}/`, { activa: !estadoActual })
+      const res = await apiClient.patch(`${API_BASE}/faq/${id}/`, { activa: !estadoActual })
       setFaqs(prev => prev.map(f => f.id === id ? { ...f, activa: res.data.activa } : f))
     } catch (err) {
       alert('Error al modificar el estado de la regla en la base de conocimientos.')
@@ -371,7 +371,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
     if (!confirmar) return
 
     try {
-      await axios.delete(`${API_BASE}/faq/${id}/`)
+      await apiClient.delete(`${API_BASE}/faq/${id}/`)
       setFaqs(prev => prev.filter(f => f.id !== id))
     } catch (err) {
       alert('Error al eliminar la regla de la base de conocimientos.')
