@@ -259,11 +259,11 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
         historial_str_list.append(f"[{rol}]: {m.texto}")
     historial_context = "\n".join(historial_str_list) if historial_str_list else "Sin mensajes previos en esta sesion."
 
-    # Si el usuario solicita explícitamente abrir formularios manuales
+    # Si el usuario consulta sobre formularios o calendario
     if any(w in mensaje_lc for w in ['abrir formulario', 'ver formulario', 'formulario de vacaciones', 'seleccionar en calendario']):
         return {
-            'respuesta': f"Con gusto, {nombre_completo}. Cuentas con {empleado.dias_vacaciones_disponibles} dias disponibles. He abierto el formulario interactivo para que selecciones tus fechas.",
-            'tipo_accion': 'ABRIR_FORMULARIO_VACACIONES',
+            'respuesta': f"Con gusto, {nombre_completo}. Cuentas con {empleado.dias_vacaciones_disponibles} dias disponibles. Puedes pedir tus vacaciones directamente aqui conmigo indicandome las fechas de inicio y fin (por ejemplo: 'Quiero vacaciones del 2026-11-20 al 2026-11-25') o consultar tu calendario en la seccion de Vacaciones.",
+            'tipo_accion': 'INFO_GENERAL',
             'datos': {
                 'disponibles': empleado.dias_vacaciones_disponibles,
                 'totales': empleado.dias_vacaciones_totales
@@ -391,15 +391,8 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
                 tipo_final = accion_detectada['tipo_accion']
                 datos_final = accion_detectada['datos']
 
-                # Solo abrir modales manuales si el usuario lo pidio explicitamente y no se ejecuto otra herramienta
-                if tipo_final == 'INFO_GENERAL':
-                    if any(w in mensaje_lc for w in ['abrir formulario', 'ver formulario', 'formulario de vacaciones']):
-                        tipo_final = 'ABRIR_FORMULARIO_VACACIONES'
-                        datos_final = {'disponibles': empleado.dias_vacaciones_disponibles}
-                    elif any(w in mensaje_lc for w in ['abrir ticket modal', 'formulario de ticket']):
-                        tipo_final = 'ABRIR_FORMULARIO_TICKET'
-                    elif es_consulta_sobre_tickets(mensaje_lc):
-                        tipo_final = 'INFO_TICKETS'
+                if tipo_final == 'INFO_GENERAL' and es_consulta_sobre_tickets(mensaje_lc):
+                    tipo_final = 'INFO_TICKETS'
 
                 return {
                     'respuesta': response_text,
@@ -475,7 +468,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
     if es_tema_vacaciones and any(w in mensaje_lc for w in ['pedir', 'solicitar', 'quiero', 'necesito', 'tomar']):
         return {
             'respuesta': f"Hola {nombre_completo}, dispones de {empleado.dias_vacaciones_disponibles} dias disponibles. ¿Para que fechas deseas solicitarlas? Por favor indica la fecha de inicio y fin (ejemplo: 'del 2026-11-20 al 2026-11-25'). Recuerda que deben ser a partir de hoy y en tus dias laborales ({empleado.dias_laborales}).",
-            'tipo_accion': 'ABRIR_FORMULARIO_VACACIONES',
+            'tipo_accion': 'INFO_GENERAL',
             'datos': {'disponibles': empleado.dias_vacaciones_disponibles}
         }
 

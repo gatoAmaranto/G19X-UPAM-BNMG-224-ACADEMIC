@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Download, Calendar, Ticket, Loader2, Eye, RotateCcw } from 'lucide-react'
-import apiClient from '../api/apiClient.js'
+import { Send, Bot, User, Download, Calendar, Ticket, Loader2, Eye, RotateCcw, FileText } from 'lucide-react'
+import apiClient, { API_BASE_URL } from '../api/apiClient.js'
 
-import VacacionesModal from './VacacionesModal.jsx'
-import TicketModal from './TicketModal.jsx'
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 
 const MENSAJE_BIENVENIDA = {
@@ -131,10 +129,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
   const [messages, setMessages] = useState([MENSAJE_BIENVENIDA])
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
-  const [modalVacacionesOpen, setModalVacacionesOpen] = useState(false)
-  const [modalTicketOpen, setModalTicketOpen] = useState(false)
   const [modalConstanciaOpen, setModalConstanciaOpen] = useState(false)
-  const [saldoVacaciones, setSaldoVacaciones] = useState(10)
   const chatEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -170,22 +165,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
     fetchHistorial()
   }, [])
 
-  // 2. Obtener saldo inicial de vacaciones
-  useEffect(() => {
-    const fetchSaldo = async () => {
-      try {
-        const res = await apiClient.get('/hr/vacaciones/')
-        if (res.data && res.data.saldo) {
-          setSaldoVacaciones(res.data.saldo.disponibles)
-        }
-      } catch (err) {
-        console.error('Error al obtener saldo inicial:', err)
-      }
-    }
-    fetchSaldo()
-  }, [])
-
-  // 3. Reiniciar y limpiar historial de conversación
+  // 2. Reiniciar y limpiar historial de conversación
   const handleLimpiarHistorial = async () => {
     if (messages.length <= 1 && messages[0]?.id === 'welcome') return
     const confirmar = window.confirm('¿Deseas reiniciar la conversación y limpiar el historial de mensajes?')
@@ -198,7 +178,6 @@ export default function ChatWidget({ onRefreshData, perfil }) {
       console.error('Error al reiniciar el historial de chat:', err)
     }
   }
-
 
   const handleSendMessage = async (textToSend) => {
     const text = textToSend || inputText
@@ -230,19 +209,8 @@ export default function ChatWidget({ onRefreshData, perfil }) {
 
       setMessages(prev => [...prev, botMessage])
 
-      if (data.tipo_accion === 'ABRIR_FORMULARIO_VACACIONES') {
-        if (data.datos && data.datos.disponibles !== undefined) {
-          setSaldoVacaciones(data.datos.disponibles)
-        }
-        setModalVacacionesOpen(true)
-      } else if (data.tipo_accion === 'ABRIR_FORMULARIO_TICKET') {
-        setModalTicketOpen(true)
-      } else if (data.tipo_accion === 'CONSTANCIA_GENERADA') {
+      if (data.tipo_accion === 'CONSTANCIA_GENERADA') {
         setModalConstanciaOpen(true)
-      } else if (data.tipo_accion === 'VACACIONES_CREADAS') {
-        if (data.datos && data.datos.saldo_restante !== undefined) {
-          setSaldoVacaciones(data.datos.saldo_restante)
-        }
       }
 
       if (onRefreshData) onRefreshData()
@@ -263,39 +231,6 @@ export default function ChatWidget({ onRefreshData, perfil }) {
     }
   }
 
-  const handleVacacionesSuccess = (solicitudCreada) => {
-    const confirmMessage = {
-      id: Date.now(),
-      sender: 'bot',
-      text: `**Solicitud de Vacaciones Registrada Exitosamente**\n\n` +
-            `• Período: ${solicitudCreada.fecha_inicio} al ${solicitudCreada.fecha_fin}\n` +
-            `• Días solicitados: ${solicitudCreada.dias_solicitados} días\n` +
-            `• Estado: Pendiente de aprobación por RH\n\n` +
-            `Se ha enviado una notificación al equipo de Recursos Humanos para su revisión en el Backoffice.`,
-      actionType: 'VACACIONES_CONFIRMADAS',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-    setMessages(prev => [...prev, confirmMessage])
-    if (onRefreshData) onRefreshData()
-  }
-
-  const handleTicketSuccess = (ticketCreado) => {
-    const confirmMessage = {
-      id: Date.now(),
-      sender: 'bot',
-      text: `**Ticket de Soporte Creado Exitosamente**\n\n` +
-            `• Folio: \`${ticketCreado.folio}\`\n` +
-            `• Asunto: ${ticketCreado.asunto}\n` +
-            `• Prioridad: ${ticketCreado.prioridad}\n` +
-            `• Estado: Abierto\n\n` +
-            `El equipo de Recursos Humanos ha sido notificado y responderá a tu solicitud a la brevedad.`,
-      actionType: 'TICKET_CONFIRMADO',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-    setMessages(prev => [...prev, confirmMessage])
-    if (onRefreshData) onRefreshData()
-  }
-
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -305,21 +240,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
 
   return (
     <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 'calc(100vh - 225px)', height: '100%', overflow: 'hidden' }}>
-      {/* Modales */}
-      <VacacionesModal
-        isOpen={modalVacacionesOpen}
-        onClose={() => setModalVacacionesOpen(false)}
-        saldoDisponibles={saldoVacaciones}
-        diasLaborales={perfil?.dias_laborales || 'Lunes a Viernes'}
-        onSuccess={handleVacacionesSuccess}
-      />
-
-      <TicketModal
-        isOpen={modalTicketOpen}
-        onClose={() => setModalTicketOpen(false)}
-        onSuccess={handleTicketSuccess}
-      />
-
+      {/* Modal de Vista Previa de Constancia Laboral */}
       <ConstanciaPreviewModal
         isOpen={modalConstanciaOpen}
         onClose={() => setModalConstanciaOpen(false)}
@@ -351,6 +272,55 @@ export default function ChatWidget({ onRefreshData, perfil }) {
           <span>Reiniciar chat</span>
         </button>
       </div>
+
+      {/* Barra anclada fija para constancia laboral si fue generada en la conversación */}
+      {messages.some(m => m.actionType === 'CONSTANCIA_GENERADA') && (
+        <div style={{
+          padding: '0.65rem 1.25rem',
+          background: 'var(--card)',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.75rem',
+          flexWrap: 'wrap',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+            <div style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', padding: '0.3rem', borderRadius: 'var(--radius)', display: 'flex' }}>
+              <FileText size={15} />
+            </div>
+            <div>
+              <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                Constancia Laboral Oficial disponible
+              </span>
+              <p style={{ fontSize: '0.74rem', color: 'var(--muted-foreground)', margin: 0 }}>
+                Emitida por Recursos Humanos en formato PDF
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button
+              onClick={() => setModalConstanciaOpen(true)}
+              className="btn-primary"
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              <Eye size={14} />
+              <span>Ver Vista Previa</span>
+            </button>
+            <a
+              href={`${API_BASE_URL}/hr/constancia/?download=true`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary"
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              <Download size={14} />
+              <span>Descargar PDF</span>
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Messages Feed */}
       <div style={{ flex: 1, padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -384,53 +354,39 @@ export default function ChatWidget({ onRefreshData, perfil }) {
             >
               <div>{renderMarkdownMessage(msg.text)}</div>
 
-              {/* Bot Action Cards */}
-              {msg.actionType === 'ABRIR_FORMULARIO_VACACIONES' && (
-                <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
-                  <button
-                    onClick={() => setModalVacacionesOpen(true)}
-                    className="btn-primary"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}
-                  >
-                    <Calendar size={16} />
-                    Seleccionar Fechas de Vacaciones
-                  </button>
-                </div>
-              )}
-
-              {msg.actionType === 'ABRIR_FORMULARIO_TICKET' && (
-                <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
-                  <button
-                    onClick={() => setModalTicketOpen(true)}
-                    className="btn-primary"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}
-                  >
-                    <Ticket size={16} />
-                    Redactar Ticket de Soporte
-                  </button>
-                </div>
-              )}
-
               {msg.actionType === 'CONSTANCIA_GENERADA' && (
-                <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => setModalConstanciaOpen(true)}
-                    className="btn-primary"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
-                  >
-                    <Eye size={16} />
-                    <span>Ver Vista Previa</span>
-                  </button>
-                  <a
-                    href={`/api/hr/constancia/?download=true`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-secondary"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
-                  >
-                    <Download size={16} />
-                    <span>Descargar PDF</span>
-                  </a>
+                <div style={{
+                  marginTop: '0.85rem',
+                  padding: '0.85rem 1rem',
+                  background: 'var(--card)',
+                  borderRadius: 'calc(var(--radius) - 4px)',
+                  border: '1px solid var(--border)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '0.65rem' }}>
+                    <FileText size={18} />
+                    <span>Constancia Laboral Oficial Generada</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => setModalConstanciaOpen(true)}
+                      className="btn-primary"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
+                    >
+                      <Eye size={15} />
+                      <span>Ver Vista Previa</span>
+                    </button>
+                    <a
+                      href={`${API_BASE_URL}/hr/constancia/?download=true`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-secondary"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
+                    >
+                      <Download size={15} />
+                      <span>Descargar PDF</span>
+                    </a>
+                  </div>
                 </div>
               )}
 
