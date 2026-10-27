@@ -216,7 +216,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
     setLoading(true)
 
     try {
-      const response = await apiClient.post('/agent/chat/', { mensaje: text })
+      const response = await apiClient.post('/agent/chat/', { mensaje: text }, { timeout: 60000 })
       const data = response.data
 
       const botMessage = {

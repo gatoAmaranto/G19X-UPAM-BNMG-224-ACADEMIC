@@ -11,11 +11,11 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 
 MODELOS_GEMINI = [
-    'gemini-3.8-flash',
     'gemini-3.6-flash',
     'gemini-3.5-flash',
-    'gemini-flash-latest',
     'gemini-3.1-flash-lite',
+    'gemini-flash-latest',
+    'gemini-3.8-flash',
 ]
 
 
@@ -334,7 +334,13 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             from google import genai
             from google.genai import types
 
-            client = genai.Client(api_key=api_key)
+            client = genai.Client(
+                api_key=api_key,
+                http_options=types.HttpOptions(
+                    timeout=15000,
+                    retry_options=types.HttpRetryOptions(attempts=1)
+                )
+            )
 
             # Preparar historial de hasta 10 mensajes en formato types.Content
             gemini_history = []
