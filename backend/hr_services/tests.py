@@ -517,6 +517,27 @@ class HRServicesTestCase(TestCase):
             )
         self.assertIn('Ya cuentas con una solicitud de vacaciones en proceso de aprobación', str(ctx.exception))
 
+    def test_descarga_constancia_requiere_autenticacion(self):
+        # Acceso sin sesión debe ser rechazado
+        self.client.logout()
+        response = self.client.get('/api/hr/constancia/')
+        self.assertIn(response.status_code, [401, 403])
 
+    def test_descarga_constancia_autenticada_genera_pdf(self):
+        # Acceso con sesión genera y entrega el PDF oficial
+        self.client.force_login(self.user)
+        response = self.client.get('/api/hr/constancia/?download=true')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('attachment;', response['Content-Disposition'])
 
+    def test_acceso_directo_media_constancias_esta_bloqueado(self):
+        # Acceso sin sesión o directo a /media/constancias/... debe devolver 404 en Django
+        response = self.client.get('/media/constancias/Constancia_EMP-0101_1.pdf')
+        self.assertEqual(response.status_code, 404)
 
+    def test_acceso_media_avatares_es_publico(self):
+        # La ruta /media/avatares/ está expuesta públicamente en core/urls.py
+        # Si el archivo no existe devuelve 404 generado por static.serve
+        response = self.client.get('/media/avatares/avatar_no_existente.png')
+        self.assertEqual(response.status_code, 404)

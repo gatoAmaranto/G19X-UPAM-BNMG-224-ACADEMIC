@@ -280,7 +280,7 @@ Antes de desplegar en un servidor accesible por colaboradores o usuarios reales,
 
 ### 2. Unificacion de URL de la API en el Frontend (`apiClient`)
 Para garantizar que el frontend opere de manera homogenea tanto en desarrollo (con Vite proxy o servidor local) como en produccion (a traves de Nginx en el puerto 80), todos los componentes del sistema utilizan una unica instancia centralizada de Axios exportada desde `src/api/apiClient.js`:
-- Se eliminaron las rutas absolutas fijas (`http://localhost:8000/api`) de los 10 componentes del cliente (`ChatWidget.jsx`, `AdminDashboard.jsx`, `DashboardRH.jsx`, `VacacionesModal.jsx`, `TicketModal.jsx`, `ConstanciaPreviewModal.jsx`, `CalendarioLaboral.jsx`, `ColaboradorDashboard.jsx`, `PerfilModal.jsx` y `UserAuthHeader.jsx`).
+- Se eliminaron las rutas absolutas fijas (`http://localhost:8000/api`) de todos los componentes activos del cliente (`ChatWidget.jsx`, `AdminDashboard.jsx`, `TicketModal.jsx`, `ConstanciaPreviewModal.jsx`, `CalendarioLaboral.jsx`, `ColaboradorDashboard.jsx`, `PerfilModal.jsx`, `UserAuthHeader.jsx`, `TicketDetalleModal.jsx` y `CentroTicketsColaborador.jsx`).
 - Los componentes consumen rutas relativas (`/hr/...`, `/agent/...`), las cuales se concatenan automaticamente con `VITE_API_BASE_URL` (`/api`).
 - `apiClient` inyecta automaticamente el token Bearer RS256 de Auth0 y gestiona respuestas de autorizacion (403 Forbidden).
 
@@ -291,9 +291,9 @@ El sistema define volumenes administrados por Docker para evitar perdida de info
 - `redis_data`: Persistencia de snapshots y volumen de Redis.
 
 ### 4. Servidor WSGI y Proxy Inverso Nginx
-- **Backend:** En produccion se ejecuta con **Gunicorn** (`core.wsgi:application`) utilizando 3 procesos worker independientes para atender multiples solicitudes concurrentes sin bloqueos.
+- **Backend:** En produccion se ejecuta con **Gunicorn** (`core.wsgi:application`) utilizando 3 procesos worker independientes para atender multiples solicitudes concurrentes sin bloqueos (`--timeout 120`).
 - **Frontend:** Construccion multi-etapa en `frontend/Dockerfile.prod` (etapa 1 con `node:22-alpine` para `npm run build` y etapa 2 con `nginx:alpine`). Los argumentos de construccion `ARG` (`VITE_API_BASE_URL`, `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, `VITE_AUTH0_AUDIENCE`) se reciben desde `docker-compose.prod.yml` y se incrustan en tiempo de compilacion en los bundles estaticos de React.
-- **Nginx:** Escucha en el puerto `80`, sirve la aplicacion SPA con fallback a `index.html`, y actua como proxy inverso hacia `http://backend:8000/api/` y `http://backend:8000/media/`.
+- **Nginx:** Escucha en el puerto `80`, sirve la aplicacion SPA con fallback a `index.html`, y actua como proxy inverso hacia `http://backend:8000/api/` y `http://backend:8000/media/avatares/`.
 - **Seguridad de Red:** Los puertos de PostgreSQL (`5432`) y Redis (`6379`) no se exponen al exterior en produccion, manteniendose estrictamente en la red interna aislada de Docker.
 
 ### 5. Estado de la Cache de Redis
@@ -302,11 +302,34 @@ Respecto a la memoria cache de Redis (`REDIS_URL`): se encuentra configurada en 
 ### 6. Protecciones de Concurrencia y Seguridad en Backend
 - **Creacion Segura de Vacaciones:** En `hr_services/services.py`, la funcion `crear_solicitud_vacaciones` implementa `transaction.atomic()` y bloqueo pesimista con `select_for_update()` sobre el registro del empleado, evitando condiciones de carrera por solicitudes simultaneas (ej. solicitud via chat y via formulario web al mismo instante).
 - **Filtro Estricto de Roles en Auth0:** En `authentication/auth0.py`, la extraccion de roles verifica con exactitud `key.endswith('/roles')` o `key == 'roles'`, impidiendo la inyeccion indebida de claims arbitrarios que contengan la subcadena 'role'.
-- **Modularizacion de Vistas de Recursos Humanos:** El archivo `hr_services/views.py` fue dividido en dos modulos especializados: `views_colaborador.py` (portal de autoservicio) y `views_rh.py` (administracion y backoffice de RH).
+- **Modularizacion de Vistas de Recursos Humanos:** El archivo `hr_services/views.py` fue dividido en dos modulos especializados: `views_colaborador.py` (portal de autoservicio) y `views_rh.py` (administracion y backoffice de RH), manteniendo una fachada que re-exporta los simbolos para total compatibilidad.
+- **Seguridad en Constancias y Archivos Multimedia:** En `core/urls.py` unicamente se sirve de manera publica la ruta `/media/avatares/` para visualizar fotos de perfil. El directorio de constancias laborales (`/media/constancias/`) esta protegido: Nginx bloquea cualquier acceso directo fuera de avatares con `403 Forbidden` y Django no lo rutea (`404 Not Found`). La emision, previsualizacion y descarga de constancias se realiza exclusivamente a traves de `/api/hr/constancia/`, que requiere sesion autenticada obligatoria y valida la identidad del colaborador para prevenir filtracion de sueldos o datos personales.
+- **Ergonomia del Asistente Virtual y Modales:** La vista del chat cuenta con bloqueo de altura a `100vh` y scrollbar interno propio en el contenedor de mensajes, manteniendo el formulario de entrada permanentemente anclado en pantalla sin desplazar la ventana principal del navegador. El modal de previsualizacion de PDF se renderiza mediante `createPortal` en `document.body` para garantizar centrado y seguimiento exacto en el viewport visible.
 
-### 7. Comando para compilar y levantar produccion
-Para compilar y ejecutar el stack con las configuraciones optimizadas de produccion:
+### 7. Receta completa para despliegue en produccion
+Para compilar, inicializar y ejecutar el stack completo con las configuraciones optimizadas de produccion de punta a punta:
 
-```bash
-docker compose -f docker-compose.prod.yml up --build -d
-```
+1. **Configurar el entorno de produccion:**
+   Copia la plantilla de produccion:
+   ```bash
+   cp .env.prod.example .env
+   ```
+   Define tu `GEMINI_API_KEY`, asigna una `SECRET_KEY` aleatoria de produccion y configura tus credenciales de Auth0 si vas a utilizar tu tenant en vivo. Asegurate de que `DEBUG=False` y `VITE_API_BASE_URL=/api`.
+
+2. **Compilar y levantar los contenedores de produccion:**
+   ```bash
+   docker compose -f docker-compose.prod.yml up --build -d
+   ```
+
+3. **Ejecutar migraciones en la base de datos PostgreSQL:**
+   ```bash
+   docker compose -f docker-compose.prod.yml exec backend python manage.py migrate
+   ```
+
+4. **Poblar datos iniciales y base de conocimiento RAG:**
+   ```bash
+   docker compose -f docker-compose.prod.yml exec backend python manage.py poblar_datos_iniciales
+   ```
+
+5. **Acceder a la aplicacion:**
+   Ingresa desde tu navegador a [http://localhost](http://localhost) (puerto 80 atendido por Nginx). El trafico se distribuira internamente entre el frontend estatico y el proxy inverso de la API en `/api/`.
