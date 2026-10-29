@@ -293,7 +293,7 @@ El sistema define volumenes administrados por Docker para evitar perdida de info
 ### 4. Servidor WSGI y Proxy Inverso Nginx
 - **Backend:** En produccion se ejecuta con **Gunicorn** (`core.wsgi:application`) utilizando 3 procesos worker independientes para atender multiples solicitudes concurrentes sin bloqueos (`--timeout 120`).
 - **Frontend:** Construccion multi-etapa en `frontend/Dockerfile.prod` (etapa 1 con `node:22-alpine` para `npm run build` y etapa 2 con `nginx:alpine`). Los argumentos de construccion `ARG` (`VITE_API_BASE_URL`, `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, `VITE_AUTH0_AUDIENCE`) se reciben desde `docker-compose.prod.yml` y se incrustan en tiempo de compilacion en los bundles estaticos de React.
-- **Nginx:** Escucha en el puerto `80`, sirve la aplicacion SPA con fallback a `index.html`, y actua como proxy inverso hacia `http://backend:8000/api/` y `http://backend:8000/media/avatares/`.
+- **Nginx:** Escucha en el contenedor en el puerto `80`, sirve la aplicacion SPA con fallback a `index.html`, y actua como proxy inverso hacia `http://backend:8000/api/` y `http://backend:8000/media/avatares/`. En el anfitrion se mapea mediante `${FRONTEND_PORT:-80}:80`, permitiendo alternar el puerto externo (ej. a `8080`) si el puerto 80 esta ocupado por Apache u otro servidor web local.
 - **Seguridad de Red:** Los puertos de PostgreSQL (`5432`) y Redis (`6379`) no se exponen al exterior en produccion, manteniendose estrictamente en la red interna aislada de Docker.
 
 ### 5. Estado de la Cache de Redis
@@ -314,7 +314,9 @@ Para compilar, inicializar y ejecutar el stack completo con las configuraciones 
    ```bash
    cp .env.prod.example .env
    ```
-   Define tu `GEMINI_API_KEY`, asigna una `SECRET_KEY` aleatoria de produccion y configura tus credenciales de Auth0 si vas a utilizar tu tenant en vivo. Asegurate de que `DEBUG=False` y `VITE_API_BASE_URL=/api`.
+   - Define tu `GEMINI_API_KEY`, asigna una `SECRET_KEY` aleatoria de produccion y configura tus credenciales de Auth0 si vas a utilizar tu tenant en vivo. Asegurate de que `DEBUG=False` y `VITE_API_BASE_URL=/api`.
+   - **Puerto del frontend (`FRONTEND_PORT`):** Por defecto se enlaza al puerto `80`. Si en tu equipo anfitrion el puerto 80 se encuentra ocupado por Apache u otro servicio local, define `FRONTEND_PORT=8080` en tu archivo `.env`.
+   - *Nota de seguridad con Auth0:* Si cambias el puerto a `8080` y utilizas Auth0, recuerda registrar `http://localhost:8080` dentro de **Allowed Callback URLs**, **Allowed Logout URLs** y **Allowed Web Origins** en tu aplicacion de Auth0, y agregarlo a `CORS_ALLOWED_ORIGINS` si aplica.
 
 2. **Compilar y levantar los contenedores de produccion:**
    ```bash
@@ -332,4 +334,4 @@ Para compilar, inicializar y ejecutar el stack completo con las configuraciones 
    ```
 
 5. **Acceder a la aplicacion:**
-   Ingresa desde tu navegador a [http://localhost](http://localhost) (puerto 80 atendido por Nginx). El trafico se distribuira internamente entre el frontend estatico y el proxy inverso de la API en `/api/`.
+   Ingresa desde tu navegador a [http://localhost](http://localhost) (o a `http://localhost:8080` si configuraste `FRONTEND_PORT=8080`). El trafico entrante se distribuira internamente entre el frontend estatico y el proxy inverso de la API en `/api/`.

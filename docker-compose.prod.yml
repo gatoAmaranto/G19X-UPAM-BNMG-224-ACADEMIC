@@ -57,7 +57,7 @@ services:
     container_name: hr_react_frontend_prod
     restart: always
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-80}:80"
     depends_on:
       - backend
 
