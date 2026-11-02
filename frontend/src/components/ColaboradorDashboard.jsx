@@ -490,9 +490,14 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
         display: 'flex',
         flexDirection: 'column',
         minWidth: 0,
-        height: '100vh',
-        maxHeight: '100vh',
-        overflow: activeTab === 'chat' ? 'hidden' : 'auto',
+        minHeight: '100vh',
+        ...(activeTab === 'chat' ? {
+          height: '100vh',
+          maxHeight: '100vh',
+          overflow: 'hidden'
+        } : {
+          overflow: 'visible'
+        }),
         background: 'var(--background)'
       }}>
         <header
@@ -553,12 +558,16 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
           padding: activeTab === 'chat' ? '1rem 2rem 1.25rem' : '1.5rem 2rem',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.75rem',
+          gap: activeTab === 'chat' ? '0.75rem' : '1rem',
           maxWidth: '1600px',
           width: '100%',
           margin: '0 auto',
-          minHeight: 0,
-          overflow: activeTab === 'chat' ? 'hidden' : 'visible'
+          ...(activeTab === 'chat' ? {
+            minHeight: 0,
+            overflow: 'hidden'
+          } : {
+            overflow: 'visible'
+          })
         }}>
           {/* Subtítulo contextual de la pestaña */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', flexShrink: 0 }}>
@@ -989,10 +998,20 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
         )}
         </main>
 
-        {/* Footer */}
-        <footer style={{ borderTop: '1px solid var(--border)', padding: '0.9rem 2rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--muted-foreground)', background: 'var(--card)' }}>
-          © 2026 PluriOne S.A. de C.V. (Develop Talent & Technology) — Autenticación Segura con Auth0 SSO & RBAC.
-        </footer>
+        {/* Footer (solo visible en pestañas con navegación regular, no en la vista de chat de altura completa) */}
+        {activeTab !== 'chat' && (
+          <footer style={{
+            borderTop: '1px solid var(--border)',
+            padding: '0.9rem 2rem',
+            textAlign: 'center',
+            fontSize: '0.8rem',
+            color: 'var(--muted-foreground)',
+            background: 'var(--card)',
+            flexShrink: 0
+          }}>
+            © 2026 PluriOne S.A. de C.V. (Develop Talent & Technology) — Autenticación Segura con Auth0 SSO & RBAC.
+          </footer>
+        )}
       </div>
     </div>
   )
