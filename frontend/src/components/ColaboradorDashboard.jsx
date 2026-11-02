@@ -207,6 +207,8 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
           height: '100vh',
           position: 'sticky',
           top: 0,
+          alignSelf: 'flex-start',
+          flexShrink: 0,
           background: 'var(--sidebar)',
           borderRight: '1px solid var(--sidebar-border)',
           boxShadow: '4px 0 20px rgba(0, 0, 0, 0.03)',
