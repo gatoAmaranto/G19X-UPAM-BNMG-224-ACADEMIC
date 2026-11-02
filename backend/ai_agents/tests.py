@@ -68,6 +68,24 @@ class ChatPersistenciaTests(TestCase):
         self.assertEqual(res_del.status_code, status.HTTP_200_OK)
         self.assertEqual(MensajeChat.objects.filter(empleado=self.empleado).count(), 0)
 
+    def test_historial_retorna_mensajes_recientes_en_orden_cronologico(self):
+        # Crear 70 mensajes ordenados
+        for i in range(70):
+            MensajeChat.objects.create(
+                empleado=self.empleado,
+                remitente='user' if i % 2 == 0 else 'bot',
+                texto=f"Mensaje correlativo {i:03d}"
+            )
+
+        historial_url = '/api/agent/historial/'
+        res = self.client.get(historial_url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        # Debe retornar los 70 mensajes completos
+        self.assertEqual(len(res.data), 70)
+        # El primero debe ser el mas antiguo del lote (000) y el ultimo el mas reciente (069)
+        self.assertEqual(res.data[0]['texto'], 'Mensaje correlativo 000')
+        self.assertEqual(res.data[-1]['texto'], 'Mensaje correlativo 069')
+
     def test_solicitar_vacaciones_automaticamente(self):
         # Buscar un proximo lunes a viernes en el futuro
         hoy = date.today()

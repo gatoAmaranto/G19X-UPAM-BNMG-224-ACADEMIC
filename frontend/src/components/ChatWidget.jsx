@@ -157,13 +157,15 @@ export default function ChatWidget({ onRefreshData, perfil }) {
             timestamp: m.timestamp || new Date(m.fecha_creacion).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }))
           setMessages(formatted)
+        } else {
+          setMessages([MENSAJE_BIENVENIDA])
         }
       } catch (err) {
         console.warn('No se pudo cargar el historial persistente de chat:', err)
       }
     }
     fetchHistorial()
-  }, [])
+  }, [perfil?.numero_empleado])
 
   // 2. Reiniciar y limpiar historial de conversación
   const handleLimpiarHistorial = async () => {

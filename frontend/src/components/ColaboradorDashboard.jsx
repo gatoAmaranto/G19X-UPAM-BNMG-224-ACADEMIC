@@ -595,11 +595,15 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
           )}
 
         {/* Tab 1: Asistente Virtual Conversacional */}
-        {activeTab === 'chat' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-            <ChatWidget onRefreshData={fetchData} perfil={perfil} />
-          </div>
-        )}
+        <div style={{
+          flex: 1,
+          display: activeTab === 'chat' ? 'flex' : 'none',
+          flexDirection: 'column',
+          minHeight: 0,
+          overflow: 'hidden'
+        }}>
+          <ChatWidget onRefreshData={fetchData} perfil={perfil} />
+        </div>
 
         {/* Tab 2: Mi Perfil Laboral (PANTALLA DEDICADA SIN MODAL) */}
         {activeTab === 'perfil' && (

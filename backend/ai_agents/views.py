@@ -57,8 +57,11 @@ class HistorialChatView(views.APIView):
         Retorna el historial persistente de mensajes del colaborador actual.
         """
         empleado = get_demo_or_current_empleado(request)
-        # Traer los últimos 60 mensajes en orden cronológico
-        mensajes = MensajeChat.objects.filter(empleado=empleado).order_by('fecha_creacion')[:60]
+        # Traer los ultimos 100 mensajes en orden cronologico
+        mensajes = list(
+            MensajeChat.objects.filter(empleado=empleado).order_by('-fecha_creacion')[:100]
+        )
+        mensajes.reverse()
         serializer = MensajeChatSerializer(mensajes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
