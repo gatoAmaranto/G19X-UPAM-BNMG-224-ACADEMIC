@@ -204,7 +204,7 @@ export default function UserAuthHeader() {
           }}
         />
 
-        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
+        <div className="user-badge-text" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
           <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--foreground)' }}>
             {displayNombre}
           </span>

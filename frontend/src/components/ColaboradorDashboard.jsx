@@ -3,7 +3,7 @@ import {
   User, Calendar, Ticket, Bot, FileText, CheckCircle, Clock,
   Plus, Camera, Trash2, Mail, Briefcase, Building, Award,
   AlertCircle, RefreshCw, Eye, Download, Shield, ExternalLink, CalendarDays,
-  Sun, Moon
+  Sun, Moon, Menu, X
 } from 'lucide-react'
 import apiClient, { resolveAvatarUrl } from '../api/apiClient.js'
 import ChatWidget from './ChatWidget.jsx'
@@ -20,6 +20,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
   const [vacaciones, setVacaciones] = useState(null)
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Modales operativos
   const [modalTicketOpen, setModalTicketOpen] = useState(false)
@@ -198,8 +199,18 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
         onClose={() => setTicketSeleccionado(null)}
       />
 
+      {/* Backdrop para cerrar el drawer en móvil al dar tap fuera */}
+      {mobileMenuOpen && (
+        <div
+          className="mobile-drawer-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-label="Cerrar menú lateral"
+        />
+      )}
+
       {/* Sidemenu Completo Lateral del Colaborador */}
       <aside
+        className={`dashboard-sidebar ${mobileMenuOpen ? 'drawer-open' : ''}`}
         style={{
           width: '280px',
           minWidth: '280px',
@@ -275,6 +286,16 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                 </span>
               </div>
             </div>
+
+            {/* Botón para cerrar drawer en móvil */}
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="mobile-drawer-close-btn"
+              title="Cerrar menú"
+              aria-label="Cerrar menú lateral"
+            >
+              <X size={16} />
+            </button>
           </div>
 
           {/* Sección de Menú Principal */}
@@ -291,7 +312,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
             {/* Opción 1: Asistente Virtual */}
             <button
-              onClick={() => setActiveTab('chat')}
+              onClick={() => { setActiveTab('chat'); setMobileMenuOpen(false) }}
               className={`sidemenu-nav-item ${activeTab === 'chat' ? 'active' : ''}`}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
@@ -315,7 +336,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
 
             {/* Opción 2: Mi Horario & Calendario */}
             <button
-              onClick={() => setActiveTab('calendario')}
+              onClick={() => { setActiveTab('calendario'); setMobileMenuOpen(false) }}
               className={`sidemenu-nav-item ${activeTab === 'calendario' ? 'active' : ''}`}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
@@ -339,7 +360,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
 
             {/* Opción 3: Mis Tickets */}
             <button
-              onClick={() => setActiveTab('tickets')}
+              onClick={() => { setActiveTab('tickets'); setMobileMenuOpen(false) }}
               className={`sidemenu-nav-item ${activeTab === 'tickets' ? 'active' : ''}`}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
@@ -376,7 +397,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
 
             {/* Opción 4: Constancia PDF */}
             <button
-              onClick={() => setActiveTab('constancia')}
+              onClick={() => { setActiveTab('constancia'); setMobileMenuOpen(false) }}
               className={`sidemenu-nav-item ${activeTab === 'constancia' ? 'active' : ''}`}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
@@ -400,7 +421,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
 
             {/* Opción 5: Mi Perfil Laboral */}
             <button
-              onClick={() => setActiveTab('perfil')}
+              onClick={() => { setActiveTab('perfil'); setMobileMenuOpen(false) }}
               className={`sidemenu-nav-item ${activeTab === 'perfil' ? 'active' : ''}`}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
@@ -485,22 +506,26 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
       </aside>
 
       {/* Contenedor Principal a la derecha con Sticky Topbar */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        minWidth: 0,
-        minHeight: '100vh',
-        ...(activeTab === 'chat' ? {
-          height: '100vh',
-          maxHeight: '100vh',
-          overflow: 'hidden'
-        } : {
-          overflow: 'visible'
-        }),
-        background: 'var(--background)'
-      }}>
+      <div
+        className={`dashboard-main-wrapper ${activeTab === 'chat' ? 'chat-mode' : ''}`}
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          minHeight: '100vh',
+          ...(activeTab === 'chat' ? {
+            height: '100vh',
+            maxHeight: '100vh',
+            overflow: 'hidden'
+          } : {
+            overflow: 'visible'
+          }),
+          background: 'var(--background)'
+        }}
+      >
         <header
+          className="dashboard-header"
           style={{
             height: '68px',
             position: 'sticky',
@@ -515,60 +540,88 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
             flexShrink: 0
           }}
         >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
-              <span>Portal Colaborador</span>
-              <span>/</span>
-              <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
-                {activeTab === 'chat' && 'Asistente Virtual'}
-                {activeTab === 'calendario' && 'Horario & Calendario'}
-                {activeTab === 'tickets' && 'Mis Tickets'}
-                {activeTab === 'constancia' && 'Constancia Laboral'}
-                {activeTab === 'perfil' && 'Mi Perfil Laboral'}
-              </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+            <button
+              onClick={() => setMobileMenuOpen(prev => !prev)}
+              className="btn-secondary mobile-menu-toggle-btn"
+              title="Abrir menú de navegación"
+              aria-label="Abrir menú de navegación"
+              style={{
+                padding: '0.45rem',
+                borderRadius: 'var(--radius)',
+                cursor: 'pointer'
+              }}
+            >
+              <Menu size={19} />
+            </button>
+
+            <div style={{ minWidth: 0 }}>
+              <div className="header-breadcrumbs" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
+                <span>Portal Colaborador</span>
+                <span>/</span>
+                <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                  {activeTab === 'chat' && 'Asistente Virtual'}
+                  {activeTab === 'calendario' && 'Horario & Calendario'}
+                  {activeTab === 'tickets' && 'Mis Tickets'}
+                  {activeTab === 'constancia' && 'Constancia Laboral'}
+                  {activeTab === 'perfil' && 'Mi Perfil Laboral'}
+                </span>
+              </div>
+              <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--foreground)', margin: 0, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span className="desktop-only">
+                  {activeTab === 'chat' && 'Asistente Conversacional & Autoservicio con IA'}
+                  {activeTab === 'perfil' && 'Mi Expediente Laboral & Fotografía de Perfil'}
+                  {activeTab === 'calendario' && 'Horario Oficial de Trabajo y Calendario de Actividades'}
+                  {activeTab === 'tickets' && 'Centro Individual de Gestión y Seguimiento de Tickets'}
+                  {activeTab === 'constancia' && 'Emisión de Constancia Laboral Membretada'}
+                </span>
+                <span className="mobile-only">
+                  {activeTab === 'chat' && 'Asistente Virtual'}
+                  {activeTab === 'perfil' && 'Mi Perfil'}
+                  {activeTab === 'calendario' && 'Horario y Calendario'}
+                  {activeTab === 'tickets' && 'Mis Tickets'}
+                  {activeTab === 'constancia' && 'Constancia'}
+                </span>
+              </h1>
             </div>
-            <h1 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--foreground)', margin: 0, lineHeight: 1.2 }}>
-              {activeTab === 'chat' && 'Asistente Conversacional & Autoservicio con IA'}
-              {activeTab === 'perfil' && 'Mi Expediente Laboral & Fotografía de Perfil'}
-              {activeTab === 'calendario' && 'Horario Oficial de Trabajo y Calendario de Actividades'}
-              {activeTab === 'tickets' && 'Centro Individual de Gestión y Seguimiento de Tickets'}
-              {activeTab === 'constancia' && 'Emisión de Constancia Laboral Membretada'}
-            </h1>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexShrink: 0 }}>
             <UserAuthHeader />
             {toggleDarkMode && (
               <button
                 className="btn-secondary"
                 onClick={toggleDarkMode}
                 title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', padding: '0.4rem 0.65rem' }}
               >
-                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-                <span>{isDarkMode ? 'Claro' : 'Oscuro'}</span>
+                {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
+                <span className="desktop-only">{isDarkMode ? 'Claro' : 'Oscuro'}</span>
               </button>
             )}
           </div>
         </header>
 
         {/* Área Principal de Contenido del Colaborador */}
-        <main style={{
-          flex: 1,
-          padding: activeTab === 'chat' ? '1rem 2rem 1.25rem' : '1.5rem 2rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: activeTab === 'chat' ? '0.75rem' : '1rem',
-          maxWidth: '1600px',
-          width: '100%',
-          margin: '0 auto',
-          ...(activeTab === 'chat' ? {
-            minHeight: 0,
-            overflow: 'hidden'
-          } : {
-            overflow: 'visible'
-          })
-        }}>
+        <main
+          className={`dashboard-main-area ${activeTab === 'chat' ? 'chat-mode' : ''}`}
+          style={{
+            flex: 1,
+            padding: activeTab === 'chat' ? '1rem 2rem 1.25rem' : '1.5rem 2rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: activeTab === 'chat' ? '0.75rem' : '1rem',
+            maxWidth: '1600px',
+            width: '100%',
+            margin: '0 auto',
+            ...(activeTab === 'chat' ? {
+              minHeight: 0,
+              overflow: 'hidden'
+            } : {
+              overflow: 'visible'
+            })
+          }}
+        >
           {/* Subtítulo contextual de la pestaña */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', flexShrink: 0 }}>
             <p style={{ fontSize: '0.86rem', color: 'var(--muted-foreground)', margin: 0 }}>
@@ -779,7 +832,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                   <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--foreground)', marginBottom: '0.65rem' }}>
                     Ficha Laboral Oficial
                   </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.85rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem' }}>
                     <div style={{ background: 'var(--card)', padding: '0.75rem 0.9rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
                       <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', display: 'block' }}>Número de Empleado</span>
                       <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)' }}>
@@ -860,7 +913,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                       <span>Solicitar Vacaciones</span>
                     </button>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.5rem', textAlign: 'center' }}>
                     <div style={{ background: 'var(--card)', padding: '0.55rem', borderRadius: 'calc(var(--radius) - 2px)' }}>
                       <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block' }}>Asignados</span>
                       <strong style={{ fontSize: '0.95rem' }}>{perfil.dias_vacaciones_totales}</strong>
@@ -976,7 +1029,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
             </div>
 
             {/* Ficha explicativa */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.85rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.85rem' }}>
               <div style={{ background: 'var(--card)', padding: '0.85rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
                 <h4 style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.25rem' }}>
                   Validez Institucional
@@ -1012,6 +1065,92 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
             © 2026 PluriOne S.A. de C.V. (Develop Talent & Technology) — Autenticación Segura con Auth0 SSO & RBAC.
           </footer>
         )}
+
+        {/* Barra de Navegación Inferior Móvil (Mobile Bottom Navigation Bar) */}
+        <nav className="mobile-bottom-nav" aria-label="Navegación móvil inferior">
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`mobile-nav-btn ${activeTab === 'chat' ? 'active' : ''}`}
+            title="Asistente Virtual"
+            aria-label="Asistente Virtual"
+          >
+            <div className="mobile-nav-icon-wrap">
+              <Bot size={20} />
+            </div>
+            <span className="mobile-nav-label">Asistente</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('calendario')}
+            className={`mobile-nav-btn ${activeTab === 'calendario' ? 'active' : ''}`}
+            title="Horario & Calendario"
+            aria-label="Horario & Calendario"
+          >
+            <div className="mobile-nav-icon-wrap">
+              <CalendarDays size={20} />
+              {diasDisponibles > 0 && (
+                <span className="mobile-nav-badge" style={{ background: '#16a34a' }}>
+                  {diasDisponibles}
+                </span>
+              )}
+            </div>
+            <span className="mobile-nav-label">Horario</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('tickets')}
+            className={`mobile-nav-btn ${activeTab === 'tickets' ? 'active' : ''}`}
+            title="Mis Tickets"
+            aria-label="Mis Tickets"
+          >
+            <div className="mobile-nav-icon-wrap">
+              <Ticket size={20} />
+              {ticketsAbiertosCount > 0 && (
+                <span className="mobile-nav-badge">
+                  {ticketsAbiertosCount}
+                </span>
+              )}
+            </div>
+            <span className="mobile-nav-label">Tickets</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('constancia')}
+            className={`mobile-nav-btn ${activeTab === 'constancia' ? 'active' : ''}`}
+            title="Constancia Laboral"
+            aria-label="Constancia Laboral"
+          >
+            <div className="mobile-nav-icon-wrap">
+              <FileText size={20} />
+            </div>
+            <span className="mobile-nav-label">Constancia</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('perfil')}
+            className={`mobile-nav-btn ${activeTab === 'perfil' ? 'active' : ''}`}
+            title="Mi Perfil"
+            aria-label="Mi Perfil"
+          >
+            <div className="mobile-nav-icon-wrap">
+              {perfil?.foto_perfil_url ? (
+                <img
+                  src={resolveAvatarUrl(perfil.foto_perfil_url)}
+                  alt="Avatar"
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                <User size={20} />
+              )}
+            </div>
+            <span className="mobile-nav-label">Perfil</span>
+          </button>
+        </nav>
       </div>
     </div>
   )

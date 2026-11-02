@@ -334,12 +334,15 @@ export default function CentroTicketsColaborador({
           </button>
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(300px, 380px) 1fr',
-          gap: '1.25rem',
-          alignItems: 'start'
-        }}>
+        <div
+          className="tickets-master-detail-layout"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(300px, 380px) 1fr',
+            gap: '1.25rem',
+            alignItems: 'start'
+          }}
+        >
           {/* Panel Izquierdo: Lista Maestra de Tickets */}
           <div style={{
             display: 'flex',

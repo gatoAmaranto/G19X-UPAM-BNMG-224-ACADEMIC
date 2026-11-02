@@ -678,7 +678,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
       )}
 
       {/* 2. Área Dividida: Calendario Interactivo a la Izquierda, Panel Detallado a la Derecha */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '1.25rem', alignItems: 'stretch' }}>
+      <div className="calendario-split-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '1.25rem', alignItems: 'stretch' }}>
         {/* Panel del Calendario */}
         <div style={{
           background: 'var(--card)',
@@ -762,6 +762,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                 <div
                   key={index}
                   onClick={() => handleSeleccionarDia(item)}
+                  className="calendario-grid-celda"
                   style={{
                     minHeight: '115px',
                     padding: '0.45rem 0.5rem',
