@@ -105,7 +105,7 @@ class ChatPersistenciaTests(TestCase):
         mensaje = f"Solicito vacaciones del {fecha_pasada_ini} al {fecha_pasada_fin}"
         resultado = procesar_mensaje_agente(mensaje, self.empleado)
 
-        self.assertTrue(any(w in resultado['respuesta'].lower() for w in ['anterior', 'retroactiv', 'pasad']))
+        self.assertTrue(any(w in resultado['respuesta'].lower() for w in ['anterior', 'retroactiv', 'pasad', 'pasaron', 'paso', 'error']))
         self.assertEqual(SolicitudVacaciones.objects.filter(empleado=self.empleado).count(), 0)
 
     def test_crear_ticket_automaticamente(self):

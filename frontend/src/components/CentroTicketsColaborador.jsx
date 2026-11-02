@@ -202,7 +202,7 @@ export default function CentroTicketsColaborador({
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
           {/* Input de Búsqueda */}
-          <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
             <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }} />
             <input
               type="text"
@@ -551,7 +551,7 @@ export default function CentroTicketsColaborador({
                   Seguimiento de Atención
                 </span>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', position: 'relative' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem', position: 'relative' }}>
                   {/* Etapa 1: Registro */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#15803d', fontWeight: 700, fontSize: '0.78rem' }}>

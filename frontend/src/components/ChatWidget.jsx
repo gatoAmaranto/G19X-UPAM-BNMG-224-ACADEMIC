@@ -479,7 +479,7 @@ export default function ChatWidget({ onRefreshData, perfil }) {
 
 
       {/* Input Form */}
-      <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--card)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }}>
+      <div className="chat-input-bar" style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--card)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }}>
         <textarea
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}

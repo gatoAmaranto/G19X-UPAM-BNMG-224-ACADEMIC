@@ -3,7 +3,7 @@ import {
   User, Calendar, Ticket, Bot, FileText, CheckCircle, Clock,
   Plus, Camera, Trash2, Mail, Briefcase, Building, Award,
   AlertCircle, RefreshCw, Eye, Download, Shield, ExternalLink, CalendarDays,
-  Sun, Moon, Menu, X
+  Sun, Moon
 } from 'lucide-react'
 import apiClient, { resolveAvatarUrl } from '../api/apiClient.js'
 import ChatWidget from './ChatWidget.jsx'
@@ -20,7 +20,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
   const [vacaciones, setVacaciones] = useState(null)
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Modales operativos
   const [modalTicketOpen, setModalTicketOpen] = useState(false)
@@ -199,18 +198,9 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
         onClose={() => setTicketSeleccionado(null)}
       />
 
-      {/* Backdrop para cerrar el drawer en móvil al dar tap fuera */}
-      {mobileMenuOpen && (
-        <div
-          className="mobile-drawer-backdrop"
-          onClick={() => setMobileMenuOpen(false)}
-          aria-label="Cerrar menú lateral"
-        />
-      )}
-
       {/* Sidemenu Completo Lateral del Colaborador */}
       <aside
-        className={`dashboard-sidebar ${mobileMenuOpen ? 'drawer-open' : ''}`}
+        className="dashboard-sidebar"
         style={{
           width: '280px',
           minWidth: '280px',
@@ -286,16 +276,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                 </span>
               </div>
             </div>
-
-            {/* Botón para cerrar drawer en móvil */}
-            <button
-              onClick={() => setMobileMenuOpen(false)}
-              className="mobile-drawer-close-btn"
-              title="Cerrar menú"
-              aria-label="Cerrar menú lateral"
-            >
-              <X size={16} />
-            </button>
           </div>
 
           {/* Sección de Menú Principal */}
@@ -312,7 +292,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
             {/* Opción 1: Asistente Virtual */}
             <button
-              onClick={() => { setActiveTab('chat'); setMobileMenuOpen(false) }}
+              onClick={() => setActiveTab('chat')}
               className={`sidemenu-nav-item ${activeTab === 'chat' ? 'active' : ''}`}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
@@ -336,7 +316,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
 
             {/* Opción 2: Mi Horario & Calendario */}
             <button
-              onClick={() => { setActiveTab('calendario'); setMobileMenuOpen(false) }}
+              onClick={() => setActiveTab('calendario')}
               className={`sidemenu-nav-item ${activeTab === 'calendario' ? 'active' : ''}`}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
@@ -360,7 +340,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
 
             {/* Opción 3: Mis Tickets */}
             <button
-              onClick={() => { setActiveTab('tickets'); setMobileMenuOpen(false) }}
+              onClick={() => setActiveTab('tickets')}
               className={`sidemenu-nav-item ${activeTab === 'tickets' ? 'active' : ''}`}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
@@ -397,7 +377,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
 
             {/* Opción 4: Constancia PDF */}
             <button
-              onClick={() => { setActiveTab('constancia'); setMobileMenuOpen(false) }}
+              onClick={() => setActiveTab('constancia')}
               className={`sidemenu-nav-item ${activeTab === 'constancia' ? 'active' : ''}`}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
@@ -421,7 +401,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
 
             {/* Opción 5: Mi Perfil Laboral */}
             <button
-              onClick={() => { setActiveTab('perfil'); setMobileMenuOpen(false) }}
+              onClick={() => setActiveTab('perfil')}
               className={`sidemenu-nav-item ${activeTab === 'perfil' ? 'active' : ''}`}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
@@ -513,14 +493,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
-          minHeight: '100vh',
-          ...(activeTab === 'chat' ? {
-            height: '100vh',
-            maxHeight: '100vh',
-            overflow: 'hidden'
-          } : {
-            overflow: 'visible'
-          }),
           background: 'var(--background)'
         }}
       >
@@ -541,20 +513,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
-            <button
-              onClick={() => setMobileMenuOpen(prev => !prev)}
-              className="btn-secondary mobile-menu-toggle-btn"
-              title="Abrir menú de navegación"
-              aria-label="Abrir menú de navegación"
-              style={{
-                padding: '0.45rem',
-                borderRadius: 'var(--radius)',
-                cursor: 'pointer'
-              }}
-            >
-              <Menu size={19} />
-            </button>
-
             <div style={{ minWidth: 0 }}>
               <div className="header-breadcrumbs" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
                 <span>Portal Colaborador</span>
@@ -622,16 +580,17 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
             })
           }}
         >
-          {/* Subtítulo contextual de la pestaña */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', flexShrink: 0 }}>
-            <p style={{ fontSize: '0.86rem', color: 'var(--muted-foreground)', margin: 0 }}>
-              {activeTab === 'chat' && 'Interactúa con el agente conversacional inteligente para resolver dudas o tramitar solicitudes.'}
-              {activeTab === 'perfil' && 'Consulta tu información oficial, antigüedad calculada y administra tu fotografía institucional.'}
-              {activeTab === 'calendario' && 'Visualiza tu jornada laboral registrada, revisa tus días de descanso o vacaciones y administra tus tareas y notas personales.'}
-              {activeTab === 'tickets' && 'Consulta el expediente individual de cada folio, monitorea el avance de atención y revisa las resoluciones oficiales emitidas por Recursos Humanos.'}
-              {activeTab === 'constancia' && 'Genera y descarga en tiempo real tu constancia laboral en formato PDF oficial.'}
-            </p>
-          </div>
+          {/* Subtítulo contextual de la pestaña (oculto en chat para dar espacio completo) */}
+          {activeTab !== 'chat' && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', flexShrink: 0 }}>
+              <p style={{ fontSize: '0.86rem', color: 'var(--muted-foreground)', margin: 0 }}>
+                {activeTab === 'perfil' && 'Consulta tu información oficial, antigüedad calculada y administra tu fotografía institucional.'}
+                {activeTab === 'calendario' && 'Visualiza tu jornada laboral registrada, revisa tus días de descanso o vacaciones y administra tus tareas y notas personales.'}
+                {activeTab === 'tickets' && 'Consulta el expediente individual de cada folio, monitorea el avance de atención y revisa las resoluciones oficiales emitidas por Recursos Humanos.'}
+                {activeTab === 'constancia' && 'Genera y descarga en tiempo real tu constancia laboral en formato PDF oficial.'}
+              </p>
+            </div>
+          )}
 
         {/* Tab 1: Asistente Virtual Conversacional */}
         {activeTab === 'chat' && (
@@ -658,7 +617,9 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                     padding: '1.5rem',
                     background: 'var(--muted)',
                     borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border)'
+                    border: '1px solid var(--border)',
+                    flexWrap: 'wrap',
+                    minWidth: 0
                   }}
                 >
                   {/* Avatar con botón de cámara */}
@@ -732,8 +693,8 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                   </div>
 
                   {/* Datos del Colaborador */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem' }}>
+                  <div style={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                       <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--foreground)' }}>
                         {perfil.user.first_name} {perfil.user.last_name}
                       </h3>
@@ -755,7 +716,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                       {perfil.puesto} — {perfil.departamento}
                     </p>
                     <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
-                      No. Empleado: <strong>{perfil.numero_empleado}</strong> • {perfil.user.email}
+                      No. Empleado: <strong>{perfil.numero_empleado}</strong> • <span style={{ wordBreak: 'break-all' }}>{perfil.user.email}</span>
                     </p>
 
                     {/* Acciones al seleccionar archivo nuevo */}
@@ -900,7 +861,7 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
 
                 {/* Resumen de Beneficio Vacacional */}
                 <div style={{ background: 'var(--muted)', padding: '0.85rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground)' }}>
                       Resumen de Días de Vacaciones Anuales
                     </span>
@@ -1077,7 +1038,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
             <div className="mobile-nav-icon-wrap">
               <Bot size={20} />
             </div>
-            <span className="mobile-nav-label">Asistente</span>
           </button>
 
           <button
@@ -1094,7 +1054,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                 </span>
               )}
             </div>
-            <span className="mobile-nav-label">Horario</span>
           </button>
 
           <button
@@ -1111,7 +1070,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                 </span>
               )}
             </div>
-            <span className="mobile-nav-label">Tickets</span>
           </button>
 
           <button
@@ -1123,7 +1081,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
             <div className="mobile-nav-icon-wrap">
               <FileText size={20} />
             </div>
-            <span className="mobile-nav-label">Constancia</span>
           </button>
 
           <button
@@ -1148,7 +1105,6 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                 <User size={20} />
               )}
             </div>
-            <span className="mobile-nav-label">Perfil</span>
           </button>
         </nav>
       </div>

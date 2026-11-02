@@ -99,14 +99,16 @@ export default function UserAuthHeader() {
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
       {/* Switcher para pruebas locales si no está en vivo */}
       {!isAuth0Live && (
-        <div style={{ display: 'flex', background: 'var(--muted)', padding: '0.2rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', background: 'var(--muted)', padding: '0.2rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', flexShrink: 0 }}>
           <button
             onClick={() => switchRole('colaborador')}
+            title="Vista de Colaborador"
+            aria-label="Vista de Colaborador"
             style={{
               border: 'none',
               background: !isRhAdmin ? 'var(--primary)' : 'transparent',
               color: !isRhAdmin ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
-              padding: '0.3rem 0.65rem',
+              padding: '0.3rem 0.55rem',
               borderRadius: 'calc(var(--radius) - 2px)',
               fontSize: '0.78rem',
               fontWeight: 600,
@@ -117,17 +119,19 @@ export default function UserAuthHeader() {
               transition: 'all 0.2s'
             }}
           >
-            <UserCheck size={13} />
-            <span>Colaborador</span>
+            <UserCheck size={14} />
+            <span className="demo-role-text">Colaborador</span>
           </button>
 
           <button
             onClick={() => switchRole('recursos humanos')}
+            title="Vista de Recursos Humanos"
+            aria-label="Vista de Recursos Humanos"
             style={{
               border: 'none',
               background: isRhAdmin ? 'var(--primary)' : 'transparent',
               color: isRhAdmin ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
-              padding: '0.3rem 0.65rem',
+              padding: '0.3rem 0.55rem',
               borderRadius: 'calc(var(--radius) - 2px)',
               fontSize: '0.78rem',
               fontWeight: 600,
@@ -138,8 +142,8 @@ export default function UserAuthHeader() {
               transition: 'all 0.2s'
             }}
           >
-            <Shield size={13} />
-            <span>Recursos Humanos</span>
+            <Shield size={14} />
+            <span className="demo-role-text">Recursos Humanos</span>
           </button>
         </div>
       )}

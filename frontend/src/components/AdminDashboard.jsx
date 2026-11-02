@@ -374,6 +374,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
     <div style={{ display: 'flex', width: '100%', minHeight: '100vh', background: 'var(--background)', color: 'var(--foreground)' }}>
       {/* Sidemenu Completo Lateral de Recursos Humanos */}
       <aside
+        className="dashboard-sidebar"
         style={{
           width: '280px',
           minWidth: '280px',
@@ -672,8 +673,9 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
       </aside>
 
       {/* Contenedor Principal a la derecha con Sticky Topbar */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh', background: 'var(--background)' }}>
+      <div className="dashboard-main-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh', background: 'var(--background)' }}>
         <header
+          className="dashboard-header"
           style={{
             height: '68px',
             position: 'sticky',
@@ -684,11 +686,12 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
             padding: '0 2rem',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            flexShrink: 0
           }}
         >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
+          <div style={{ minWidth: 0 }}>
+            <div className="header-breadcrumbs" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
               <span>Backoffice RH</span>
               <span>/</span>
               <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
@@ -699,33 +702,42 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
                 {activeTab === 'perfil' && 'Mi Perfil RH'}
               </span>
             </div>
-            <h1 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--foreground)', margin: 0, lineHeight: 1.2 }}>
-              {activeTab === 'vacaciones' && 'Aprobación y Gestión de Vacaciones'}
-              {activeTab === 'tickets' && 'Mesa de Ayuda y Atención de Tickets'}
-              {activeTab === 'faq' && 'Entrenamiento de Base de Conocimiento RAG'}
-              {activeTab === 'calendario' && 'Horario Institucional y Calendario de Recursos Humanos'}
-              {activeTab === 'perfil' && 'Perfil Institucional y Credenciales de Recursos Humanos'}
+            <h1 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--foreground)', margin: 0, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span className="desktop-only">
+                {activeTab === 'vacaciones' && 'Aprobación y Gestión de Vacaciones'}
+                {activeTab === 'tickets' && 'Mesa de Ayuda y Atención de Tickets'}
+                {activeTab === 'faq' && 'Entrenamiento de Base de Conocimiento RAG'}
+                {activeTab === 'calendario' && 'Horario Institucional y Calendario de Recursos Humanos'}
+                {activeTab === 'perfil' && 'Perfil Institucional y Credenciales de Recursos Humanos'}
+              </span>
+              <span className="mobile-only">
+                {activeTab === 'vacaciones' && 'Vacaciones RH'}
+                {activeTab === 'tickets' && 'Tickets RH'}
+                {activeTab === 'faq' && 'Base RAG'}
+                {activeTab === 'calendario' && 'Horario RH'}
+                {activeTab === 'perfil' && 'Perfil RH'}
+              </span>
             </h1>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexShrink: 0 }}>
             <UserAuthHeader />
             {toggleDarkMode && (
               <button
                 className="btn-secondary"
                 onClick={toggleDarkMode}
                 title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', padding: '0.4rem 0.65rem' }}
               >
-                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-                <span>{isDarkMode ? 'Claro' : 'Oscuro'}</span>
+                {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
+                <span className="desktop-only">{isDarkMode ? 'Claro' : 'Oscuro'}</span>
               </button>
             )}
           </div>
         </header>
 
         {/* Área Principal de Contenido a la derecha */}
-        <main style={{ flex: 1, padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '1600px', width: '100%', margin: '0 auto' }}>
+        <main className="dashboard-main-area" style={{ flex: 1, padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '1600px', width: '100%', margin: '0 auto' }}>
           {/* Subtítulo contextual de la pestaña */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.65rem' }}>
             <p style={{ fontSize: '0.86rem', color: 'var(--muted-foreground)', margin: 0 }}>
@@ -862,6 +874,8 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '0.5rem',
                         cursor: 'pointer',
                         background: abierto ? 'var(--muted)' : 'transparent',
                         transition: 'background 0.15s ease',
@@ -1156,6 +1170,8 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '0.5rem',
                         cursor: 'pointer',
                         background: abierto ? 'var(--muted)' : 'transparent',
                         transition: 'background 0.15s ease',
@@ -1364,7 +1380,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
               <Plus size={16} /> Añadir Nueva Pregunta Frecuente al Motor RAG
             </h4>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
               <input
                 type="text"
                 placeholder="Categoría (ej: Beneficios, Horarios)"
@@ -1397,7 +1413,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
           {/* Lista de FAQs */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {faqs.map((f) => (
-              <div key={f.id} style={{ background: 'var(--card)', padding: '0.85rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+              <div key={f.id} style={{ background: 'var(--card)', padding: '0.85rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '0.72rem', background: 'var(--accent)', color: 'var(--accent-foreground)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 600 }}>
@@ -1484,7 +1500,9 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
                   padding: '1.5rem',
                   background: 'var(--muted)',
                   borderRadius: 'var(--radius)',
-                  border: '1px solid var(--border)'
+                  border: '1px solid var(--border)',
+                  flexWrap: 'wrap',
+                  minWidth: 0
                 }}
               >
                 {/* Avatar y Selector */}
@@ -1558,8 +1576,8 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
                 </div>
 
                 {/* Datos del Funcionario */}
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem' }}>
+                <div style={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                     <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--foreground)' }}>
                       {perfilRH.user.first_name} {perfilRH.user.last_name}
                     </h3>
@@ -1585,7 +1603,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
                     {perfilRH.puesto} — {perfilRH.departamento}
                   </p>
                   <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
-                    Credencial oficial: <strong>{perfilRH.numero_empleado}</strong> • {perfilRH.user.email}
+                    Credencial oficial: <strong>{perfilRH.numero_empleado}</strong> • <span style={{ wordBreak: 'break-all' }}>{perfilRH.user.email}</span>
                   </p>
 
                   {/* Acciones al seleccionar archivo nuevo */}
@@ -1662,7 +1680,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
                 <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--foreground)', marginBottom: '0.65rem' }}>
                   Ficha de Identificación Institucional
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.85rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem' }}>
                   <div style={{ background: 'var(--card)', padding: '0.75rem 0.9rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
                     <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', display: 'block' }}>Nombre Completo</span>
                     <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)' }}>
@@ -1672,7 +1690,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
 
                   <div style={{ background: 'var(--card)', padding: '0.75rem 0.9rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
                     <span style={{ fontSize: '0.72rem', color: 'var(--muted-foreground)', display: 'block' }}>Correo Electrónico RH</span>
-                    <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)' }}>
+                    <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)', wordBreak: 'break-all' }}>
                       {perfilRH.user.email}
                     </strong>
                   </div>
@@ -1712,7 +1730,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
                 <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--foreground)', marginBottom: '0.65rem' }}>
                   Matriz de Autorizaciones y Permisos en el Backoffice
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem' }}>
                   <div style={{ background: 'var(--card)', padding: '0.85rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', gap: '0.75rem' }}>
                     <div style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }}>
                       <CheckCircle size={18} />
@@ -1773,7 +1791,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
 
               {/* Beneficio Vacacional Personal del Usuario RH */}
               <div style={{ background: 'var(--muted)', padding: '0.85rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--foreground)' }}>
                     Beneficio Vacacional Personal (Como Colaborador)
                   </span>
@@ -1781,7 +1799,7 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
                     {perfilRH.dias_vacaciones_disponibles} días disponibles
                   </span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '0.5rem', textAlign: 'center' }}>
                   <div style={{ background: 'var(--card)', padding: '0.45rem', borderRadius: 'calc(var(--radius) - 2px)' }}>
                     <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block' }}>Asignados</span>
                     <strong style={{ fontSize: '0.9rem' }}>{perfilRH.dias_vacaciones_totales}</strong>
@@ -1810,6 +1828,87 @@ export default function AdminDashboard({ isDarkMode, toggleDarkMode }) {
       <footer style={{ borderTop: '1px solid var(--border)', padding: '0.9rem 2rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--muted-foreground)', background: 'var(--card)' }}>
         © 2026 PluriOne S.A. de C.V. (Develop Talent & Technology) — Autenticación Segura con Auth0 SSO & RBAC.
       </footer>
+
+      {/* Barra de Navegación Inferior Móvil RH (Mobile Bottom Navigation Bar) */}
+      <nav className="mobile-bottom-nav" aria-label="Navegación móvil inferior RH">
+        <button
+          onClick={() => setActiveTab('vacaciones')}
+          className={`mobile-nav-btn ${activeTab === 'vacaciones' ? 'active' : ''}`}
+          title="Vacaciones"
+          aria-label="Vacaciones"
+        >
+          <div className="mobile-nav-icon-wrap">
+            <Calendar size={20} />
+            {vacacionesPendientes.length > 0 && (
+              <span className="mobile-nav-badge" style={{ background: '#b45309' }}>
+                {vacacionesPendientes.length}
+              </span>
+            )}
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('tickets')}
+          className={`mobile-nav-btn ${activeTab === 'tickets' ? 'active' : ''}`}
+          title="Mesa de Tickets"
+          aria-label="Mesa de Tickets"
+        >
+          <div className="mobile-nav-icon-wrap">
+            <Ticket size={20} />
+            {ticketsAbiertos.length > 0 && (
+              <span className="mobile-nav-badge">
+                {ticketsAbiertos.length}
+              </span>
+            )}
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('faq')}
+          className={`mobile-nav-btn ${activeTab === 'faq' ? 'active' : ''}`}
+          title="Base RAG & FAQs"
+          aria-label="Base RAG & FAQs"
+        >
+          <div className="mobile-nav-icon-wrap">
+            <BookOpen size={20} />
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('calendario')}
+          className={`mobile-nav-btn ${activeTab === 'calendario' ? 'active' : ''}`}
+          title="Horario & Calendario"
+          aria-label="Horario & Calendario"
+        >
+          <div className="mobile-nav-icon-wrap">
+            <CalendarDays size={20} />
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('perfil')}
+          className={`mobile-nav-btn ${activeTab === 'perfil' ? 'active' : ''}`}
+          title="Mi Perfil RH"
+          aria-label="Mi Perfil RH"
+        >
+          <div className="mobile-nav-icon-wrap">
+            {perfilRH?.foto_perfil_url ? (
+              <img
+                src={resolveAvatarUrl(perfilRH.foto_perfil_url)}
+                alt="Avatar RH"
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: '50%',
+                  objectFit: 'cover'
+                }}
+              />
+            ) : (
+              <User size={20} />
+            )}
+          </div>
+        </button>
+      </nav>
     </div>
   </div>
 )

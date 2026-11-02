@@ -643,15 +643,15 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
           </div>
 
           {/* Fichas de Saldo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
-            <div style={{ background: 'var(--muted)', padding: '0.45rem 0.95rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', textAlign: 'center', minWidth: '95px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))', gap: '0.5rem', width: '100%', maxWidth: '480px' }}>
+            <div style={{ background: 'var(--muted)', padding: '0.45rem 0.65rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', textAlign: 'center', minWidth: 0 }}>
               <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', fontWeight: 600 }}>
                 Días Totales
               </span>
               <strong style={{ fontSize: '1.15rem', color: 'var(--foreground)' }}>{saldoTotales}</strong>
             </div>
 
-            <div style={{ background: 'var(--muted)', padding: '0.45rem 0.95rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', textAlign: 'center', minWidth: '95px' }}>
+            <div style={{ background: 'var(--muted)', padding: '0.45rem 0.65rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', textAlign: 'center', minWidth: 0 }}>
               <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)', display: 'block', fontWeight: 600 }}>
                 Días Disfrutados
               </span>
@@ -659,7 +659,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
             </div>
 
             {saldoRetenidos > 0 && (
-              <div style={{ background: '#fef3c7', color: '#b45309', padding: '0.45rem 0.95rem', borderRadius: 'var(--radius)', border: '1px solid #fde68a', textAlign: 'center', minWidth: '95px' }}>
+              <div style={{ background: '#fef3c7', color: '#b45309', padding: '0.45rem 0.65rem', borderRadius: 'var(--radius)', border: '1px solid #fde68a', textAlign: 'center', minWidth: 0 }}>
                 <span style={{ fontSize: '0.7rem', display: 'block', fontWeight: 700, color: '#92400e' }}>
                   Días Retenidos
                 </span>
@@ -667,7 +667,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
               </div>
             )}
 
-            <div style={{ background: '#dcfce7', color: '#15803d', padding: '0.45rem 1.05rem', borderRadius: 'var(--radius)', border: '1px solid #bbf7d0', textAlign: 'center', minWidth: '100px' }}>
+            <div style={{ background: '#dcfce7', color: '#15803d', padding: '0.45rem 0.65rem', borderRadius: 'var(--radius)', border: '1px solid #bbf7d0', textAlign: 'center', minWidth: 0 }}>
               <span style={{ fontSize: '0.7rem', display: 'block', fontWeight: 700, color: '#166534' }}>
                 Días Disponibles
               </span>
@@ -857,11 +857,13 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                             textOverflow: 'ellipsis',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.25rem'
+                            gap: '0.25rem',
+                            minWidth: 0,
+                            maxWidth: '100%'
                           }}
                         >
                           <Sun size={10} style={{ flexShrink: 0 }} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
                             {nombre} {esPendiente ? '(Pend)' : '(Vac)'}
                           </span>
                         </div>
@@ -888,7 +890,9 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                             textOverflow: 'ellipsis',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.25rem'
+                            gap: '0.25rem',
+                            minWidth: 0,
+                            maxWidth: '100%'
                           }}
                         >
                           <span style={{
@@ -898,7 +902,7 @@ export default function CalendarioLaboral({ perfil, vacaciones, onRefreshData, e
                             background: esSeleccionado ? 'var(--primary-foreground)' : theme.dot,
                             flexShrink: 0
                           }} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: t.completada ? 'line-through' : 'none' }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: t.completada ? 'line-through' : 'none', minWidth: 0 }}>
                             {t.hora ? `${t.hora} ` : ''}{t.titulo}
                           </span>
                         </div>

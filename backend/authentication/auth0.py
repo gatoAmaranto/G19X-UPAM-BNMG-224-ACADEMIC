@@ -1,4 +1,5 @@
 import jwt
+from datetime import date
 from django.conf import settings
 from django.contrib.auth.models import User
 from rest_framework import authentication, exceptions
@@ -38,6 +39,22 @@ class Auth0JSONWebTokenAuthentication(authentication.BaseAuthentication):
                 )
                 user.is_rh_admin = False
                 user.user_role = 'colaborador'
+                Empleado.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'numero_empleado': 'EMP-0101',
+                        'puesto': 'Desarrollador Full Stack Senior',
+                        'departamento': 'Tecnología de la Información',
+                        'fecha_ingreso': date(2023, 3, 1),
+                        'salario_mensual': 38500.00,
+                        'dias_vacaciones_totales': 14,
+                        'dias_vacaciones_tomados': 2,
+                        'horario_entrada': '09:00',
+                        'horario_salida': '18:00',
+                        'dias_laborales': 'Lunes a Viernes',
+                        'modalidad_trabajo': 'Híbrido'
+                    }
+                )
                 return (user, token)
 
             if token == 'mock-jwt-token-plurione-rh':
@@ -52,6 +69,22 @@ class Auth0JSONWebTokenAuthentication(authentication.BaseAuthentication):
                 )
                 user.is_rh_admin = True
                 user.user_role = 'recursos humanos'
+                Empleado.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'numero_empleado': 'RH-0001',
+                        'puesto': 'Especialista en Capital Humano y Relaciones Laborales',
+                        'departamento': 'Recursos Humanos',
+                        'fecha_ingreso': date(2022, 1, 15),
+                        'salario_mensual': 48000.00,
+                        'dias_vacaciones_totales': 16,
+                        'dias_vacaciones_tomados': 4,
+                        'horario_entrada': '09:00',
+                        'horario_salida': '18:00',
+                        'dias_laborales': 'Lunes a Viernes',
+                        'modalidad_trabajo': 'Presencial'
+                    }
+                )
                 return (user, token)
 
         domain = getattr(settings, 'AUTH0_DOMAIN', 'dev-n4ra6mt0qf5e4h61.us.auth0.com').replace('https://', '').rstrip('/')
