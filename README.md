@@ -15,7 +15,8 @@ La aplicacion se estructura en dos portales especializados que comparten la mism
    - Impulsado por el modelo **Gemini 3.8 Flash** de Google orquestado con LangGraph.
    - **Llamada a herramientas operativas (Function Calling):** Permite tramitar solicitudes de vacaciones, emitir constancias laborales en PDF, registrar y consultar tickets de soporte, y verificar saldos vacacionales en tiempo real desde la conversacion.
    - **Memoria de contexto:** Retiene los ultimos 10 mensajes del hilo conversacional para mantener la coherencia y adaptarse a cambios de tema.
-   - **Guardrails laborales estrictos:** Enfoque delimitado a politicas internas, reglamentos y procedimientos de la organizacion, respondiendo con amabilidad y rechazando consultas fuera del ambito institucional.
+   - **Personalidad cercana y dinamica de oficina:** Configurado con un tono calido, empatico y de companero de trabajo de confianza ("amigo de oficina"), con autorizacion para amenizar la jornada laboral contando chistes sanos y adivinanzas a peticion del colaborador (tanto mediante Gemini como a traves de su banco de respuestas de respaldo local).
+   - **Orientacion a tramites de RH y manejo amigable fuera de contexto:** Especializado en la resolucion de tramites laborales (vacaciones, constancias, saldos, tickets y politicas RAG). Si el usuario consulta temas totalmente ajenos o tecnicos externos (recetas, politica externa, matematicas avanzadas), declina de forma amigable e informal reorientando la conversacion hacia sus gestiones de Recursos Humanos o amenizando la charla.
    - **Ergonomia visual:** Vista contenida a `100vh` en escritorio y `calc(100dvh - 56px)` en dispositivos moviles, con desplazamiento vertical interno en el historial de mensajes y barra de entrada de texto permanentemente anclada al pie de pantalla.
 
 2. **Horario Institucional y Calendario Laboral:**
@@ -176,7 +177,7 @@ Abre el archivo `.env` y define tu clave de Google AI Studio:
 GEMINI_API_KEY=tu_clave_de_gemini
 ```
 
-Las variables para base de datos (PostgreSQL) y cache (Redis) ya vienen configuradas para el entorno de desarrollo local. Las variables de Auth0 se encuentran comentadas por defecto en el archivo `.env` para que tomen automaticamente los valores de desarrollo definidos en `docker-compose.yml` y `core/settings.py` (o utilices los botones de acceso demo en la cabecera); solo debes descomentarlas si vas a conectar tu propio tenant de Auth0.
+Las variables para base de datos (PostgreSQL) y el servicio de infraestructura Redis ya vienen configuradas para el entorno de desarrollo local. Las variables de Auth0 se encuentran comentadas por defecto en el archivo `.env` para que tomen automaticamente los valores de desarrollo definidos en `docker-compose.yml` y `core/settings.py` (o utilices los botones de acceso demo en la cabecera); solo debes descomentarlas si vas a conectar tu propio tenant de Auth0.
 
 ### 3. Levantar los servicios con Docker
 Ejecuta el siguiente comando en la raiz del proyecto:
@@ -189,7 +190,7 @@ Este comando descargara las imagenes, compilara los contenedores y levantara los
 - **Frontend (React / Vite):** [http://localhost:5173](http://localhost:5173)
 - **Backend (Django REST Framework):** [http://localhost:8000](http://localhost:8000)
 - **Base de datos (PostgreSQL 16):** puerto `5432`
-- **Cache y Broker (Redis 7):** puerto `6379`
+- **Servicio de infraestructura Redis (Redis 7):** puerto `6379` (infraestructura aprovisionada para sesiones y soporte futuro de cache o tareas asincronas; ver seccion 5).
 
 ### 4. Ejecutar migraciones de base de datos
 Aplica las migraciones iniciales para crear las tablas en la base de datos PostgreSQL:
@@ -353,10 +354,10 @@ Para garantizar que el frontend opere de manera homogenea tanto en desarrollo co
 - `apiClient` inyecta automaticamente el token Bearer RS256 de Auth0 y gestiona respuestas de autorizacion (403 Forbidden).
 
 ### 3. Persistencia de Datos y Archivos Multimedia
-El sistema define volumenes administrados por Docker para evitar perdida de informacion al recrear contenedores:
-- `postgres_data`: Persistencia de usuarios, expedientes, tickets, vacaciones y base de conocimiento.
-- `media_data`: Persistencia de fotografias de perfil (`/media/avatares/`) y constancias laborales PDF firmadas (`/media/constancias/`).
-- `redis_data`: Persistencia de snapshots y volumen de Redis.
+El sistema desacopla el almacenamiento de datos del ciclo de vida de los contenedores mediante volumenes administrados por Docker y montajes de enlace (*bind mounts*):
+- `postgres_data` (volumen administrado por Docker): Persistencia de la base de datos relacional PostgreSQL (usuarios, expedientes, tickets, solicitudes de vacaciones y base de conocimiento RAG).
+- `redis_data` (volumen administrado por Docker): Persistencia de datos del servicio de infraestructura Redis.
+- `./backend/media:/app/media` (montaje de enlace en el anfitrion): Almacenamiento directo en el sistema de archivos local para los archivos multimedia generados o subidos por los colaboradores: fotografias de perfil (`/media/avatares/`) y constancias laborales PDF oficiales (`/media/constancias/`), sin depender de un volumen nombrado `media_data`.
 
 ### 4. Servidor WSGI y Proxy Inverso Nginx
 - **Backend:** En produccion se ejecuta con **Gunicorn** (`core.wsgi:application`) utilizando 3 procesos worker independientes para atender multiples solicitudes concurrentes sin bloqueos (`--timeout 120`).
