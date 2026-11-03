@@ -127,8 +127,11 @@ class ChatPersistenciaTests(TestCase):
         self.assertEqual(SolicitudVacaciones.objects.filter(empleado=self.empleado).count(), 0)
 
     def test_crear_ticket_automaticamente(self):
+        from unittest.mock import patch
+        from django.conf import settings
         mensaje = "Tengo un problema urgente: no se reflejo el pago de horas extras en mi recibo"
-        resultado = procesar_mensaje_agente(mensaje, self.empleado)
+        with patch.dict('os.environ', {'GEMINI_API_KEY': ''}), patch.object(settings, 'GEMINI_API_KEY', ''):
+            resultado = procesar_mensaje_agente(mensaje, self.empleado)
 
         self.assertEqual(resultado['tipo_accion'], 'TICKET_CREADO')
         self.assertIn('folio', resultado['datos'])

@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from django.test import TestCase
 from django.contrib.auth.models import User
 from hr_services.models import Empleado, SolicitudVacaciones, TicketRH, BaseConocimientoRH, NotaTareaColaborador
@@ -450,14 +451,20 @@ class HRServicesTestCase(TestCase):
 
     def test_vacaciones_calcula_solo_dias_laborales_y_corrige_desfase(self):
         self.client.force_login(self.user)
-        # Periodo del 2026-11-02 (Lunes) al 2026-11-09 (Lunes siguiente):
-        # 8 días calendario, pero exactamente 6 días laborales (Lun, Mar, Mié, Jue, Vie, Lun)
-        # Si el usuario envía erróneamente dias_solicitados: 1, el servidor debe calcular y exigir 6
+        hoy = date.today()
+        dias_hasta_lunes = (7 - hoy.weekday()) % 7
+        if dias_hasta_lunes == 0:
+            dias_hasta_lunes = 7
+        proximo_lunes = hoy + timedelta(days=dias_hasta_lunes)
+        siguiente_lunes = proximo_lunes + timedelta(days=7)
+        # Periodo del proximo lunes al lunes siguiente:
+        # 8 dias calendario, pero exactamente 6 dias laborales (Lun, Mar, Mie, Jue, Vie, Lun)
+        # Si el usuario envia erroneamente dias_solicitados: 1, el servidor debe calcular y exigir 6
         response = self.client.post(
             '/api/hr/vacaciones/',
             data={
-                'fecha_inicio': '2026-11-02',
-                'fecha_fin': '2026-11-09',
+                'fecha_inicio': proximo_lunes.strftime('%Y-%m-%d'),
+                'fecha_fin': siguiente_lunes.strftime('%Y-%m-%d'),
                 'dias_solicitados': 1,
                 'motivo': 'Periodo con fin de semana intermedio'
             },
@@ -470,12 +477,21 @@ class HRServicesTestCase(TestCase):
         from hr_services.services import crear_solicitud_vacaciones
         from django.core.exceptions import ValidationError
 
+        hoy = date.today()
+        dias_hasta_lunes = (7 - hoy.weekday()) % 7
+        if dias_hasta_lunes == 0:
+            dias_hasta_lunes = 7
+        proximo_lunes = hoy + timedelta(days=dias_hasta_lunes)
+        siguiente_lunes = proximo_lunes + timedelta(days=7)
+        lunes_posterior = proximo_lunes + timedelta(days=14)
+        viernes_posterior = lunes_posterior + timedelta(days=4)
+
         # self.empleado tiene 12 totales, 2 tomados -> 10 disponibles
-        # Primera solicitud: 2026-11-02 a 2026-11-09 (6 días laborales). Quedan 4 disponibles
+        # Primera solicitud: 6 dias laborales. Quedan 4 disponibles
         s1 = crear_solicitud_vacaciones(
             self.empleado,
-            fecha_inicio='2026-11-02',
-            fecha_fin='2026-11-09',
+            fecha_inicio=proximo_lunes.strftime('%Y-%m-%d'),
+            fecha_fin=siguiente_lunes.strftime('%Y-%m-%d'),
             motivo='Primera solicitud'
         )
         self.assertEqual(s1.estado, 'PENDIENTE')
@@ -485,12 +501,12 @@ class HRServicesTestCase(TestCase):
         self.assertEqual(self.empleado.dias_vacaciones_retenidos, 6)
         self.assertEqual(self.empleado.dias_vacaciones_disponibles, 4)
 
-        # Segunda solicitud intenta pedir 5 días (2026-11-16 a 2026-11-20), pero solo quedan 4
+        # Segunda solicitud intenta pedir 5 dias, pero solo quedan 4
         with self.assertRaises(ValidationError) as ctx:
             crear_solicitud_vacaciones(
                 self.empleado,
-                fecha_inicio='2026-11-16',
-                fecha_fin='2026-11-20',
+                fecha_inicio=lunes_posterior.strftime('%Y-%m-%d'),
+                fecha_fin=viernes_posterior.strftime('%Y-%m-%d'),
                 motivo='Segunda solicitud excesiva'
             )
         self.assertIn('No cuentas con suficientes días disponibles', str(ctx.exception))
@@ -500,19 +516,28 @@ class HRServicesTestCase(TestCase):
         from hr_services.services import crear_solicitud_vacaciones
         from django.core.exceptions import ValidationError
 
+        hoy = date.today()
+        dias_hasta_lunes = (7 - hoy.weekday()) % 7
+        if dias_hasta_lunes == 0:
+            dias_hasta_lunes = 7
+        proximo_lunes = hoy + timedelta(days=dias_hasta_lunes)
+        proximo_viernes = proximo_lunes + timedelta(days=4)
+        jueves_solapado = proximo_lunes + timedelta(days=3)
+        siguiente_martes = proximo_lunes + timedelta(days=8)
+
         crear_solicitud_vacaciones(
             self.empleado,
-            fecha_inicio='2026-11-02',
-            fecha_fin='2026-11-06',
+            fecha_inicio=proximo_lunes.strftime('%Y-%m-%d'),
+            fecha_fin=proximo_viernes.strftime('%Y-%m-%d'),
             motivo='Periodo original'
         )
 
-        # Intento de solicitud que se empalma parcialmente (2026-11-05 a 2026-11-10)
+        # Intento de solicitud que se empalma parcialmente
         with self.assertRaises(ValidationError) as ctx:
             crear_solicitud_vacaciones(
                 self.empleado,
-                fecha_inicio='2026-11-05',
-                fecha_fin='2026-11-10',
+                fecha_inicio=jueves_solapado.strftime('%Y-%m-%d'),
+                fecha_fin=siguiente_martes.strftime('%Y-%m-%d'),
                 motivo='Periodo empalmado'
             )
         self.assertIn('Ya cuentas con una solicitud de vacaciones en proceso de aprobación', str(ctx.exception))

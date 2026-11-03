@@ -12,7 +12,7 @@ La aplicacion se estructura en dos portales especializados que comparten la mism
 ### Portal del Colaborador (Autoservicio)
 
 1. **Asistente Conversacional Inteligente con IA (Chat):**
-   - Impulsado por el modelo **Gemini 3.8 Flash** de Google orquestado con LangGraph.
+   - Impulsado por la familia de modelos **Gemini Flash** de Google mediante el SDK oficial `google-genai` con llamada a herramientas operativas (Function Calling) y respaldo automatico entre versiones.
    - **Llamada a herramientas operativas (Function Calling):** Permite tramitar solicitudes de vacaciones, emitir constancias laborales en PDF, registrar y consultar tickets de soporte, y verificar saldos vacacionales en tiempo real desde la conversacion.
    - **Memoria de contexto:** Retiene los ultimos 10 mensajes del hilo conversacional para mantener la coherencia y adaptarse a cambios de tema.
    - **Personalidad cercana y dinamica de oficina:** Configurado con un tono calido, empatico y de companero de trabajo de confianza ("amigo de oficina"), con autorizacion para amenizar la jornada laboral contando chistes sanos y adivinanzas a peticion del colaborador (tanto mediante Gemini como a traves de su banco de respuestas de respaldo local).
@@ -128,7 +128,7 @@ El sistema cuenta con dos perfiles de usuario diferenciados por permisos de Cont
 ---
 
 ## Uso de Inteligencia Artificial
-Para este proyecto se hace uso de Inteligencia Artificial mediante la herramienta **Antigravity** y el modelo **Gemini 3.8 Flash High**.
+Para este proyecto se hace uso de Inteligencia Artificial mediante la herramienta **Antigravity** y la familia de modelos **Gemini Flash** de Google (con lista ordenada de respaldo: Gemini 3.6 Flash, 3.5 Flash, 3.1 Flash-Lite, Flash-Latest y 3.8 Flash).
 
 ---
 
