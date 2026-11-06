@@ -48,6 +48,161 @@ def es_solicitud_constancia_real(texto_lc):
     return any(v in texto_lc for v in verbos)
 
 
+def es_api_key_gemini_valida(api_key: str) -> bool:
+    """
+    Verifica si una clave de API de Gemini es sintácticamente válida y no un placeholder de ejemplo.
+    """
+    if not api_key or not isinstance(api_key, str):
+        return False
+    k = api_key.strip()
+    if not k:
+        return False
+    placeholders = [
+        'tu_api_key', 'tu_clave', 'your_api', 'dummy', 'none', 'null',
+        'test', 'fake', 'changeme', 'xxx', 'tu_api_key_de_google_ai_studio',
+        'tu_clave_de_gemini'
+    ]
+    if any(p in k.lower() for p in placeholders):
+        return False
+    return len(k) >= 20
+
+
+MESES_ES = {
+    'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
+    'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+}
+
+
+def extraer_rango_fechas_vacaciones(texto: str, hoy: date):
+    """
+    Extrae fecha de inicio y fin de un texto en español para solicitudes de vacaciones.
+    Soporta formatos comunes:
+    - 'del 20 al 25 de noviembre'
+    - 'del 20 de noviembre al 25 de noviembre'
+    - '2026-11-20 al 2026-11-25'
+    - '20/11/2026 al 25/11/2026'
+    - '20-11-2026 al 25-11-2026'
+    """
+    txt = texto.lower()
+    # Patrón natural en español: 'del 20 al 25 de noviembre'
+    m = re.search(r'(?:del\s+)?(\d{1,2})(?:\s+de\s+([a-záéíóú]+))?\s+(?:al|a|-)\s+(\d{1,2})\s+de\s+([a-záéíóú]+)(?:\s+de\s+(\d{4}))?', txt)
+    if m:
+        d1, m1, d2, m2, a = m.groups()
+        m2_clean = m2.replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u')
+        m1_clean = m1.replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u') if m1 else m2_clean
+        mes2 = MESES_ES.get(m2_clean)
+        mes1 = MESES_ES.get(m1_clean) if m1_clean else mes2
+        anio = int(a) if a else hoy.year
+        if mes1 and mes2:
+            try:
+                f1 = date(anio, mes1, int(d1))
+                f2 = date(anio, mes2, int(d2))
+                if f1 < hoy and not a:
+                    f1 = date(anio + 1, mes1, int(d1))
+                    f2 = date(anio + 1, mes2, int(d2))
+                return f1, f2
+            except ValueError:
+                pass
+
+    # Patrón estándar con fechas completas
+    fechas = re.findall(r'(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{4}|\d{1,2}\s+de\s+[a-z]+(?:\s+de\s+\d{4})?)', txt)
+    if len(fechas) >= 2:
+        f1 = parsear_fecha_flexible(fechas[0])
+        f2 = parsear_fecha_flexible(fechas[1])
+        if f1 and f2:
+            return f1, f2
+    return None, None
+
+
+def normalizar_texto_busqueda(texto: str) -> str:
+    import unicodedata
+    if not texto:
+        return ''
+    texto = texto.lower()
+    return ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+
+
+STOPWORDS_ES = {
+    'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de', 'del', 'a', 'al',
+    'en', 'con', 'por', 'para', 'que', 'como', 'cual', 'cuales', 'mi', 'mis', 'tu',
+    'tus', 'su', 'sus', 'me', 'se', 'te', 'es', 'son', 'si', 'no', 'o', 'y', 'e',
+    'u', 'puedo', 'puede', 'pueden', 'tengo', 'tiene', 'tienen', 'hacer', 'hago',
+    'hay', 'cuando', 'cuanto', 'cuanta', 'cuantos', 'cuantas', 'donde', 'quien',
+    'sobre', 'este', 'esta', 'estos', 'estas', 'ser', 'estar', 'dime', 'decir',
+    'saber', 'favor', 'hola', 'buenas', 'buenos', 'dias', 'tardes', 'noches',
+    'quisiera', 'gustaria', 'oye', 'amigo', 'asistente'
+}
+
+
+SINONIMOS_RH = {
+    'comer': ['comida', 'alimento', 'alimentos', 'comedor', 'despensa'],
+    'comida': ['comer', 'alimento', 'alimentos', 'comedor'],
+    'alimentos': ['comida', 'comer', 'alimento'],
+    'vestimenta': ['ropa', 'codigo de vestimenta', 'vestir'],
+    'ropa': ['vestimenta', 'codigo de vestimenta', 'vestir'],
+    'sueldo': ['salario', 'nomina', 'pago'],
+    'salario': ['sueldo', 'nomina', 'pago'],
+    'aguinaldo': ['gratificacion', 'diciembre', 'aguinaldo'],
+    'retardo': ['tolerancia', 'retardos', 'tarde', 'puntualidad'],
+    'tolerancia': ['retardo', 'retardos', 'tarde', 'puntualidad'],
+    'festivo': ['festivos', 'feriado', 'feriados', 'descanso obligatorio'],
+    'festivos': ['festivo', 'feriado', 'feriados', 'descanso obligatorio'],
+    'prestaciones': ['beneficios', 'sgmm', 'seguro', 'aguinaldo', 'prima vacacional'],
+}
+
+
+def buscar_en_base_conocimiento(query: str):
+    """
+    Busca la respuesta oficial más relevante en la tabla BaseConocimientoRH
+    para consultas sobre reglamentos, políticas y FAQs de Recursos Humanos.
+    """
+    q_norm = normalizar_texto_busqueda(query)
+    palabras_base = [w for w in re.findall(r'\b[a-z0-9]+\b', q_norm) if len(w) > 2 and w not in STOPWORDS_ES]
+    if not palabras_base:
+        return None
+
+    palabras = set(palabras_base)
+    for p in palabras_base:
+        if p in SINONIMOS_RH:
+            palabras.update(SINONIMOS_RH[p])
+
+    candidatos = []
+    for faq in BaseConocimientoRH.objects.filter(activa=True):
+        preg_norm = normalizar_texto_busqueda(faq.pregunta)
+        resp_norm = normalizar_texto_busqueda(faq.respuesta)
+        cat_norm = normalizar_texto_busqueda(faq.categoria)
+        kw_norm = normalizar_texto_busqueda(getattr(faq, 'palabras_clave', '') or '')
+
+        score = 0
+        palabras_encontradas = 0
+        for w in palabras:
+            match_found = False
+            if w in preg_norm:
+                score += 10
+                match_found = True
+            if w in kw_norm:
+                score += 8
+                match_found = True
+            if w in cat_norm:
+                score += 4
+                match_found = True
+            if w in resp_norm:
+                score += 3
+                match_found = True
+            if match_found:
+                palabras_encontradas += 1
+
+        if score > 0:
+            ratio = palabras_encontradas / len(palabras)
+            score_final = score * (1 + ratio)
+            candidatos.append((score_final, faq))
+
+    candidatos.sort(key=lambda x: x[0], reverse=True)
+    if candidatos and candidatos[0][0] >= 5:
+        return candidatos[0][1]
+    return None
+
+
 def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
     """
     Procesa la consulta del colaborador utilizando el Agente Conversacional con herramientas
@@ -294,7 +449,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
         tickets_context = "No tienes tickets registrados actualmente (0 abiertos, 0 resueltos)."
 
     # Intentar procesamiento mediante Gemini con llamada de herramientas y contexto
-    if api_key:
+    if es_api_key_gemini_valida(api_key):
         system_prompt = (
             f"Eres el Agente Conversacional Inteligente de Recursos Humanos de PluriOne S.A. de C.V. (Develop Talent & Technology), pero hablas y te comportas como un gran amigo, colega y companero de trabajo cercano y de confianza del colaborador.\n"
             f"Tu personalidad es alegre, calida, empatica, relajada, divertida y servicial, tratandolo siempre de 'tu', con confianza y buena onda, como un amigo de oficina, pero sin descuidar la resolucion precisa y confiable de sus tramites de Recursos Humanos.\n\n"
@@ -384,7 +539,14 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
                         response_text = res.text
                         break
                 except Exception as model_err:
+                    err_str = str(model_err).lower()
                     print(f"Intento con {modelo} fallo: {model_err}, intentando siguiente modelo...")
+                    if any(term in err_str for term in ['api_key_invalid', 'api key not valid', 'invalid_argument', 'permission_denied', 'unauthenticated', '401', '403']):
+                        print("Clave de Gemini invalida o no autorizada. Cancelando reintentos.")
+                        break
+                    if any(term in err_str for term in ['timed out', 'timeout', 'connection', 'nameresolution', 'failed to connect']):
+                        print("Error de conectividad de red con Google AI Studio. Cancelando reintentos.")
+                        break
                     continue
 
             if response_text:
@@ -448,26 +610,23 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
                 'datos': {}
             }
 
-    # 2. Deteccion de fechas de vacaciones en el mensaje o con contexto anterior
-    fechas_encontradas = re.findall(r'(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{4}|\d{1,2}\s+de\s+[a-z]+(?:\s+de\s+\d{4})?)', mensaje_lc)
-    es_tema_vacaciones = any(w in mensaje_lc for w in ['vacacion', 'vacaciones', 'dias', 'descanso', 'pedir', 'solicitar'])
+    # 2. Deteccion de fechas y solicitud de vacaciones
+    f_ini, f_fin = extraer_rango_fechas_vacaciones(mensaje_usuario, hoy)
+    es_tema_vacaciones = any(w in mensaje_lc for w in ['vacacion', 'vacaciones', 'descanso', 'dias'])
     ultimo_mensaje_bot = next((m.texto.lower() for m in reversed(mensajes_recientes) if m.remitente == 'bot'), '')
-    estaba_esperando_fechas = 'fecha' in ultimo_mensaje_bot and 'vacacion' in ultimo_mensaje_bot
+    estaba_esperando_fechas = any(term in ultimo_mensaje_bot for term in ['fecha', 'vacacion', 'indica'])
 
-    if (es_tema_vacaciones or estaba_esperando_fechas) and len(fechas_encontradas) >= 2:
-        f_ini = parsear_fecha_flexible(fechas_encontradas[0])
-        f_fin = parsear_fecha_flexible(fechas_encontradas[1])
-        if f_ini and f_fin:
-            res_tool = solicitar_vacaciones(f_ini.strftime('%Y-%m-%d'), f_fin.strftime('%Y-%m-%d'), motivo=mensaje_usuario)
-            return {
-                'respuesta': res_tool,
-                'tipo_accion': accion_detectada['tipo_accion'],
-                'datos': accion_detectada['datos']
-            }
+    if (es_tema_vacaciones or estaba_esperando_fechas) and f_ini and f_fin:
+        res_tool = solicitar_vacaciones(f_ini.strftime('%Y-%m-%d'), f_fin.strftime('%Y-%m-%d'), motivo=mensaje_usuario)
+        return {
+            'respuesta': res_tool,
+            'tipo_accion': accion_detectada['tipo_accion'],
+            'datos': accion_detectada['datos']
+        }
 
     if es_tema_vacaciones and any(w in mensaje_lc for w in ['pedir', 'solicitar', 'quiero', 'necesito', 'tomar']):
         return {
-            'respuesta': f"Hola {nombre_completo}, dispones de {empleado.dias_vacaciones_disponibles} dias disponibles. ¿Para que fechas deseas solicitarlas? Por favor indica la fecha de inicio y fin (ejemplo: 'del 2026-11-20 al 2026-11-25'). Recuerda que deben ser a partir de hoy y en tus dias laborales ({empleado.dias_laborales}).",
+            'respuesta': f"Hola {nombre_completo}, dispones de {empleado.dias_vacaciones_disponibles} dias disponibles. ¿Para que fechas deseas solicitarlas? Por favor indica la fecha de inicio y fin (ejemplo: 'del 20 al 25 de noviembre'). Recuerda que deben ser a partir de hoy y en tus dias laborales ({empleado.dias_laborales}).",
             'tipo_accion': 'INFO_GENERAL',
             'datos': {'disponibles': empleado.dias_vacaciones_disponibles}
         }
@@ -490,11 +649,144 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             'datos': accion_detectada['datos']
         }
 
-    if any(w in mensaje_lc for w in ['saldo', 'cuantos dias', 'dias me quedan', 'mis vacaciones']):
+    # 4. Consultas sobre datos laborales del colaborador
+    # 4.1 Horario de trabajo / jornada / entrada y salida
+    if any(w in mensaje_lc for w in ['horario', 'hora de entrada', 'hora de salida', 'a que hora entro', 'a que hora salgo', 'que dias trabajo', 'dias laborales', 'modalidad de trabajo', 'jornada laboral']):
         return {
-            'respuesta': f"Hola {nombre_completo}, dispones de {empleado.dias_vacaciones_disponibles} dias disponibles de un total de {empleado.dias_vacaciones_totales} dias asignados. Tu horario laboral es {empleado.dias_laborales}.",
+            'respuesta': (
+                f"Hola {nombre_completo}, tu jornada oficial registrada es de "
+                f"{empleado.horario_entrada} a {empleado.horario_salida} hrs, "
+                f"laborando los dias {empleado.dias_laborales} bajo modalidad {empleado.modalidad_trabajo}. "
+                f"Recuerda que cuentas con 10 minutos de tolerancia al ingreso segun el reglamento interno."
+            ),
             'tipo_accion': 'INFO_GENERAL',
-            'datos': {'disponibles': empleado.dias_vacaciones_disponibles}
+            'datos': {
+                'horario_entrada': empleado.horario_entrada,
+                'horario_salida': empleado.horario_salida,
+                'dias_laborales': empleado.dias_laborales,
+                'modalidad': empleado.modalidad_trabajo
+            }
+        }
+
+    # 4.2 Puesto / departamento / numero de empleado / credencial
+    if any(w in mensaje_lc for w in ['puesto', 'mi cargo', 'departamento', 'area', 'área', 'numero de empleado', 'número de empleado', 'mi clave', 'credencial']):
+        return {
+            'respuesta': (
+                f"Amigo {nombre_completo}, tu puesto registrado es {empleado.puesto} "
+                f"en el departamento de {empleado.departamento}, con numero de empleado {empleado.numero_empleado}."
+            ),
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {
+                'puesto': empleado.puesto,
+                'departamento': empleado.departamento,
+                'numero_empleado': empleado.numero_empleado
+            }
+        }
+
+    # 4.3 Salario / sueldo
+    if any(w in mensaje_lc for w in ['sueldo', 'salario', 'cuanto gano', 'cuánto gano', 'percepcion', 'percepción mensual']):
+        sueldo_val = f"${empleado.salario_mensual:,.2f} MXN" if empleado.salario_mensual else "No registrado"
+        return {
+            'respuesta': (
+                f"Hola {nombre_completo}, tu salario mensual bruto registrado en el expediente institucional es de {sueldo_val}."
+            ),
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {
+                'salario_mensual': float(empleado.salario_mensual or 0)
+            }
+        }
+
+    # 4.4 Antigüedad / fecha de ingreso
+    if any(w in mensaje_lc for w in ['antiguedad', 'antigüedad', 'cuanto tiempo llevo', 'cuándo entré', 'cuando entre', 'fecha de ingreso', 'fecha de contratacion']):
+        anios = empleado.antiguedad_anios or 1
+        return {
+            'respuesta': (
+                f"Amigo {nombre_completo}, ingresaste a la empresa el {empleado.fecha_ingreso or '2023-03-01'}, "
+                f"por lo que cuentas con {anios} {('año' if anios == 1 else 'años')} de antiguedad oficial en PluriOne."
+            ),
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {
+                'fecha_ingreso': str(empleado.fecha_ingreso),
+                'antiguedad_anios': anios
+            }
+        }
+
+    # 4.5 Saldo de vacaciones
+    if any(w in mensaje_lc for w in ['saldo', 'cuantos dias', 'dias me quedan', 'mis vacaciones', 'balance de vacaciones']):
+        return {
+            'respuesta': (
+                f"Hola {nombre_completo}, dispones de {empleado.dias_vacaciones_disponibles} dias disponibles para solicitar "
+                f"de un total de {empleado.dias_vacaciones_totales} dias asignados "
+                f"(has tomado {empleado.dias_vacaciones_tomados} dias y tienes {empleado.dias_vacaciones_retenidos} dias retenidos en solicitudes pendientes). "
+                f"Tu horario laboral es {empleado.dias_laborales}."
+            ),
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {
+                'disponibles': empleado.dias_vacaciones_disponibles,
+                'totales': empleado.dias_vacaciones_totales,
+                'tomados': empleado.dias_vacaciones_tomados,
+                'retenidos': empleado.dias_vacaciones_retenidos
+            }
+        }
+
+    # 5. Busqueda en Base de Conocimientos RAG (politicas, reglamentos y FAQs de RH)
+    faq_encontrada = buscar_en_base_conocimiento(mensaje_usuario)
+    if faq_encontrada:
+        resp_limpia = faq_encontrada.respuesta.strip()
+        if len(resp_limpia) > 850:
+            resp_limpia = resp_limpia[:850] + "..."
+        return {
+            'respuesta': (
+                f"Con gusto te comparto la informacion oficial, amigo {nombre_completo}:\n\n"
+                f"**{faq_encontrada.pregunta}** (Categoria: {faq_encontrada.categoria})\n\n"
+                f"{resp_limpia}\n\n"
+                f"¿Deseas tramitar alguna solicitud relacionada o te ayudo con algo mas?"
+            ),
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {
+                'faq_id': faq_encontrada.id,
+                'categoria': faq_encontrada.categoria
+            }
+        }
+
+    # 6. Saludos casuales, agradecimientos, despedidas y ayuda
+    if any(w in mensaje_lc for w in ['gracias', 'muchas gracias', 'te agradezco', 'mil gracias']):
+        return {
+            'respuesta': f"¡De nada, {nombre_completo}! Para eso estamos los companeros. Cualquier otra duda de Recursos Humanos, vacaciones, constancias o si quieres otro chiste, aqui me tienes.",
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {}
+        }
+
+    if any(w in mensaje_lc for w in ['adios', 'adiós', 'hasta luego', 'nos vemos', 'bye', 'chao']):
+        return {
+            'respuesta': f"¡Hasta luego, amigo {nombre_completo}! Que tengas un excelente dia laboral. ¡Pasala genial!",
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {}
+        }
+
+    if any(w in mensaje_lc for w in ['quien eres', 'quién eres', 'que puedes hacer', 'qué puedes hacer', 'ayuda', 'como funcionas', 'cómo funcionas']):
+        return {
+            'respuesta': (
+                f"¡Hola! Soy el Agente Conversacional de Recursos Humanos en PluriOne S.A. de C.V. (Develop Talent & Technology), pero hablo contigo como un amigo de oficina.\n\n"
+                f"Puedo apoyarte en tiempo real con:\n"
+                f"- **Vacaciones:** Consultar tu saldo y registrar solicitudes indicando fechas (ejemplo: 'Quiero vacaciones del 20 al 25 de noviembre').\n"
+                f"- **Constancia Laboral:** Generar y descargar tu documento membretado en PDF al instante (con o sin sueldo).\n"
+                f"- **Tickets de Soporte:** Reportar incidencias de nomina o prestaciones y consultar el estatus de tus folios.\n"
+                f"- **Politicas y Reglamento:** Responder tus dudas sobre horarios, tolerancia, vestimenta, prestaciones y aguinaldo.\n"
+                f"- **Entretenimiento:** ¡Contarte un chiste o una adivinanza cuando lo pidas!\n\n"
+                f"¿En que te echo la mano hoy?"
+            ),
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {}
+        }
+
+    palabras_mensaje = mensaje_lc.split()
+    es_saludo_puro = any(s in mensaje_lc for s in ['hola', 'buen dia', 'buenos dias', 'buenas tardes', 'buenas noches', 'que tal', 'qué tal', 'que onda', 'qué onda', 'como estas', 'cómo estás'])
+    if es_saludo_puro and len(palabras_mensaje) <= 4:
+        return {
+            'respuesta': f"¡Que onda, {nombre_completo}! ¿Como va tu dia? Aqui tu amigo de Recursos Humanos listo para apoyarte. Dime si necesitas checar vacaciones, tramitar tu constancia laboral, consultar tickets o revisar alguna politica de la empresa, ¡o si prefieres un chiste o adivinanza! ¿En que te echo la mano?",
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {}
         }
 
     return {
