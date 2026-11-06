@@ -15,11 +15,28 @@ export const AUTH0_CONFIG = {
   }
 }
 
+const isPlaceholderAuth0 = (val) => {
+  if (!val || typeof val !== 'string') return true
+  const lower = val.trim().toLowerCase()
+  return (
+    !lower ||
+    lower.includes('tu_dominio') ||
+    lower.includes('tu_client_id') ||
+    lower.includes('placeholder') ||
+    lower.includes('example.com')
+  )
+}
+
 // Proveedor Híbrido que activa Auth0 en vivo o recurre a modo local si el origen no es seguro (HTTP por IP)
 export function AuthProvider({ children }) {
   const isSecureContextAvailable = typeof window !== 'undefined' && Boolean(window.crypto && window.crypto.subtle)
   const isForceLocal = typeof window !== 'undefined' && sessionStorage.getItem('force_local_auth') === 'true'
-  const isAuth0Configured = Boolean(AUTH0_CONFIG.domain && AUTH0_CONFIG.clientId)
+  const isAuth0Configured = Boolean(
+    AUTH0_CONFIG.domain &&
+    AUTH0_CONFIG.clientId &&
+    !isPlaceholderAuth0(AUTH0_CONFIG.domain) &&
+    !isPlaceholderAuth0(AUTH0_CONFIG.clientId)
+  )
 
   // Auth0 SPA JS requiere Web Crypto API (crypto.subtle) para PKCE, la cual los navegadores
   // sólo habilitan en orígenes seguros (HTTPS o localhost / 127.0.0.1).
@@ -148,7 +165,10 @@ function Auth0WrappedChild({ children }) {
         }
       })
     } else {
-      setAuthTokenGetter(null)
+      // Fallback seguro a token de prueba si aún no se ha completado la autenticación con Auth0
+      const activeRole = (typeof window !== 'undefined' && sessionStorage.getItem('active_demo_role')) || 'colaborador'
+      const fallbackToken = activeRole === 'recursos humanos' ? 'mock-jwt-token-plurione-rh' : 'mock-jwt-token-plurione'
+      setAuthTokenGetter(async () => fallbackToken)
     }
   }, [isAuthenticated, getAccessTokenSilently])
 

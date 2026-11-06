@@ -10,15 +10,19 @@ class Auth0JSONWebTokenAuthentication(authentication.BaseAuthentication):
     Autenticación personalizada de Django REST Framework para validar tokens JWT de Auth0
     y vincularlos al modelo Empleado con soporte multi-inquilino y RBAC.
     """
+    def authenticate_header(self, request):
+        return 'Bearer realm="api"'
+
     def authenticate(self, request):
         auth_header = request.headers.get('Authorization')
         token = None
 
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split(' ')[1]
-        elif 'token' in request.query_params:
-            # Soporte para descargas directas de PDF / iframes en navegador
-            token = request.query_params.get('token')
+        else:
+            query_params = getattr(request, 'query_params', getattr(request, 'GET', {}))
+            if 'token' in query_params:
+                token = query_params.get('token')
 
         if not token:
             return None

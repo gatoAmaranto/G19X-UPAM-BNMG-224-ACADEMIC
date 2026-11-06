@@ -39,6 +39,7 @@ services:
       - .env
     environment:
       - USE_POSTGRES=True
+      - DEBUG=${DEBUG:-False}
     depends_on:
       db:
         condition: service_healthy
