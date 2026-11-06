@@ -87,7 +87,9 @@ class Auth0JSONWebTokenAuthentication(authentication.BaseAuthentication):
                 )
                 return (user, token)
 
-        domain = getattr(settings, 'AUTH0_DOMAIN', 'dev-n4ra6mt0qf5e4h61.us.auth0.com').replace('https://', '').rstrip('/')
+        domain = getattr(settings, 'AUTH0_DOMAIN', '').replace('https://', '').rstrip('/')
+        if not domain:
+            return None
         audience = getattr(settings, 'AUTH0_AUDIENCE', '')
 
         try:

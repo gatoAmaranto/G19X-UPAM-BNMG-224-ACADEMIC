@@ -5,13 +5,13 @@ import { setAuthTokenGetter } from '../api/apiClient.js'
 
 const AuthCustomContext = createContext(null)
 
-// Configuración oficial Auth0 de PluriOne
+// Configuración oficial Auth0
 export const AUTH0_CONFIG = {
-  domain: import.meta.env.VITE_AUTH0_DOMAIN || 'dev-n4ra6mt0qf5e4h61.us.auth0.com',
-  clientId: import.meta.env.VITE_AUTH0_CLIENT_ID || '4x5X2AXgYvvSIzHYUS07FU8kvjHSX8uO',
+  domain: import.meta.env.VITE_AUTH0_DOMAIN || '',
+  clientId: import.meta.env.VITE_AUTH0_CLIENT_ID || '',
   authorizationParams: {
     redirect_uri: window.location.origin,
-    audience: import.meta.env.VITE_AUTH0_AUDIENCE || 'https://dev-n4ra6mt0qf5e4h61.us.auth0.com/api/v2/'
+    audience: import.meta.env.VITE_AUTH0_AUDIENCE || ''
   }
 }
 

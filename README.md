@@ -177,7 +177,7 @@ Abre el archivo `.env` y define tu clave de Google AI Studio:
 GEMINI_API_KEY=tu_clave_de_gemini
 ```
 
-Las variables para base de datos (PostgreSQL) y el servicio de infraestructura Redis ya vienen configuradas para el entorno de desarrollo local. Las variables de Auth0 se encuentran comentadas por defecto en el archivo `.env` para que tomen automaticamente los valores de desarrollo definidos en `docker-compose.yml` y `core/settings.py` (o utilices los botones de acceso demo en la cabecera); solo debes descomentarlas si vas a conectar tu propio tenant de Auth0.
+Las variables para base de datos (PostgreSQL) y el servicio de infraestructura Redis ya vienen configuradas para el entorno de desarrollo local. Las variables de Auth0 se encuentran comentadas por defecto en el archivo `.env` para que el sistema funcione automaticamente en Modo Demo Local (con perfiles y tokens simulados sin conectarse a servidores externos); unicamente debes descomentarlas y definir tus claves si deseas conectar tu propio tenant corporativo de Auth0.
 
 ### 3. Levantar los servicios con Docker
 Ejecuta el siguiente comando en la raiz del proyecto:
@@ -263,7 +263,7 @@ VITE_AUTH0_CLIENT_ID=tu_client_id_aqui
 VITE_AUTH0_AUDIENCE=https://tu_dominio.us.auth0.com/api/v2/
 ```
 
-*Nota:* Si no configuras tu propio tenant en desarrollo local, la aplicacion utiliza credenciales predeterminadas y permite alternar entre perfiles (`colaborador` y `recursos humanos`) directamente desde la cabecera.
+*Nota:* Si dejas las variables de Auth0 comentadas o vacias en `.env`, la aplicacion opera en **Modo Demo Local** de forma 100% autonoma (sin conectarse a Auth0 ni realizar redirecciones externas), permitiendo alternar entre perfiles de prueba simulados (`colaborador` y `recursos humanos`) directamente desde la cabecera.
 
 ---
 

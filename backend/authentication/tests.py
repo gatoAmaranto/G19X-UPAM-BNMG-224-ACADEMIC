@@ -1,10 +1,11 @@
 from unittest.mock import patch, MagicMock
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, override_settings
 from django.contrib.auth.models import User
 from authentication.auth0 import Auth0JSONWebTokenAuthentication
 from hr_services.models import Empleado
 
 
+@override_settings(AUTH0_DOMAIN='test.auth0.com')
 class Auth0RoleExtractionTests(TestCase):
     def setUp(self):
         self.auth = Auth0JSONWebTokenAuthentication()
@@ -45,7 +46,7 @@ class Auth0RoleExtractionTests(TestCase):
         mock_jwt_decode.return_value = {
             'sub': 'auth0|test-user-rh-1',
             'email': 'rh@develop.com.mx',
-            'https://dev-n4ra6mt0qf5e4h61.us.auth0.com/roles': ['recursos humanos']
+            'https://test.auth0.com/roles': ['recursos humanos']
         }
         mock_jwk_client.return_value.get_signing_key_from_jwt.return_value = MagicMock(key='dummy-key')
 
