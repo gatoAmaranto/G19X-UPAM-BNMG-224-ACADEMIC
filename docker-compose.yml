@@ -43,6 +43,7 @@ services:
       - .env
     environment:
       - USE_POSTGRES=${USE_POSTGRES:-True}
+      - DEBUG=${DEBUG:-True}
     depends_on:
       db:
         condition: service_healthy
@@ -62,6 +63,7 @@ services:
     environment:
       - VITE_BACKEND_URL=http://backend:8000
       - VITE_API_URL=http://localhost:8000
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api}
       - VITE_AUTH0_DOMAIN=${VITE_AUTH0_DOMAIN:-}
       - VITE_AUTH0_CLIENT_ID=${VITE_AUTH0_CLIENT_ID:-}
       - VITE_AUTH0_AUDIENCE=${VITE_AUTH0_AUDIENCE:-}

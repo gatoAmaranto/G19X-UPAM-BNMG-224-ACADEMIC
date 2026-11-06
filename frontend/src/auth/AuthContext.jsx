@@ -179,45 +179,90 @@ function Auth0WrappedChild({ children }) {
 
 // Proveedor Simulado para fallback
 function LocalAuthProvider({ children, insecureOriginDetected = false }) {
-  const [activeRole, setActiveRole] = useState('colaborador') // 'colaborador' | 'recursos humanos'
+  const [activeRole, setActiveRole] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('active_demo_role') || 'colaborador'
+    }
+    return 'colaborador'
+  })
   const [isAuthenticated, setIsAuthenticated] = useState(true)
 
   const mockUsers = {
     colaborador: {
       name: 'Juan Pérez (Colaborador)',
+      first_name: 'Juan',
+      last_name: 'Pérez',
       email: 'juan.perez@develop.com.mx',
       picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
       sub: 'auth0|mock-user-colaborador-101',
       role: 'colaborador',
-      puesto: 'Ingeniero de Software Senior',
-      departamento: 'Desarrollo de Software',
-      numero_empleado: 'EMP-0101'
+      puesto: 'Desarrollador Full Stack Senior',
+      departamento: 'Tecnología de la Información',
+      numero_empleado: 'EMP-0101',
+      dias_vacaciones_totales: 14,
+      dias_vacaciones_tomados: 2,
+      dias_vacaciones_retenidos: 0,
+      dias_vacaciones_disponibles: 12,
+      antiguedad_anios: 3,
+      fecha_ingreso: '2023-03-01',
+      salario_mensual: 38500,
+      horario_entrada: '09:00',
+      horario_salida: '18:00',
+      dias_laborales: 'Lunes a Viernes',
+      modalidad_trabajo: 'Híbrido'
     },
     'recursos humanos': {
       name: 'María Rodríguez (Recursos Humanos)',
+      first_name: 'María',
+      last_name: 'Rodríguez',
       email: 'maria.rodriguez@develop.com.mx',
       picture: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150',
       sub: 'auth0|mock-user-rh-admin-001',
       role: 'recursos humanos',
-      puesto: 'Directora de Talent & RH',
+      puesto: 'Especialista en Capital Humano y Relaciones Laborales',
       departamento: 'Recursos Humanos',
-      numero_empleado: 'ADM-001'
+      numero_empleado: 'RH-0001',
+      dias_vacaciones_totales: 16,
+      dias_vacaciones_tomados: 4,
+      dias_vacaciones_retenidos: 0,
+      dias_vacaciones_disponibles: 12,
+      antiguedad_anios: 4,
+      fecha_ingreso: '2022-01-15',
+      salario_mensual: 48000,
+      horario_entrada: '09:00',
+      horario_salida: '18:00',
+      dias_laborales: 'Lunes a Viernes',
+      modalidad_trabajo: 'Presencial'
     }
   }
 
   const isRhAdmin = activeRole === 'recursos humanos'
   const currentUser = isAuthenticated ? mockUsers[activeRole] : null
 
+  // Sincronizar inmediatamente el tokenGetter para evitar race conditions con hijos montados
+  if (isAuthenticated) {
+    const currentToken = activeRole === 'recursos humanos' ? 'mock-jwt-token-plurione-rh' : 'mock-jwt-token-plurione'
+    setAuthTokenGetter(async () => currentToken)
+  }
+
   // Configurar interceptor para simulación en desarrollo local
   useEffect(() => {
     if (isAuthenticated) {
-      setAuthTokenGetter(async () => {
-        return activeRole === 'recursos humanos' ? 'mock-jwt-token-plurione-rh' : 'mock-jwt-token-plurione'
-      })
+      const token = activeRole === 'recursos humanos' ? 'mock-jwt-token-plurione-rh' : 'mock-jwt-token-plurione'
+      setAuthTokenGetter(async () => token)
     } else {
       setAuthTokenGetter(null)
     }
   }, [isAuthenticated, activeRole])
+
+  const switchRole = (newRole) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('active_demo_role', newRole)
+    }
+    const token = newRole === 'recursos humanos' ? 'mock-jwt-token-plurione-rh' : 'mock-jwt-token-plurione'
+    setAuthTokenGetter(async () => token)
+    setActiveRole(newRole)
+  }
 
   const resetForceLocal = () => {
     if (typeof window !== 'undefined') {
@@ -234,9 +279,9 @@ function LocalAuthProvider({ children, insecureOriginDetected = false }) {
     userRole: activeRole,
     login: () => setIsAuthenticated(true),
     logout: () => setIsAuthenticated(false),
-    switchRole: (role) => setActiveRole(role),
+    switchRole,
     activeRole,
-    getToken: async () => 'mock-jwt-token-plurione',
+    getToken: async () => (activeRole === 'recursos humanos' ? 'mock-jwt-token-plurione-rh' : 'mock-jwt-token-plurione'),
     isAuth0Live: false,
     insecureOriginDetected,
     isForceLocal: typeof window !== 'undefined' && sessionStorage.getItem('force_local_auth') === 'true',

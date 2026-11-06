@@ -1,6 +1,13 @@
 import axios from 'axios'
 
-let tokenGetter = null
+// Proveedor de token con fallback seguro a modo demo para evitar carreras en el montaje inicial
+let tokenGetter = () => {
+  if (typeof window !== 'undefined') {
+    const activeRole = sessionStorage.getItem('active_demo_role') || 'colaborador'
+    return activeRole === 'recursos humanos' ? 'mock-jwt-token-plurione-rh' : 'mock-jwt-token-plurione'
+  }
+  return 'mock-jwt-token-plurione'
+}
 
 /**
  * Registra la función encargada de proveer el token JWT de Auth0 (ej. getAccessTokenSilently)
