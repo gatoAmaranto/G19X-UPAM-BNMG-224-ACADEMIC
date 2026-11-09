@@ -106,24 +106,24 @@ El sistema cuenta con dos perfiles de usuario diferenciados por permisos de Cont
 ### Rol Colaborador
 - **Capacidades:** Autoservicio completo, chat con el asistente de IA, consulta de saldos y solicitud de vacaciones, emision y descarga de constancias laborales, apertura y seguimiento de tickets de soporte, y calendario de tareas personales.
 - **Acceso con Auth0:** Inicio de sesion institucional con una cuenta que tenga asignado el rol `colaborador` en el tenant de Auth0.
-- **Acceso en desarrollo local (Modo Demo):** Si `DEBUG=True`, haz clic en el boton con icono de usuario (**"Colaborador"**) en la cabecera. Ingresaras al instante con el perfil de `demo_colaborador` (Juan Perez, EMP-0101).
+- **Acceso en desarrollo local (Modo Demo):** Si `DEBUG=True` o si no se configuran variables de Auth0, la aplicacion abre directamente en Modo Demo local. Haz clic en el boton con icono de usuario (**"Colaborador"**) en la cabecera para alternar al perfil de `demo_colaborador` (Juan Perez, EMP-0101).
 
 ### Rol Recursos Humanos (Administrador / Backoffice)
 - **Capacidades:** Aprobacion o rechazo de vacaciones de todo el personal, resolucion de tickets de soporte, carga y administracion de documentos RAG, configuracion de preguntas frecuentes y consulta de auditoria.
 - **Acceso con Auth0:** Inicio de sesion con una cuenta que posea el rol `recursos humanos` en Auth0 (o credencial `is_staff=True` en Django).
-- **Acceso en desarrollo local (Modo Demo):** Si `DEBUG=True`, haz clic en el boton con icono de escudo (**"Admin RH"**) en la cabecera. Ingresaras directamente al panel de `demo_rh_admin` (Maria Rodriguez, RH-0001).
+- **Acceso en desarrollo local (Modo Demo):** Si `DEBUG=True` o si no se configuran variables de Auth0, la aplicacion abre directamente en Modo Demo local. Haz clic en el boton con icono de escudo (**"Recursos Humanos"**) en la cabecera para ingresar directamente al panel de `demo_rh_admin` (Maria Rodriguez, RH-0001).
 
 ### Paridad y Diferencias entre Modo Demo y Modo Produccion
 
 | Caracteristica | Modo Demostración (`DEBUG=True`) | Modo Produccion (`DEBUG=False`) |
 | :--- | :--- | :--- |
 | **Autenticacion** | Tokens locales mock validados por backend | Tokens JWT RS256 validados con JWKS de Auth0 |
-| **Alternancia de Roles** | Botones de un clic en cabecera superior | Inicio de sesion y logout oficial via Auth0 |
+| **Alternancia de Roles** | Botones de un clic en cabecera superior (**"Colaborador"** / **"Recursos Humanos"**) | Inicio de sesion y logout oficial via Auth0 |
 | **Seguridad de Tokens Mock** | Permitidos para desarrollo y pruebas | Rechazados de forma estricta con error 401 |
 | **Proteccion de Constancias** | `/media/constancias/` restringido | `/media/constancias/` bloqueado con 403/404 |
 | **Vistas y Modulos** | 5 modulos Colaborador / 5 modulos RH | 5 modulos Colaborador / 5 modulos RH |
 | **App Shell y Responsive** | Barra lateral desktop / Barra inferior movil | Barra lateral desktop / Barra inferior movil |
-| **Agente Conversacional IA** | Gemini 3.8 Flash con Function Calling | Gemini 3.8 Flash con Function Calling |
+| **Agente Conversacional IA** | Cascada Gemini Flash (gemini-3.6-flash, gemini-3.5-flash, gemini-3.1-flash-lite, gemini-flash-latest, gemini-3.8-flash) con Function Calling y respaldo local | Cascada Gemini Flash (gemini-3.6-flash, gemini-3.5-flash, gemini-3.1-flash-lite, gemini-flash-latest, gemini-3.8-flash) con Function Calling y respaldo local |
 
 ---
 
@@ -147,8 +147,8 @@ Para la etapa actual del sistema (MVP), la arquitectura de **Recuperacion y Gene
 - **Git**
 - **Docker Engine** (v24 o superior)
 - **Docker Compose** (v2 o superior)
-- Clave de API de **Google AI Studio** (`GEMINI_API_KEY`)
-- Cuenta de **Auth0** (o usar el modo demo local con perfiles predeterminados)
+- Clave de API de **Google AI Studio** (`GEMINI_API_KEY`, opcional: si se deja vacia o se agotan las cuotas, el agente opera de forma 100% autonoma mediante el motor determinista de respaldo local)
+- Cuenta de **Auth0** (opcional: sin variables de Auth0 configuradas, la app abre directamente en Modo Demo local con perfiles simulados)
 
 ---
 
@@ -171,13 +171,13 @@ Para desarrollo local, copia la plantilla de desarrollo:
 cp .env.example .env
 ```
 
-Abre el archivo `.env` y define tu clave de Google AI Studio:
+Abre el archivo `.env` y, si cuentas con ella, define tu clave de Google AI Studio (es opcional: si no la defines, el agente respondera y procesara vacaciones, constancias y consultas mediante el motor determinista local):
 
 ```env
 GEMINI_API_KEY=tu_clave_de_gemini
 ```
 
-Las variables para base de datos (PostgreSQL) y el servicio de infraestructura Redis ya vienen configuradas para el entorno de desarrollo local. Las variables de Auth0 se encuentran comentadas por defecto en el archivo `.env` para que el sistema funcione automaticamente en Modo Demo Local (con perfiles y tokens simulados sin conectarse a servidores externos); unicamente debes descomentarlas y definir tus claves si deseas conectar tu propio tenant corporativo de Auth0.
+Las variables para base de datos (PostgreSQL) y el servicio de infraestructura Redis ya vienen configuradas para el entorno de desarrollo local. Sin variables de Auth0 configuradas (comentadas por defecto en `.env`), la app abre directamente en Modo Demo local (con perfiles de prueba y tokens simulados, sin conectarse a servidores externos ni solicitar credenciales); unicamente debes descomentarlas y definir tus claves si deseas conectar tu propio tenant corporativo de Auth0.
 
 ### 3. Levantar los servicios con Docker
 Ejecuta el siguiente comando en la raiz del proyecto:
@@ -263,7 +263,7 @@ VITE_AUTH0_CLIENT_ID=tu_client_id_aqui
 VITE_AUTH0_AUDIENCE=https://tu_dominio.us.auth0.com/api/v2/
 ```
 
-*Nota:* Si dejas las variables de Auth0 comentadas o vacias en `.env`, la aplicacion opera en **Modo Demo Local** de forma 100% autonoma (sin conectarse a Auth0 ni realizar redirecciones externas), permitiendo alternar entre perfiles de prueba simulados (`colaborador` y `recursos humanos`) directamente desde la cabecera.
+*Nota:* Sin variables de Auth0 configuradas (o dejandolas comentadas en `.env`), la aplicacion abre directo en **Modo Demo Local** de forma 100% autonoma (sin conectarse a Auth0 ni realizar redirecciones externas), permitiendo alternar entre perfiles de prueba simulados (**"Colaborador"** y **"Recursos Humanos"**) directamente desde los botones de la cabecera.
 
 ---
 
@@ -271,7 +271,7 @@ VITE_AUTH0_AUDIENCE=https://tu_dominio.us.auth0.com/api/v2/
 
 - **Interfaz Web (Frontend):** [http://localhost:5173](http://localhost:5173)
 - **API REST (Backend):** [http://localhost:8000/api/](http://localhost:8000/api/)
-- **Panel Administrativo Django:** [http://localhost:8000/admin/](http://localhost:8000/admin/)
+- **Panel Administrativo Django:** [http://localhost:8000/admin/](http://localhost:8000/admin/) (aviso: el admin de Django solo se usa en desarrollo para soporte tecnico inicial; en produccion esta restringido y la operacion se efectua desde el modulo de Recursos Humanos).
 
 ### Conexion desde otros dispositivos en la red local (LAN)
 

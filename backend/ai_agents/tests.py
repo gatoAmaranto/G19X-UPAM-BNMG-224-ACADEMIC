@@ -1,5 +1,6 @@
 from datetime import date, timedelta
-from django.test import TestCase
+from unittest.mock import patch
+from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
 from hr_services.models import Empleado, SolicitudVacaciones, TicketRH, ConstanciaLaboral
 from .models import MensajeChat
@@ -334,5 +335,31 @@ class ChatPersistenciaTests(TestCase):
         self.empleado.refresh_from_db()
         self.assertEqual(self.empleado.dias_vacaciones_retenidos, 0)
         self.assertEqual(self.empleado.dias_vacaciones_disponibles, 10)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': ''})
+    @override_settings(GEMINI_API_KEY='')
+    def test_consulta_saldo_vacaciones_con_acentos(self):
+        """
+        Verifica que una consulta como '¿Cuántos días me quedan?' con acentos
+        sea normalizada correctamente y devuelva el saldo de vacaciones en el respaldo local.
+        """
+        res = procesar_mensaje_agente("¿Cuántos días de vacaciones me quedan?", self.empleado)
+        self.assertIn("dispones de 10 dias disponibles", res['respuesta'].lower())
+        self.assertEqual(res['tipo_accion'], 'INFO_GENERAL')
+        self.assertEqual(res['datos'].get('disponibles'), 10)
+
+    @patch.dict('os.environ', {'GEMINI_API_KEY': ''})
+    @override_settings(GEMINI_API_KEY='')
+    def test_generar_constancia_sin_sueldo(self):
+        """
+        Verifica que al solicitar una constancia especificando 'sin sueldo',
+        se respete la exclusión del salario ('sin sueldo' antes de 'sueldo').
+        """
+        res = procesar_mensaje_agente("Genera mi constancia laboral sin sueldo por favor", self.empleado)
+        self.assertEqual(res['tipo_accion'], 'CONSTANCIA_GENERADA')
+        self.assertIn("sin sueldo", res['respuesta'].lower())
+        constancia = ConstanciaLaboral.objects.filter(empleado=self.empleado).last()
+        self.assertIsNotNone(constancia)
+        self.assertFalse(constancia.incluir_sueldo)
 
 

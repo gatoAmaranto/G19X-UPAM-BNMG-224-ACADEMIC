@@ -5,6 +5,11 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_RIGHT
 
+MESES_ESP = [
+    '', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+]
+
 def generar_pdf_constancia_laboral(constancia):
     """
     Genera un documento PDF oficial de Constancia Laboral para el colaborador dado.
@@ -96,10 +101,18 @@ def generar_pdf_constancia_laboral(constancia):
             emp.fecha_ingreso = datetime.strptime(emp.fecha_ingreso.split('T')[0], "%Y-%m-%d").date()
         except ValueError:
             pass
-    fecha_ingreso_str = emp.fecha_ingreso.strftime("%d de %B de %Y") if hasattr(emp.fecha_ingreso, 'strftime') else str(emp.fecha_ingreso)
+    if hasattr(emp.fecha_ingreso, 'day') and hasattr(emp.fecha_ingreso, 'month') and hasattr(emp.fecha_ingreso, 'year'):
+        mes_ingreso = MESES_ESP[emp.fecha_ingreso.month] if 1 <= emp.fecha_ingreso.month <= 12 else str(emp.fecha_ingreso.month)
+        fecha_ingreso_str = f"{emp.fecha_ingreso.day} de {mes_ingreso} de {emp.fecha_ingreso.year}"
+    else:
+        fecha_ingreso_str = str(emp.fecha_ingreso)
 
     fecha_emision = constancia.fecha_emision or datetime.now()
-    fecha_hoy_str = fecha_emision.strftime("%d de %B de %Y") if hasattr(fecha_emision, 'strftime') else str(fecha_emision)
+    if hasattr(fecha_emision, 'day') and hasattr(fecha_emision, 'month') and hasattr(fecha_emision, 'year'):
+        mes_emision = MESES_ESP[fecha_emision.month] if 1 <= fecha_emision.month <= 12 else str(fecha_emision.month)
+        fecha_hoy_str = f"{fecha_emision.day} de {mes_emision} de {fecha_emision.year}"
+    else:
+        fecha_hoy_str = str(fecha_emision)
 
     texto_cuerpo = (
         f"Por medio de la presente, <b>PluriOne S.A. de C.V. (Develop Talent & Technology)</b> hace constar que el/la C. "

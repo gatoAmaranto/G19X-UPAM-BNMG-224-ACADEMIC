@@ -218,6 +218,23 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
     }
   }
 
+  // Previsualizar constancia PDF guardando primero los valores del formulario
+  const handlePrevisualizarConstancia = async () => {
+    try {
+      setGenerandoPdf(true)
+      await apiClient.post('/hr/constancia/', {
+        dirigido_a: dirigidoConstancia,
+        incluir_sueldo: incluirSueldoConstancia
+      })
+      setModalConstanciaOpen(true)
+    } catch (err) {
+      console.error('Error al guardar constancia para vista previa:', err)
+      alert('Error al generar la constancia para vista previa.')
+    } finally {
+      setGenerandoPdf(false)
+    }
+  }
+
   const ticketsAbiertosCount = tickets.filter(t => t.estado !== 'RESUELTO').length
   const diasDisponibles = vacaciones?.saldo?.disponibles ?? perfilEfectivo?.dias_vacaciones_disponibles ?? 0
 
@@ -1021,11 +1038,12 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
                   <button
-                    onClick={() => setModalConstanciaOpen(true)}
+                    onClick={handlePrevisualizarConstancia}
+                    disabled={generandoPdf}
                     className="btn-primary"
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer' }}
                   >
-                    <Eye size={15} />
+                    {generandoPdf ? <RefreshCw size={15} className="spin" /> : <Eye size={15} />}
                     <span>Previsualizar en Pantalla</span>
                   </button>
 

@@ -436,11 +436,18 @@ class HRServicesTestCase(TestCase):
     def test_vacaciones_rechaza_fin_de_semana(self):
         self.client.force_login(self.user)
         # 2026-11-07 es Sábado y 2026-11-08 es Domingo
+        hoy = date.today()
+        dias_hasta_sabado = (5 - hoy.weekday()) % 7
+        if dias_hasta_sabado == 0:
+            dias_hasta_sabado = 7
+        proximo_sabado = hoy + timedelta(days=dias_hasta_sabado)
+        proximo_domingo = proximo_sabado + timedelta(days=1)
+
         response = self.client.post(
             '/api/hr/vacaciones/',
             data={
-                'fecha_inicio': '2026-11-07',
-                'fecha_fin': '2026-11-08',
+                'fecha_inicio': proximo_sabado.strftime('%Y-%m-%d'),
+                'fecha_fin': proximo_domingo.strftime('%Y-%m-%d'),
                 'motivo': 'Intento de pedir fin de semana'
             },
             content_type='application/json'

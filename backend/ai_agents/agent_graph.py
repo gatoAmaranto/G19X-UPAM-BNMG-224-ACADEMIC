@@ -210,7 +210,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
     de hasta 10 mensajes anteriores.
     """
     api_key = getattr(settings, 'GEMINI_API_KEY', '') or os.getenv('GEMINI_API_KEY', '')
-    mensaje_lc = mensaje_usuario.lower().strip()
+    mensaje_lc = normalizar_texto_busqueda(mensaje_usuario).strip()
     nombre_completo = empleado.user.get_full_name() or empleado.user.username
     hoy = date.today()
 
@@ -596,7 +596,10 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
     # 1. Deteccion de constancia laboral
     if any(w in mensaje_lc for w in ['constancia', 'carta laboral', 'constancia de trabajo', 'carta patronal']):
         if es_solicitud_constancia_real(mensaje_lc):
-            incluir_sueldo = 'sueldo' in mensaje_lc or 'salario' in mensaje_lc
+            if any(term in mensaje_lc for term in ['sin sueldo', 'sin salario', 'sin percepcion', 'sin percepciones']):
+                incluir_sueldo = False
+            else:
+                incluir_sueldo = 'sueldo' in mensaje_lc or 'salario' in mensaje_lc
             generar_constancia_laboral(incluir_sueldo=incluir_sueldo)
             return {
                 'respuesta': f"Hola {nombre_completo}, con gusto he generado tu constancia laboral oficial en formato PDF ({'con sueldo' if incluir_sueldo else 'sin sueldo'}). Puedes verla o descargarla a continuacion.",

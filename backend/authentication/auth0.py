@@ -19,10 +19,6 @@ class Auth0JSONWebTokenAuthentication(authentication.BaseAuthentication):
 
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split(' ')[1]
-        else:
-            query_params = getattr(request, 'query_params', getattr(request, 'GET', {}))
-            if 'token' in query_params:
-                token = query_params.get('token')
 
         if not token:
             return None

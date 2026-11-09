@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Send, Bot, User, Download, Calendar, Ticket, Loader2, Eye, RotateCcw, FileText } from 'lucide-react'
-import apiClient, { API_BASE_URL } from '../api/apiClient.js'
+import apiClient from '../api/apiClient.js'
 
 import ConstanciaPreviewModal from './ConstanciaPreviewModal.jsx'
 
@@ -130,7 +130,29 @@ export default function ChatWidget({ onRefreshData, perfil }) {
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const [modalConstanciaOpen, setModalConstanciaOpen] = useState(false)
+  const [descargandoPdf, setDescargandoPdf] = useState(false)
   const chatEndRef = useRef(null)
+
+  const handleDescargarConstanciaDesdeChat = async () => {
+    try {
+      setDescargandoPdf(true)
+      const res = await apiClient.get('/hr/constancia/?download=true', { responseType: 'blob' })
+      const blob = new Blob([res.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Constancia_Laboral_${perfil?.numero_empleado || 'Colaborador'}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Error al descargar constancia PDF:', err)
+      alert('Error al descargar el documento PDF de constancia laboral.')
+    } finally {
+      setDescargandoPdf(false)
+    }
+  }
 
   const scrollToBottom = () => {
     if (messages.length > 1 || loading) {
@@ -329,16 +351,15 @@ export default function ChatWidget({ onRefreshData, perfil }) {
                       <Eye size={15} />
                       <span>Ver Vista Previa</span>
                     </button>
-                    <a
-                      href={`${API_BASE_URL}/hr/constancia/?download=true`}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      onClick={handleDescargarConstanciaDesdeChat}
+                      disabled={descargandoPdf}
                       className="btn-secondary"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', padding: '0.4rem 0.85rem', cursor: 'pointer' }}
                     >
-                      <Download size={15} />
-                      <span>Descargar PDF</span>
-                    </a>
+                      {descargandoPdf ? <Loader2 size={15} className="spin" /> : <Download size={15} />}
+                      <span>{descargandoPdf ? 'Descargando...' : 'Descargar PDF'}</span>
+                    </button>
                   </div>
                 </div>
               )}
