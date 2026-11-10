@@ -63,10 +63,17 @@ class HRServicesTestCase(TestCase):
         self.assertEqual(response.json()['saldo']['retenidos'], 0)
 
     def test_crear_vacaciones_endpoint_retiene_dias_y_bloquea_solapamiento(self):
+        hoy = date.today()
+        dias_hasta_lunes = (0 - hoy.weekday()) % 7
+        if dias_hasta_lunes == 0:
+            dias_hasta_lunes = 7
+        proximo_lunes = hoy + timedelta(days=dias_hasta_lunes)
+        proximo_viernes = proximo_lunes + timedelta(days=4)
+
         # 1. Crear solicitud de 5 días hábiles (lunes a viernes)
         res1 = self.client.post('/api/hr/vacaciones/', {
-            'fecha_inicio': '2026-11-09',
-            'fecha_fin': '2026-11-13',
+            'fecha_inicio': proximo_lunes.strftime('%Y-%m-%d'),
+            'fecha_fin': proximo_viernes.strftime('%Y-%m-%d'),
             'motivo': 'Descanso personal'
         })
         self.assertEqual(res1.status_code, 201)
@@ -76,10 +83,12 @@ class HRServicesTestCase(TestCase):
         self.assertEqual(res_saldo.json()['saldo']['disponibles'], 5)
         self.assertEqual(res_saldo.json()['saldo']['retenidos'], 5)
 
-        # 2. Intentar solicitar en fechas que se solapan (ej. 2026-11-11 al 2026-11-17)
+        # 2. Intentar solicitar en fechas que se solapan (ej. miércoles a martes siguiente)
+        miercoles_solapado = proximo_lunes + timedelta(days=2)
+        martes_siguiente = proximo_lunes + timedelta(days=8)
         res_solapada = self.client.post('/api/hr/vacaciones/', {
-            'fecha_inicio': '2026-11-11',
-            'fecha_fin': '2026-11-17',
+            'fecha_inicio': miercoles_solapado.strftime('%Y-%m-%d'),
+            'fecha_fin': martes_siguiente.strftime('%Y-%m-%d'),
             'motivo': 'Intento de solapamiento'
         })
         self.assertEqual(res_solapada.status_code, 400)
@@ -87,10 +96,11 @@ class HRServicesTestCase(TestCase):
         self.assertTrue('coincide' in res_solapada.json()['error'] or 'esperando aprobación' in res_solapada.json()['error'])
 
         # 3. Intentar solicitar más días de los disponibles teniendo 5 retenidos (ej. pedir 6 días)
-        # 2026-11-23 al 2026-11-30 son 6 días laborales (L, M, X, J, V, L)
+        lunes_exceso = proximo_lunes + timedelta(days=14)
+        lunes_exceso_fin = lunes_exceso + timedelta(days=7)  # Lunes a Lunes = 6 días laborales
         res_exceso = self.client.post('/api/hr/vacaciones/', {
-            'fecha_inicio': '2026-11-23',
-            'fecha_fin': '2026-11-30',
+            'fecha_inicio': lunes_exceso.strftime('%Y-%m-%d'),
+            'fecha_fin': lunes_exceso_fin.strftime('%Y-%m-%d'),
             'motivo': 'Intento de exceder saldo disponible'
         })
         self.assertEqual(res_exceso.status_code, 400)
@@ -145,12 +155,19 @@ class HRServicesTestCase(TestCase):
 
     def test_admin_crear_vacaciones_default_pendiente(self):
         self.client.force_login(self.admin_user)
+        hoy = date.today()
+        dias_hasta_lunes = (0 - hoy.weekday()) % 7
+        if dias_hasta_lunes == 0:
+            dias_hasta_lunes = 7
+        lunes = hoy + timedelta(days=dias_hasta_lunes + 7)
+        miercoles = lunes + timedelta(days=2)  # 3 días hábiles: Lunes, Martes, Miércoles
+
         response = self.client.post(
             '/api/hr/admin/vacaciones/',
             data={
                 'empleado_id': self.empleado.id,
-                'fecha_inicio': '2026-12-14',
-                'fecha_fin': '2026-12-16',
+                'fecha_inicio': lunes.strftime('%Y-%m-%d'),
+                'fecha_fin': miercoles.strftime('%Y-%m-%d'),
                 'motivo': 'Permiso personal'
             },
             content_type='application/json'
@@ -163,12 +180,19 @@ class HRServicesTestCase(TestCase):
 
     def test_admin_crear_vacaciones(self):
         self.client.force_login(self.admin_user)
+        hoy = date.today()
+        dias_hasta_lunes = (0 - hoy.weekday()) % 7
+        if dias_hasta_lunes == 0:
+            dias_hasta_lunes = 7
+        lunes = hoy + timedelta(days=dias_hasta_lunes + 14)
+        viernes = lunes + timedelta(days=4)  # 5 días hábiles: Lunes a Viernes
+
         response = self.client.post(
             '/api/hr/admin/vacaciones/',
             data={
                 'empleado_id': self.empleado.id,
-                'fecha_inicio': '2026-12-01',
-                'fecha_fin': '2026-12-07',
+                'fecha_inicio': lunes.strftime('%Y-%m-%d'),
+                'fecha_fin': viernes.strftime('%Y-%m-%d'),
                 'dias_solicitados': 5,
                 'motivo': 'Periodo decembrino institucional',
                 'estado': 'APROBADO'
