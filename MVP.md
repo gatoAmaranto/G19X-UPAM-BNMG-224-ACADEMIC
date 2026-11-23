@@ -105,7 +105,7 @@ graph TD
 ```
 
 > **Nota de Arquitectura y Hoja de Ruta (Roadmap v2.0):**
-> Para garantizar máxima confiabilidad, tiempo de respuesta sub-segundo y ejecución hermética en el MVP de Recursos Humanos, la orquestación se implementó mediante una máquina de estados determinista en Python estructurada (`agent_graph.py`) con memoria persistida en PostgreSQL y recuperación RAG optimizada por relevancia Top-K. Tecnologías complementarias como LangGraph (grafos cíclicos complejos) y ChromaDB (almacén vectorial denso) se han proyectado para la versión 2.0 cuando el catálogo documental supere las 500 políticas de empresa.
+> Para garantizar máxima confiabilidad, tiempo de respuesta sub-segundo y ejecución hermética en el MVP de Recursos Humanos, la orquestación se implementó mediante una máquina de estados determinista en Python (`agent_graph.py`) con memoria persistida en PostgreSQL, recuperación RAG Top-K y caché activa en Redis (`RedisCache`) para acelerar las consultas de conocimiento. Tecnologías como **LangGraph** (grafos multi-agente) y **ChromaDB / `pgvector`** (almacén vectorial denso) no se utilizan actualmente para evitar complejidad de mantenimiento innecesaria en un solo dominio, y quedan proyectadas para la versión 2.0 en caso de escalar a múltiples áreas o superar los cientos de documentos PDF extensos.
 
 ---
 

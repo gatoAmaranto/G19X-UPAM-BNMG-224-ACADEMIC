@@ -446,3 +446,89 @@ class ChatPersistenciaTests(TestCase):
         self.assertIn("imss", res['respuesta'].lower())
 
 
+@override_settings(GEMINI_API_KEY='')
+@patch.dict('os.environ', {'GEMINI_API_KEY': ''})
+class AgenteRegresionConversacionalTests(TestCase):
+    """
+    Suite de regresión integral para el motor conversacional de respaldo:
+    garantiza que saludos, datos laborales, tickets, chistes, vacaciones
+    y prevención de falsos positivos en RAG funcionen de forma determinística.
+    """
+    def setUp(self):
+        self.user = User.objects.create_user(username='colab_regresion', password='123', first_name='Ana', last_name='López')
+        self.empleado = Empleado.objects.create(
+            user=self.user,
+            numero_empleado='EMP-900',
+            puesto='Ingeniera de Datos',
+            departamento='Tecnología',
+            dias_vacaciones_totales=14,
+            dias_vacaciones_tomados=2,
+            fecha_ingreso=date(2024, 1, 15),
+            salario_mensual=35000,
+            horario_entrada='09:00',
+            horario_salida='18:00',
+            dias_laborales='Lunes a Viernes',
+            modalidad_trabajo='Híbrido',
+        )
+        BaseConocimientoRH.objects.create(
+            pregunta='¿Cuál es el tiempo máximo de resolución de un ticket de RH?',
+            respuesta='El proceso de atención inicial toma máximo 24 horas hábiles.',
+            categoria='Soporte',
+            activa=True,
+        )
+
+    def test_saludos_y_despedidas_no_disparan_faq(self):
+        for saludo in ['Hola', 'Hola como estas', 'Buenos dias']:
+            res = procesar_mensaje_agente(saludo, self.empleado)
+            self.assertEqual(res['tipo_accion'], 'INFO_GENERAL')
+            self.assertIn('ana', res['respuesta'].lower())
+            self.assertNotIn('tiempo máximo', res['respuesta'].lower())
+
+        res_adios = procesar_mensaje_agente('Hasta luego, nos vemos', self.empleado)
+        self.assertIn('hasta luego', res_adios['respuesta'].lower())
+
+    def test_chistes_y_adivinanzas(self):
+        res_chiste = procesar_mensaje_agente('Cuéntame un chiste por favor', self.empleado)
+        self.assertEqual(res_chiste['tipo_accion'], 'INFO_GENERAL')
+        self.assertTrue(len(res_chiste['respuesta']) > 20)
+
+        res_adiv = procesar_mensaje_agente('Ponme una adivinanza', self.empleado)
+        self.assertEqual(res_adiv['tipo_accion'], 'INFO_GENERAL')
+        self.assertTrue(len(res_adiv['respuesta']) > 20)
+
+    def test_consultas_datos_laborales_colaborador(self):
+        res_horario = procesar_mensaje_agente('¿Cuál es mi horario de trabajo?', self.empleado)
+        self.assertIn('09:00', res_horario['respuesta'])
+        self.assertIn('18:00', res_horario['respuesta'])
+
+        res_puesto = procesar_mensaje_agente('¿Cuál es mi puesto y número de empleado?', self.empleado)
+        self.assertIn('Ingeniera de Datos', res_puesto['respuesta'])
+        self.assertIn('EMP-900', res_puesto['respuesta'])
+
+        res_sueldo = procesar_mensaje_agente('¿Cuánto gano de salario?', self.empleado)
+        self.assertIn('35,000.00', res_sueldo['respuesta'])
+
+        res_antig = procesar_mensaje_agente('¿Cuánta antigüedad tengo en la empresa?', self.empleado)
+        self.assertIn('antiguedad', res_antig['respuesta'].lower())
+
+    def test_busqueda_faq_evita_falsos_positivos_por_subcadena(self):
+        from ai_agents.agent_graph import buscar_en_base_conocimiento
+        # 'eso' está dentro de 'proceso', pero no debe coincidir como palabra completa
+        self.assertIsNone(buscar_en_base_conocimiento('Eso'))
+        self.assertIsNone(buscar_en_base_conocimiento('Eso queria saber'))
+
+    def test_duda_politica_no_crea_ticket_pero_incidencia_real_si(self):
+        res_duda = procesar_mensaje_agente('¿Hay algún problema si como en mi escritorio en horario laboral?', self.empleado)
+        self.assertNotEqual(res_duda['tipo_accion'], 'TICKET_CREADO')
+        self.assertEqual(TicketRH.objects.filter(empleado=self.empleado).count(), 0)
+
+        res_inc = procesar_mensaje_agente('Tengo un problema con mi recibo de nómina de esta quincena, no me llegó el bono', self.empleado)
+        self.assertEqual(res_inc['tipo_accion'], 'TICKET_CREADO')
+        self.assertEqual(TicketRH.objects.filter(empleado=self.empleado).count(), 1)
+
+        res_consulta_tk = procesar_mensaje_agente('¿Cuántos tickets tengo abiertos?', self.empleado)
+        self.assertEqual(res_consulta_tk['tipo_accion'], 'INFO_TICKETS')
+        self.assertIn('Abiertos: 1', res_consulta_tk['respuesta'])
+
+
+

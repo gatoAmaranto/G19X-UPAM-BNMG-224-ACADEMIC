@@ -61,8 +61,12 @@ graph TD
 | **Modelo de Lenguaje** | Google AI Studio (Gemini Flash Lite) | Motor de Inteligencia Artificial para PLN, empatía y consultas abiertas |
 | **Base de Conocimiento (RAG)** | PostgreSQL Top-K (`BaseConocimientoRH`) | Almacenamiento y recuperación en contexto de preguntas frecuentes (ChromaDB en Roadmap v2.0) |
 | **Base de Datos** | PostgreSQL 16 | Persistencia relacional de usuarios, empleados, tickets, constancias e historial conversacional |
-| **Caché y Mensajería** | Redis 7 | Servicio desplegado en contenedor Docker para colas y escalado de sesiones |
+| **Caché y Mensajería** | Redis 7 | Caché activa en Django (`RedisCache`) para acelerar la recuperación RAG y escalado de sesiones |
 | **Contenedores** | Docker & Docker Compose | Containerización multi-etapa para desarrollo y producción con Nginx |
+
+> **Justificación Técnica (Por qué no se usan LangGraph ni ChromaDB en v1.0):**
+> - **LangGraph:** Con un único asistente de Recursos Humanos y 5 herramientas operativas, una máquina de estados determinística en Python junto con *Function Calling* nativo de `google-genai` ofrece menor latencia, cero sobrecarga de abstracciones y mantenimiento directo. LangGraph queda contemplado para la v2.0 si el sistema evoluciona a una arquitectura multi-agente (coordinación entre RH, TI y Nómina).
+> - **ChromaDB / Almacén Vectorial:** La base de conocimiento institucional actual opera de forma óptima con recuperación Top-K léxica cacheada en Redis sobre PostgreSQL. Mantener un servidor vectorial separado añadiría complejidad de sincronización innecesaria en esta etapa; en v2.0, si el acervo supera cientos de documentos PDF extensos, se contempla incorporar búsqueda semántica mediante `pgvector` dentro del mismo PostgreSQL (o ChromaDB).
 | **CI/CD** | GitHub Actions | Integración continua automatizada para ejecución de pruebas y build |
 | **Autenticación** | Auth0 & RBAC | Protocolo OAuth 2.0 / JWT con soporte de modo demo local en desarrollo |
 | **Metodología** | Scrum | Framework ágil de desarrollo con entregas iterativas e incrementales |

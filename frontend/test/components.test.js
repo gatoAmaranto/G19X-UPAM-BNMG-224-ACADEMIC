@@ -60,4 +60,22 @@ describe('Componentes del Frontend - Integridad Estructural y Modularidad', () =
       assert.ok(hasOverlay, `${relPath} debe estructurar una capa modal`)
     }
   })
+
+  test('ConstanciaPreviewModal y ChatWidget no exponen JWT en la URL (?token=)', () => {
+    const filesToCheck = [
+      'components/ConstanciaPreviewModal.jsx',
+      'components/ChatWidget.jsx'
+    ]
+    for (const relPath of filesToCheck) {
+      const content = fs.readFileSync(path.join(srcDir, relPath), 'utf8')
+      assert.ok(!content.includes('?token='), `${relPath} no debe enviar JWT por query string`)
+    }
+  })
+
+  test('apiClient y App coordinan la alerta de Auth0 faltante en produccion', () => {
+    const apiClientContent = fs.readFileSync(path.join(srcDir, 'api/apiClient.js'), 'utf8')
+    const appContent = fs.readFileSync(path.join(srcDir, 'App.jsx'), 'utf8')
+    assert.ok(apiClientContent.includes('auth0-prod-unauthorized'), 'apiClient debe emitir evento auth0-prod-unauthorized en 401')
+    assert.ok(appContent.includes('auth0-prod-unauthorized'), 'App debe escuchar auth0-prod-unauthorized para mostrar banner')
+  })
 })

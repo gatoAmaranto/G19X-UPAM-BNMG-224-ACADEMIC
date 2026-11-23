@@ -186,6 +186,20 @@ SINONIMOS_RH = {
 }
 
 
+def obtener_faqs_activas_cacheadas():
+    """
+    Obtiene las FAQs activas desde Redis (caché de Django) con TTL de 5 minutos,
+    evitando consultar PostgreSQL en cada mensaje del chat.
+    """
+    from django.core.cache import cache
+    cache_key = 'faqs_activas_rag'
+    faqs = cache.get(cache_key)
+    if faqs is None:
+        faqs = list(BaseConocimientoRH.objects.filter(activa=True))
+        cache.set(cache_key, faqs, timeout=300)
+    return faqs
+
+
 def buscar_en_base_conocimiento(query: str):
     """
     Busca la respuesta oficial más relevante en la tabla BaseConocimientoRH
@@ -204,7 +218,7 @@ def buscar_en_base_conocimiento(query: str):
             palabras.update(SINONIMOS_RH[p])
 
     candidatos = []
-    for faq in BaseConocimientoRH.objects.filter(activa=True):
+    for faq in obtener_faqs_activas_cacheadas():
         preg_norm = normalizar_texto_busqueda(faq.pregunta)
         resp_norm = normalizar_texto_busqueda(faq.respuesta)
         cat_norm = normalizar_texto_busqueda(faq.categoria)
@@ -259,7 +273,7 @@ def obtener_faqs_relevantes_top_k(mensaje_usuario, top_k=5):
             palabras.update(SINONIMOS_RH[p])
 
     candidatos = []
-    for faq in BaseConocimientoRH.objects.filter(activa=True):
+    for faq in obtener_faqs_activas_cacheadas():
         preg_norm = normalizar_texto_busqueda(faq.pregunta)
         resp_norm = normalizar_texto_busqueda(faq.respuesta)
         cat_norm = normalizar_texto_busqueda(faq.categoria)

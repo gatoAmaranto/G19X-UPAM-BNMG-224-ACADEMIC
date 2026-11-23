@@ -115,6 +115,16 @@ class BaseConocimientoRH(models.Model):
     activa = models.BooleanField(default=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        from django.core.cache import cache
+        cache.delete('faqs_activas_rag')
+
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        from django.core.cache import cache
+        cache.delete('faqs_activas_rag')
+
     def __str__(self):
         return f"[{self.categoria}] {self.pregunta}"
 

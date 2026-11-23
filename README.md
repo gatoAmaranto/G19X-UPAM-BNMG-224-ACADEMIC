@@ -325,7 +325,7 @@ docker compose exec backend python manage.py createsuperuser
 ```
 
 ### Ejecutar suite completa de pruebas automatizadas
-El backend cuenta con 59 pruebas unitarias y de integracion hermeticas (aisladas de la red y de cuotas de API) que verifican autenticacion, roles, llamadas a herramientas de IA, reglas de vacaciones, tickets, RAG Top-K, emision de constancias con fecha local y persistencia cronologica:
+El backend cuenta con 64 pruebas unitarias y de integracion hermeticas (aisladas de la red y de cuotas de API) que verifican autenticacion, roles, llamadas a herramientas de IA, reglas de vacaciones, tickets, RAG Top-K, emision de constancias con fecha local y persistencia cronologica:
 ```bash
 docker compose exec backend python manage.py test
 ```
