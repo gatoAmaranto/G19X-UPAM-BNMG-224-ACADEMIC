@@ -11,11 +11,12 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 
 MODELOS_GEMINI = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3.8-flash',
+    'gemini-3.7-flash',
     'gemini-3.6-flash',
     'gemini-3.5-flash',
-    'gemini-3.1-flash-lite',
-    'gemini-flash-latest',
-    'gemini-3.8-flash',
 ]
 
 
@@ -48,6 +49,34 @@ def es_solicitud_constancia_real(texto_lc):
         'dame mi constancia', 'crear constancia', 'expedir'
     ]
     return any(v in texto_lc for v in verbos)
+
+
+def es_consulta_saldo_vacaciones(texto_lc: str) -> bool:
+    """
+    Determina si el colaborador consulta su saldo, disponibilidad o conteo de vacaciones,
+    diferenciándolo de una solicitud con fechas o de una política general.
+    """
+    patrones_directos = [
+        'saldo', 'balance', 'cuantas vacaciones', 'cuántas vacaciones', 'cunatas vacaciones',
+        'vacaciones me quedan', 'vacaciones tengo', 'vacaciones dispongo', 'vacaciones disponibles',
+        'tengo disponibles', 'cunatas tengo disponibles', 'cuantas tengo disponibles', 'cuántas tengo disponibles',
+        'cuantos dias me quedan', 'cuántos días me quedan', 'dias me quedan', 'días me quedan',
+        'cuantos dias tengo', 'cuántos días tengo', 'cuantos tengo', 'cuántos tengo',
+        'dias disponibles', 'días disponibles', 'dias me corresponden', 'días me corresponden',
+        'cuantos puedo solicitar', 'cuántos puedo solicitar', 'cuantas puedo solicitar',
+        'cuantos puedo pedir', 'cuántos puedo pedir', 'cuantas puedo pedir',
+        'cuantos dias puedo tomar', 'cuántos días puedo tomar', 'cuantos me quedan', 'cuántos me quedan',
+        'consultar mis vacaciones', 'ver mis vacaciones', 'consultar saldo', 'mis vacaciones disponibles'
+    ]
+    if any(p in texto_lc for p in patrones_directos):
+        return True
+
+    menciona_vacaciones = any(w in texto_lc for w in ['vacacion', 'vacaciones', 'descanso'])
+    pide_cantidad = any(w in texto_lc for w in [
+        'cuantas', 'cuántas', 'cunatas', 'cuantos', 'cuántos', 'cuanto', 'cuánto',
+        'quedan', 'restan', 'disponibles', 'disponible', 'tengo'
+    ])
+    return menciona_vacaciones and pide_cantidad
 
 
 def es_api_key_gemini_valida(api_key: str) -> bool:
@@ -129,10 +158,14 @@ STOPWORDS_ES = {
     'en', 'con', 'por', 'para', 'que', 'como', 'cual', 'cuales', 'mi', 'mis', 'tu',
     'tus', 'su', 'sus', 'me', 'se', 'te', 'es', 'son', 'si', 'no', 'o', 'y', 'e',
     'u', 'puedo', 'puede', 'pueden', 'tengo', 'tiene', 'tienen', 'hacer', 'hago',
-    'hay', 'cuando', 'cuanto', 'cuanta', 'cuantos', 'cuantas', 'donde', 'quien',
-    'sobre', 'este', 'esta', 'estos', 'estas', 'ser', 'estar', 'dime', 'decir',
+    'hay', 'cuando', 'cuanto', 'cuanta', 'cuantos', 'cuantas', 'cunatas', 'donde', 'quien',
+    'sobre', 'este', 'esta', 'estos', 'estas', 'ser', 'estar', 'dime', 'decir', 'decirme',
     'saber', 'favor', 'hola', 'buenas', 'buenos', 'dias', 'tardes', 'noches',
-    'quisiera', 'gustaria', 'oye', 'amigo', 'asistente'
+    'quisiera', 'gustaria', 'oye', 'amigo', 'asistente', 'eso', 'esa', 'esos', 'esas',
+    'esto', 'estos', 'estas', 'aquel', 'aquella', 'aquellos', 'aquellas', 'queria', 'quiere',
+    'quiero', 'puedes', 'podrias', 'podria', 'sabes', 'dices', 'dar', 'dame', 'ver',
+    'solo', 'nada', 'bien', 'bueno', 'ok', 'ah', 'oh', 'pero', 'ahora', 'mismo',
+    'entonces', 'despues', 'luego', 'algo', 'alguno', 'alguna', 'algun', 'algún'
 }
 
 
@@ -157,6 +190,8 @@ def buscar_en_base_conocimiento(query: str):
     """
     Busca la respuesta oficial más relevante en la tabla BaseConocimientoRH
     para consultas sobre reglamentos, políticas y FAQs de Recursos Humanos.
+    Utiliza coincidencia por palabra completa con límites de palabra (\b) para
+    evitar falsos positivos causados por subcadenas (ej. 'eso' en 'proceso').
     """
     q_norm = normalizar_texto_busqueda(query)
     palabras_base = [w for w in re.findall(r'\b[a-z0-9]+\b', q_norm) if len(w) > 2 and w not in STOPWORDS_ES]
@@ -179,23 +214,26 @@ def buscar_en_base_conocimiento(query: str):
         palabras_encontradas = 0
         for w in palabras:
             match_found = False
-            if w in preg_norm:
+            patron = rf'\b{re.escape(w)}\b'
+            if re.search(patron, preg_norm):
                 score += 10
                 match_found = True
-            if w in kw_norm:
+            elif re.search(patron, kw_norm):
                 score += 8
                 match_found = True
-            if w in cat_norm:
+            elif re.search(patron, cat_norm):
                 score += 4
                 match_found = True
-            if w in resp_norm:
+            elif re.search(patron, resp_norm):
                 score += 3
                 match_found = True
             if match_found:
                 palabras_encontradas += 1
 
         if score > 0:
-            ratio = palabras_encontradas / len(palabras)
+            ratio = palabras_encontradas / len(palabras_base)
+            if len(palabras_base) >= 2 and palabras_encontradas < 2 and score < 10:
+                continue
             score_final = score * (1 + ratio)
             candidatos.append((score_final, faq))
 
@@ -231,23 +269,24 @@ def obtener_faqs_relevantes_top_k(mensaje_usuario, top_k=5):
         palabras_encontradas = 0
         for w in palabras:
             match_found = False
-            if w in preg_norm:
+            patron = rf'\b{re.escape(w)}\b'
+            if re.search(patron, preg_norm):
                 score += 10
                 match_found = True
-            if w in kw_norm:
+            elif re.search(patron, kw_norm):
                 score += 8
                 match_found = True
-            if w in cat_norm:
+            elif re.search(patron, cat_norm):
                 score += 4
                 match_found = True
-            if w in resp_norm:
+            elif re.search(patron, resp_norm):
                 score += 3
                 match_found = True
             if match_found:
                 palabras_encontradas += 1
 
         if score > 0:
-            ratio = palabras_encontradas / len(palabras)
+            ratio = palabras_encontradas / len(palabras_base)
             score_final = score * (1 + ratio)
             candidatos.append((score_final, faq))
 
@@ -619,7 +658,57 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             print("Error invocando Gemini API:", e)
 
     # Fallback inteligente con ejecucion de herramientas y memoria contextual (cuando Gemini no esta disponible)
-    # 0. Deteccion de chistes y adivinanzas
+    palabras_mensaje = mensaje_lc.split()
+
+    # 1. Saludos iniciales puros
+    es_saludo_puro = any(s in mensaje_lc for s in ['hola', 'buen dia', 'buenos dias', 'buenas tardes', 'buenas noches', 'que tal', 'qué tal', 'que onda', 'qué onda', 'como estas', 'cómo estás', 'como te va', 'cómo te va'])
+    if es_saludo_puro and len(palabras_mensaje) <= 4:
+        return {
+            'respuesta': f"¡Que onda, {nombre_completo}! ¿Como va tu dia? Aqui tu amigo de Recursos Humanos listo para apoyarte. Dime si necesitas checar vacaciones, tramitar tu constancia laboral, consultar tickets o revisar alguna politica de la empresa, ¡o si prefieres un chiste o adivinanza! ¿En que te echo la mano?",
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {}
+        }
+
+    # 2. Agradecimientos, confirmaciones y cierre de duda (ej: "eso queria saber", "muchas gracias", "enterado")
+    frases_confirmacion = [
+        'eso queria saber', 'eso quería saber', 'eso era', 'eso era todo', 'ya me quedo claro',
+        'ya me quedó claro', 'entendido', 'enterado', 'perfecto', 'excelente', 'muchas gracias',
+        'gracias', 'te agradezco', 'mil gracias', 'ok gracias', 'sale gracias', 'va que va',
+        'todo bien', 'todo claro'
+    ]
+    if any(fc in mensaje_lc for fc in frases_confirmacion) and len(palabras_mensaje) <= 6:
+        return {
+            'respuesta': f"¡Con mucho gusto, amigo {nombre_completo}! Me alegra haberte ayudado. Si requieres algo mas sobre tus vacaciones, constancias, tickets o la chamba, o si quieres un chiste para el dia, aqui me tienes.",
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {}
+        }
+
+    # 3. Ayuda y capacidades del asistente (ej: "que puedes hacer", "quien eres", "ayuda", "como funcionas")
+    if any(w in mensaje_lc for w in ['quien eres', 'quién eres', 'que puedes hacer', 'qué puedes hacer', 'ayuda', 'como funcionas', 'cómo funcionas']):
+        return {
+            'respuesta': (
+                f"¡Hola! Soy el Agente Conversacional de Recursos Humanos en PluriOne S.A. de C.V. (Develop Talent & Technology), pero hablo contigo como un amigo de oficina.\n\n"
+                f"Puedo apoyarte en tiempo real con:\n"
+                f"- **Vacaciones:** Consultar tu saldo disponible y registrar solicitudes indicando fechas (ejemplo: 'Quiero vacaciones del 20 al 25 de noviembre').\n"
+                f"- **Constancia Laboral:** Generar y descargar tu documento membretado en PDF al instante (con o sin sueldo).\n"
+                f"- **Tickets de Soporte:** Reportar incidencias de nomina o prestaciones y consultar el estatus de tus folios.\n"
+                f"- **Politicas y Reglamento:** Responder tus dudas sobre horarios, tolerancia, vestimenta, prestaciones y aguinaldo.\n"
+                f"- **Entretenimiento:** ¡Contarte un chiste o una adivinanza cuando lo pidas!\n\n"
+                f"¿En que te echo la mano hoy?"
+            ),
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {}
+        }
+
+    # 4. Despedidas
+    if any(w in mensaje_lc for w in ['adios', 'adiós', 'hasta luego', 'nos vemos', 'bye', 'chao']):
+        return {
+            'respuesta': f"¡Hasta luego, amigo {nombre_completo}! Que tengas un excelente dia laboral. ¡Pasala genial!",
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {}
+        }
+
+    # 5. Deteccion de chistes y adivinanzas
     if any(w in mensaje_lc for w in ['chiste', 'chistes', 'cuentame un chiste', 'dime un chiste', 'otro chiste', 'echate un chiste']):
         import random
         chistes = [
@@ -647,7 +736,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             'datos': {}
         }
 
-    # 1. Deteccion de constancia laboral
+    # 6. Deteccion de constancia laboral
     if any(w in mensaje_lc for w in ['constancia', 'carta laboral', 'constancia de trabajo', 'carta patronal']):
         if es_solicitud_constancia_real(mensaje_lc):
             if any(term in mensaje_lc for term in ['sin sueldo', 'sin salario', 'sin percepcion', 'sin percepciones']):
@@ -667,7 +756,8 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
                 'datos': {}
             }
 
-    # 2. Deteccion de fechas y solicitud de vacaciones
+    # 7. Tema Vacaciones:
+    # 7.1 Solicitud formal con rango de fechas
     f_ini, f_fin = extraer_rango_fechas_vacaciones(mensaje_usuario, hoy)
     es_tema_vacaciones = any(w in mensaje_lc for w in ['vacacion', 'vacaciones', 'descanso', 'dias'])
     ultimo_mensaje_bot = next((m.texto.lower() for m in reversed(mensajes_recientes) if m.remitente == 'bot'), '')
@@ -681,6 +771,26 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             'datos': accion_detectada['datos']
         }
 
+    # 7.2 Consulta de saldo o disponibilidad de vacaciones (personal del colaborador)
+    if es_consulta_saldo_vacaciones(mensaje_lc):
+        return {
+            'respuesta': (
+                f"Hola {nombre_completo}, dispones de {empleado.dias_vacaciones_disponibles} dias disponibles para solicitar "
+                f"de un total de {empleado.dias_vacaciones_totales} dias asignados "
+                f"(has tomado {empleado.dias_vacaciones_tomados} dias y tienes {empleado.dias_vacaciones_retenidos} dias retenidos en solicitudes pendientes). "
+                f"Tu horario laboral es {empleado.dias_laborales}. "
+                f"¿Para que fechas deseas solicitarlas? Por favor indica la fecha de inicio y fin (ejemplo: 'del 20 al 25 de noviembre')."
+            ),
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {
+                'disponibles': empleado.dias_vacaciones_disponibles,
+                'totales': empleado.dias_vacaciones_totales,
+                'tomados': empleado.dias_vacaciones_tomados,
+                'retenidos': empleado.dias_vacaciones_retenidos
+            }
+        }
+
+    # 7.3 Intencion de pedir vacaciones sin indicar fechas
     if es_tema_vacaciones and any(w in mensaje_lc for w in ['pedir', 'solicitar', 'quiero', 'necesito', 'tomar']):
         return {
             'respuesta': f"Hola {nombre_completo}, dispones de {empleado.dias_vacaciones_disponibles} dias disponibles. ¿Para que fechas deseas solicitarlas? Por favor indica la fecha de inicio y fin (ejemplo: 'del 20 al 25 de noviembre'). Recuerda que deben ser a partir de hoy y en tus dias laborales ({empleado.dias_laborales}).",
@@ -688,7 +798,22 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             'datos': {'disponibles': empleado.dias_vacaciones_disponibles}
         }
 
-    # 3. Deteccion de consulta de tickets vs creacion de ticket de soporte
+    # 7.4 Emergencias, accidentes o incapacidades en vacaciones o jornada laboral
+    if any(w in mensaje_lc for w in ['accidento', 'accidente', 'enfermo', 'enfermedad', 'emergencia medica', 'emergencia médica', 'incapacidad']):
+        return {
+            'respuesta': (
+                f"Amigo {nombre_completo}, ante cualquier accidente o problema medico durante tus vacaciones o jornada laboral, lo primordial es tu salud y atencion medica inmediata (IMSS o tu seguro medico).\n\n"
+                f"De acuerdo con los lineamientos laborales de PluriOne:\n"
+                f"1. Si sufres una incapacidad medica oficial expedida por el IMSS durante tu periodo vacacional, las vacaciones se suspenden temporalmente por los dias que ampare la incapacidad.\n"
+                f"2. Debes notificar a tu lider directo y a Recursos Humanos lo antes posible presentando tu justificante o certificado de incapacidad.\n"
+                f"3. Los dias de vacaciones interrumpidos por la incapacidad podran reprogramarse posteriormente.\n\n"
+                f"¿Deseas que levantemos un ticket de soporte a Recursos Humanos para reportar tu situacion?"
+            ),
+            'tipo_accion': 'INFO_GENERAL',
+            'datos': {}
+        }
+
+    # 8. Deteccion de tickets de soporte (consulta vs creacion de ticket)
     if es_consulta_sobre_tickets(mensaje_lc):
         resumen_tk = consultar_tickets_soporte()
         return {
@@ -706,8 +831,8 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             'datos': accion_detectada['datos']
         }
 
-    # 4. Consultas sobre datos laborales del colaborador
-    # 4.1 Horario de trabajo / jornada / entrada y salida
+    # 9. Consultas sobre datos laborales del colaborador
+    # 9.1 Horario de trabajo / jornada / entrada y salida
     if any(w in mensaje_lc for w in ['horario', 'hora de entrada', 'hora de salida', 'a que hora entro', 'a que hora salgo', 'que dias trabajo', 'dias laborales', 'modalidad de trabajo', 'jornada laboral']):
         return {
             'respuesta': (
@@ -725,7 +850,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             }
         }
 
-    # 4.2 Puesto / departamento / numero de empleado / credencial
+    # 9.2 Puesto / departamento / numero de empleado / credencial
     if any(w in mensaje_lc for w in ['puesto', 'mi cargo', 'departamento', 'area', 'área', 'numero de empleado', 'número de empleado', 'mi clave', 'credencial']):
         return {
             'respuesta': (
@@ -740,7 +865,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             }
         }
 
-    # 4.3 Salario / sueldo
+    # 9.3 Salario / sueldo
     if any(w in mensaje_lc for w in ['sueldo', 'salario', 'cuanto gano', 'cuánto gano', 'percepcion', 'percepción mensual']):
         sueldo_val = f"${empleado.salario_mensual:,.2f} MXN" if empleado.salario_mensual else "No registrado"
         return {
@@ -753,7 +878,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             }
         }
 
-    # 4.4 Antigüedad / fecha de ingreso
+    # 9.4 Antigüedad / fecha de ingreso
     if any(w in mensaje_lc for w in ['antiguedad', 'antigüedad', 'cuanto tiempo llevo', 'cuándo entré', 'cuando entre', 'fecha de ingreso', 'fecha de contratacion']):
         anios = empleado.antiguedad_anios or 1
         return {
@@ -768,25 +893,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             }
         }
 
-    # 4.5 Saldo de vacaciones
-    if any(w in mensaje_lc for w in ['saldo', 'cuantos dias', 'dias me quedan', 'mis vacaciones', 'balance de vacaciones']):
-        return {
-            'respuesta': (
-                f"Hola {nombre_completo}, dispones de {empleado.dias_vacaciones_disponibles} dias disponibles para solicitar "
-                f"de un total de {empleado.dias_vacaciones_totales} dias asignados "
-                f"(has tomado {empleado.dias_vacaciones_tomados} dias y tienes {empleado.dias_vacaciones_retenidos} dias retenidos en solicitudes pendientes). "
-                f"Tu horario laboral es {empleado.dias_laborales}."
-            ),
-            'tipo_accion': 'INFO_GENERAL',
-            'datos': {
-                'disponibles': empleado.dias_vacaciones_disponibles,
-                'totales': empleado.dias_vacaciones_totales,
-                'tomados': empleado.dias_vacaciones_tomados,
-                'retenidos': empleado.dias_vacaciones_retenidos
-            }
-        }
-
-    # 5. Busqueda en Base de Conocimientos RAG (politicas, reglamentos y FAQs de RH)
+    # 10. Busqueda en Base de Conocimientos RAG (politicas, reglamentos y FAQs de RH)
     faq_encontrada = buscar_en_base_conocimiento(mensaje_usuario)
     if faq_encontrada:
         resp_limpia = faq_encontrada.respuesta.strip()
@@ -806,46 +913,7 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             }
         }
 
-    # 6. Saludos casuales, agradecimientos, despedidas y ayuda
-    if any(w in mensaje_lc for w in ['gracias', 'muchas gracias', 'te agradezco', 'mil gracias']):
-        return {
-            'respuesta': f"¡De nada, {nombre_completo}! Para eso estamos los companeros. Cualquier otra duda de Recursos Humanos, vacaciones, constancias o si quieres otro chiste, aqui me tienes.",
-            'tipo_accion': 'INFO_GENERAL',
-            'datos': {}
-        }
-
-    if any(w in mensaje_lc for w in ['adios', 'adiós', 'hasta luego', 'nos vemos', 'bye', 'chao']):
-        return {
-            'respuesta': f"¡Hasta luego, amigo {nombre_completo}! Que tengas un excelente dia laboral. ¡Pasala genial!",
-            'tipo_accion': 'INFO_GENERAL',
-            'datos': {}
-        }
-
-    if any(w in mensaje_lc for w in ['quien eres', 'quién eres', 'que puedes hacer', 'qué puedes hacer', 'ayuda', 'como funcionas', 'cómo funcionas']):
-        return {
-            'respuesta': (
-                f"¡Hola! Soy el Agente Conversacional de Recursos Humanos en PluriOne S.A. de C.V. (Develop Talent & Technology), pero hablo contigo como un amigo de oficina.\n\n"
-                f"Puedo apoyarte en tiempo real con:\n"
-                f"- **Vacaciones:** Consultar tu saldo y registrar solicitudes indicando fechas (ejemplo: 'Quiero vacaciones del 20 al 25 de noviembre').\n"
-                f"- **Constancia Laboral:** Generar y descargar tu documento membretado en PDF al instante (con o sin sueldo).\n"
-                f"- **Tickets de Soporte:** Reportar incidencias de nomina o prestaciones y consultar el estatus de tus folios.\n"
-                f"- **Politicas y Reglamento:** Responder tus dudas sobre horarios, tolerancia, vestimenta, prestaciones y aguinaldo.\n"
-                f"- **Entretenimiento:** ¡Contarte un chiste o una adivinanza cuando lo pidas!\n\n"
-                f"¿En que te echo la mano hoy?"
-            ),
-            'tipo_accion': 'INFO_GENERAL',
-            'datos': {}
-        }
-
-    palabras_mensaje = mensaje_lc.split()
-    es_saludo_puro = any(s in mensaje_lc for s in ['hola', 'buen dia', 'buenos dias', 'buenas tardes', 'buenas noches', 'que tal', 'qué tal', 'que onda', 'qué onda', 'como estas', 'cómo estás'])
-    if es_saludo_puro and len(palabras_mensaje) <= 4:
-        return {
-            'respuesta': f"¡Que onda, {nombre_completo}! ¿Como va tu dia? Aqui tu amigo de Recursos Humanos listo para apoyarte. Dime si necesitas checar vacaciones, tramitar tu constancia laboral, consultar tickets o revisar alguna politica de la empresa, ¡o si prefieres un chiste o adivinanza! ¿En que te echo la mano?",
-            'tipo_accion': 'INFO_GENERAL',
-            'datos': {}
-        }
-
+    # 11. Fallback final amigable
     return {
         'respuesta': f"¡Hola {nombre_completo}! Aqui tu amigo de Recursos Humanos en PluriOne listo para apoyarte. Dime si necesitas checar vacaciones, armar una constancia, consultar tus tickets, ver alguna politica de la empresa, ¡o si prefieres que te cuente un chiste o una adivinanza para despejar la mente! ¿En que te echo la mano hoy?",
         'tipo_accion': 'INFO_GENERAL',

@@ -123,12 +123,12 @@ El sistema cuenta con dos perfiles de usuario diferenciados por permisos de Cont
 | **Proteccion de Constancias** | `/media/constancias/` restringido | `/media/constancias/` bloqueado con 403/404 |
 | **Vistas y Modulos** | 5 modulos Colaborador / 5 modulos RH | 5 modulos Colaborador / 5 modulos RH |
 | **App Shell y Responsive** | Barra lateral desktop / Barra inferior movil | Barra lateral desktop / Barra inferior movil |
-| **Agente Conversacional IA** | Cascada Gemini Flash (gemini-3.6-flash, gemini-3.5-flash, gemini-3.1-flash-lite, gemini-flash-latest, gemini-3.8-flash) con Function Calling y respaldo local | Cascada Gemini Flash (gemini-3.6-flash, gemini-3.5-flash, gemini-3.1-flash-lite, gemini-flash-latest, gemini-3.8-flash) con Function Calling y respaldo local |
+| **Agente Conversacional IA** | Cascada Gemini Flash (gemini-3.5-flash-lite, gemini-3.1-flash-lite, gemini-3.8-flash, gemini-3.7-flash, gemini-3.6-flash, gemini-3.5-flash) con Function Calling y respaldo local | Cascada Gemini Flash (gemini-3.5-flash-lite, gemini-3.1-flash-lite, gemini-3.8-flash, gemini-3.7-flash, gemini-3.6-flash, gemini-3.5-flash) con Function Calling y respaldo local |
 
 ---
 
 ## Uso de Inteligencia Artificial
-Para este proyecto se hace uso de Inteligencia Artificial mediante la herramienta **Antigravity** y la familia de modelos **Gemini Flash** de Google (con lista ordenada de respaldo: Gemini 3.6 Flash, 3.5 Flash, 3.1 Flash-Lite, Flash-Latest y 3.8 Flash).
+Para este proyecto se hace uso de Inteligencia Artificial mediante la herramienta **Antigravity** y la familia de modelos **Gemini Flash** de Google (con lista ordenada de respaldo: Gemini 3.5 Flash-Lite, 3.1 Flash-Lite, 3.8 Flash, 3.7 Flash, 3.6 Flash y 3.5 Flash).
 
 ---
 
@@ -325,7 +325,7 @@ docker compose exec backend python manage.py createsuperuser
 ```
 
 ### Ejecutar suite completa de pruebas automatizadas
-El backend cuenta con 55 pruebas unitarias y de integracion hermeticas (aisladas de la red y de cuotas de API) que verifican autenticacion, roles, llamadas a herramientas de IA, reglas de vacaciones, tickets, RAG Top-K, emision de constancias con fecha local y persistencia cronologica:
+El backend cuenta con 59 pruebas unitarias y de integracion hermeticas (aisladas de la red y de cuotas de API) que verifican autenticacion, roles, llamadas a herramientas de IA, reglas de vacaciones, tickets, RAG Top-K, emision de constancias con fecha local y persistencia cronologica:
 ```bash
 docker compose exec backend python manage.py test
 ```

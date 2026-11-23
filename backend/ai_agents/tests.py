@@ -396,4 +396,53 @@ class ChatPersistenciaTests(TestCase):
         self.assertEqual(len(faqs_recuperadas), 1)
         self.assertIn('paternidad', faqs_recuperadas[0].pregunta.lower())
 
+    def test_consulta_saldo_vacaciones_variaciones_lenguaje_natural(self):
+        """
+        Verifica que consultas coloquiales de saldo como 'cuantas vacaciones me quedan',
+        'cunatas tengo disponibles' o 'Dime cuantas vacaciones tengo disponibles'
+        devuelvan directamente el saldo disponible del colaborador y no una FAQ general.
+        """
+        consultas = [
+            "Me puedes decir cuantas vacaciones me quedan",
+            "pero cunatas tengo disponibles",
+            "Dime cuantas vacaciones tengo disponibles",
+            "Pero ahora mismo cuantos días puedo solicitar"
+        ]
+        for c in consultas:
+            res = procesar_mensaje_agente(c, self.empleado)
+            self.assertEqual(res['tipo_accion'], 'INFO_GENERAL')
+            self.assertIn("dispones de", res['respuesta'].lower())
+            self.assertIn(str(self.empleado.dias_vacaciones_disponibles), res['respuesta'])
+
+    def test_confirmacion_coloquial_eso_queria_saber(self):
+        """
+        Verifica que expresiones de confirmación o agradecimiento como 'Eso queria saber'
+        no disparen búsquedas falsas en FAQs por coincidencia de subcadenas ('eso' en 'proceso').
+        """
+        res = procesar_mensaje_agente("Eso queria saber", self.empleado)
+        self.assertEqual(res['tipo_accion'], 'INFO_GENERAL')
+        self.assertIn("con mucho gusto", res['respuesta'].lower())
+        self.assertNotIn("tiempo maximo de resolucion", res['respuesta'].lower())
+
+    def test_capacidades_que_puedes_hacer(self):
+        """
+        Verifica que la consulta sobre capacidades ('que puedes hacer') devuelva
+        la descripción de servicios del asistente y no sea interceptada por una FAQ.
+        """
+        res = procesar_mensaje_agente("que puedes hacer", self.empleado)
+        self.assertEqual(res['tipo_accion'], 'INFO_GENERAL')
+        self.assertIn("vacaciones", res['respuesta'].lower())
+        self.assertIn("constancia laboral", res['respuesta'].lower())
+        self.assertIn("tickets de soporte", res['respuesta'].lower())
+
+    def test_accidente_en_vacaciones(self):
+        """
+        Verifica que una consulta sobre incidentes o emergencias médicas durante vacaciones
+        oriente sobre la suspensión legal por incapacidad del IMSS y no devuelva una FAQ no relacionada.
+        """
+        res = procesar_mensaje_agente("Que pasa si me accidento en vacaciones", self.empleado)
+        self.assertEqual(res['tipo_accion'], 'INFO_GENERAL')
+        self.assertIn("incapacidad", res['respuesta'].lower())
+        self.assertIn("imss", res['respuesta'].lower())
+
 
