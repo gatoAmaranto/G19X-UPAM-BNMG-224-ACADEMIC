@@ -8,6 +8,7 @@ from .serializers import MensajeChatSerializer
 
 class ConversacionAgenteView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_scope = 'agent_chat'
 
     def post(self, request):
         mensaje = request.data.get('mensaje', '').strip()
