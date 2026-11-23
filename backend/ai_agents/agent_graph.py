@@ -23,25 +23,27 @@ def es_solicitud_constancia_real(texto_lc):
     """
     Determina si el usuario solicita formalmente generar/descargar una constancia laboral,
     y no solo hace una pregunta informativa sobre ella.
+    Permite solicitudes corteses como "¿Me puedes generar mi constancia?".
     """
     mencion = any(w in texto_lc for w in ['constancia', 'carta laboral', 'constancia de trabajo', 'carta patronal'])
     if not mencion:
         return False
 
-    # Si es una pregunta informativa, no generar automáticamente
-    es_pregunta = any(p in texto_lc for p in [
-        '?', '¿', 'que es', 'qué es', 'para que', 'para qué', 'como se', 'cómo se',
-        'donde se', 'dónde se', 'como tramit', 'cómo tramit', 'cuanto tarda', 'cuánto tarda',
-        'tengo una duda', 'una pregunta'
+    # Si es una pregunta conceptual/definitoria, no generar automáticamente
+    es_pregunta_informativa = any(p in texto_lc for p in [
+        'que es', 'qué es', 'para que sirve', 'para qué sirve', 'como se tramita', 'cómo se tramita',
+        'donde se tramita', 'dónde se tramita', 'cuanto tarda', 'cuánto tarda',
+        'tengo una duda', 'una pregunta sobre'
     ])
-    if es_pregunta:
+    if es_pregunta_informativa:
         return False
 
-    # Debe contener verbos o intención de emisión/solicitud
+    # Verbos o patrones claros de emisión/solicitud (incluyendo formas corteses con o sin signos de interrogación)
     verbos = [
         'generar', 'genera', 'genérame', 'generame', 'emitir', 'emite', 'emíteme', 'emiteme',
         'descargar', 'descarga', 'descárgame', 'descargame', 'tramitar', 'tramita', 'tramítame',
-        'tramitame', 'solicito', 'solicitar', 'puedes generar', 'necesito mi constancia',
+        'tramitame', 'solicito', 'solicitar', 'puedes generar', 'podrias generar', 'podrías generar',
+        'me puedes', 'me podrías', 'me podrias', 'necesito mi constancia',
         'quiero mi constancia', 'mi constancia con sueldo', 'mi constancia sin sueldo',
         'dame mi constancia', 'crear constancia', 'expedir'
     ]
@@ -201,6 +203,58 @@ def buscar_en_base_conocimiento(query: str):
     if candidatos and candidatos[0][0] >= 5:
         return candidatos[0][1]
     return None
+
+
+def obtener_faqs_relevantes_top_k(mensaje_usuario, top_k=5):
+    """
+    Recupera los top-K documentos de FAQ más relevantes para la consulta del colaborador,
+    evitando inyectar la base completa en el prompt de Gemini para optimizar tokens y latencia.
+    """
+    q_norm = normalizar_texto_busqueda(mensaje_usuario)
+    palabras_base = [w for w in re.findall(r'\b[a-z0-9]+\b', q_norm) if len(w) > 2 and w not in STOPWORDS_ES]
+    if not palabras_base:
+        return list(BaseConocimientoRH.objects.filter(activa=True)[:top_k])
+
+    palabras = set(palabras_base)
+    for p in palabras_base:
+        if p in SINONIMOS_RH:
+            palabras.update(SINONIMOS_RH[p])
+
+    candidatos = []
+    for faq in BaseConocimientoRH.objects.filter(activa=True):
+        preg_norm = normalizar_texto_busqueda(faq.pregunta)
+        resp_norm = normalizar_texto_busqueda(faq.respuesta)
+        cat_norm = normalizar_texto_busqueda(faq.categoria)
+        kw_norm = normalizar_texto_busqueda(getattr(faq, 'palabras_clave', '') or '')
+
+        score = 0
+        palabras_encontradas = 0
+        for w in palabras:
+            match_found = False
+            if w in preg_norm:
+                score += 10
+                match_found = True
+            if w in kw_norm:
+                score += 8
+                match_found = True
+            if w in cat_norm:
+                score += 4
+                match_found = True
+            if w in resp_norm:
+                score += 3
+                match_found = True
+            if match_found:
+                palabras_encontradas += 1
+
+        if score > 0:
+            ratio = palabras_encontradas / len(palabras)
+            score_final = score * (1 + ratio)
+            candidatos.append((score_final, faq))
+
+    candidatos.sort(key=lambda x: x[0], reverse=True)
+    if candidatos:
+        return [c[1] for c in candidatos[:top_k]]
+    return list(BaseConocimientoRH.objects.filter(activa=True)[:top_k])
 
 
 def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
@@ -425,8 +479,8 @@ def procesar_mensaje_agente(mensaje_usuario, empleado, historial=None):
             }
         }
 
-    # Base de conocimientos RAG y tickets previos
-    faqs = BaseConocimientoRH.objects.filter(activa=True)
+    # Base de conocimientos RAG relevante (Top-K) para optimizar la ventana de contexto y latencia
+    faqs = obtener_faqs_relevantes_top_k(mensaje_usuario, top_k=5)
     faqs_str_list = [f"- P: {f.pregunta}\n  R: {f.respuesta} (Categoria: {f.categoria})" for f in faqs]
     faqs_context = "\n".join(faqs_str_list) if faqs_str_list else "No hay FAQs adicionales registradas."
 

@@ -1,4 +1,6 @@
 import io
+from datetime import datetime
+from django.utils import timezone
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
@@ -107,7 +109,13 @@ def generar_pdf_constancia_laboral(constancia):
     else:
         fecha_ingreso_str = str(emp.fecha_ingreso)
 
-    fecha_emision = constancia.fecha_emision or datetime.now()
+    fecha_emision = constancia.fecha_emision
+    if fecha_emision:
+        if timezone.is_aware(fecha_emision):
+            fecha_emision = timezone.localtime(fecha_emision)
+    else:
+        fecha_emision = timezone.localtime(timezone.now())
+
     if hasattr(fecha_emision, 'day') and hasattr(fecha_emision, 'month') and hasattr(fecha_emision, 'year'):
         mes_emision = MESES_ESP[fecha_emision.month] if 1 <= fecha_emision.month <= 12 else str(fecha_emision.month)
         fecha_hoy_str = f"{fecha_emision.day} de {mes_emision} de {fecha_emision.year}"

@@ -11,4 +11,6 @@ urlpatterns = [
     # Seguridad: Unicamente la carpeta avatares/ es publica para visualizacion de fotos institucionales.
     # Las constancias laborales contienen datos sensibles (sueldos, etc.) y solo se sirven con sesion via /api/hr/constancia/.
     re_path(r'^media/avatares/(?P<path>.*)$', serve, {'document_root': os.path.join(settings.MEDIA_ROOT, 'avatares')}),
+    # Archivos estaticos para el panel de administracion de Django en produccion
+    re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
 ]

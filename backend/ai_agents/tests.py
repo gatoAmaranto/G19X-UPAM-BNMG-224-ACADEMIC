@@ -2,13 +2,15 @@ from datetime import date, timedelta
 from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
-from hr_services.models import Empleado, SolicitudVacaciones, TicketRH, ConstanciaLaboral
+from hr_services.models import Empleado, SolicitudVacaciones, TicketRH, ConstanciaLaboral, BaseConocimientoRH
 from .models import MensajeChat
-from .agent_graph import procesar_mensaje_agente
+from .agent_graph import procesar_mensaje_agente, obtener_faqs_relevantes_top_k
 from hr_services.utils_laborales import parsear_fecha_flexible
 from rest_framework.test import APIClient
 from rest_framework import status
 
+@override_settings(GEMINI_API_KEY='')
+@patch.dict('os.environ', {'GEMINI_API_KEY': ''})
 class ChatPersistenciaTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
@@ -361,5 +363,37 @@ class ChatPersistenciaTests(TestCase):
         constancia = ConstanciaLaboral.objects.filter(empleado=self.empleado).last()
         self.assertIsNotNone(constancia)
         self.assertFalse(constancia.incluir_sueldo)
+
+    def test_solicitud_cortes_me_puedes_generar_constancia(self):
+        """
+        Verifica que una solicitud formulada con cortesía como
+        '¿Me puedes generar una constancia laboral con sueldo?'
+        sea interpretada como una orden de generación y no se descarte por tener signos de interrogación.
+        """
+        res = procesar_mensaje_agente("¿Me puedes generar una constancia laboral con sueldo?", self.empleado)
+        self.assertEqual(res['tipo_accion'], 'CONSTANCIA_GENERADA')
+        self.assertIn("con sueldo", res['respuesta'].lower())
+        constancia = ConstanciaLaboral.objects.filter(empleado=self.empleado).last()
+        self.assertIsNotNone(constancia)
+        self.assertTrue(constancia.incluir_sueldo)
+
+    def test_recuperacion_faqs_top_k(self):
+        """
+        Verifica que el mecanismo de recuperación Top-K devuelva los documentos
+        más relevantes para la consulta del colaborador sin saturar la ventana de contexto.
+        """
+        BaseConocimientoRH.objects.create(
+            pregunta='¿Cómo solicito un permiso por paternidad por nacimiento de hijos?',
+            respuesta='El permiso por paternidad se otorga conforme a la LFT por 5 días laborables.',
+            categoria='Permisos'
+        )
+        BaseConocimientoRH.objects.create(
+            pregunta='¿Cuál es la política de vestimenta y código de ropa?',
+            respuesta='La política es business casual de lunes a jueves y casual los viernes.',
+            categoria='Cultura'
+        )
+        faqs_recuperadas = obtener_faqs_relevantes_top_k('Quiero saber del permiso de paternidad por nacimiento', top_k=1)
+        self.assertEqual(len(faqs_recuperadas), 1)
+        self.assertIn('paternidad', faqs_recuperadas[0].pregunta.lower())
 
 

@@ -31,7 +31,7 @@ export const getStoredToken = async () => {
   return null
 }
 
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '')
+export const API_BASE_URL = ((typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '/api').replace(/\/+$/, '')
 
 /**
  * Resuelve y normaliza URLs de imágenes de avatar y multimedia de colaboradores y administradores RH.
@@ -112,6 +112,11 @@ const setupAuthInterceptors = (instance) => {
   instance.interceptors.response.use(
     (response) => response,
     (error) => {
+      if (error.response && error.response.status === 401) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth0-prod-unauthorized', { detail: error.response }))
+        }
+      }
       if (error.response && error.response.status === 403) {
         console.error('Acceso denegado (403 Forbidden): Tu rol no cuenta con permisos suficientes en el servidor.')
       }

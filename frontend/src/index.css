@@ -465,8 +465,17 @@ button, input, select, textarea {
   }
 
   .dashboard-header {
-    padding: 0 0.85rem !important;
+    padding: 0 0.6rem !important;
     height: 56px !important;
+    gap: 0.45rem !important;
+  }
+
+  .dashboard-header h1 {
+    font-size: clamp(0.85rem, 3.2vw, 1rem) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
   }
 
   .header-breadcrumbs {

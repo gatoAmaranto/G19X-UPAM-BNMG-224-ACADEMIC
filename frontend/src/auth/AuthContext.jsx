@@ -5,27 +5,8 @@ import { setAuthTokenGetter } from '../api/apiClient.js'
 
 const AuthCustomContext = createContext(null)
 
-// Configuración oficial Auth0
-export const AUTH0_CONFIG = {
-  domain: import.meta.env.VITE_AUTH0_DOMAIN || '',
-  clientId: import.meta.env.VITE_AUTH0_CLIENT_ID || '',
-  authorizationParams: {
-    redirect_uri: window.location.origin,
-    audience: import.meta.env.VITE_AUTH0_AUDIENCE || ''
-  }
-}
-
-const isPlaceholderAuth0 = (val) => {
-  if (!val || typeof val !== 'string') return true
-  const lower = val.trim().toLowerCase()
-  return (
-    !lower ||
-    lower.includes('tu_dominio') ||
-    lower.includes('tu_client_id') ||
-    lower.includes('placeholder') ||
-    lower.includes('example.com')
-  )
-}
+import { AUTH0_CONFIG, isPlaceholderAuth0 } from './authConfig.js'
+export { AUTH0_CONFIG, isPlaceholderAuth0 }
 
 // Proveedor Híbrido que activa Auth0 en vivo o recurre a modo local si el origen no es seguro (HTTP por IP)
 export function AuthProvider({ children }) {

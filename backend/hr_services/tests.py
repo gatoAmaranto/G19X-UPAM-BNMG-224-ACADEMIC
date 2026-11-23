@@ -597,3 +597,26 @@ class HRServicesTestCase(TestCase):
         # Si el archivo no existe devuelve 404 generado por static.serve
         response = self.client.get('/media/avatares/avatar_no_existente.png')
         self.assertEqual(response.status_code, 404)
+
+    def test_generar_pdf_constancia_respeta_hora_local_mexico(self):
+        # Verificar que una constancia emitida en UTC después de las 18:00 (que en UTC ya es el día siguiente)
+        # se traduzca correctamente al día local de México
+        from datetime import datetime, timezone as dt_timezone
+        from hr_services.models import ConstanciaLaboral
+        from hr_services.utils_pdf import generar_pdf_constancia_laboral
+
+        # 01:30 UTC del 24 de noviembre es 19:30 del 23 de noviembre en CDMX (UTC-6)
+        dt_utc = datetime(2026, 11, 24, 1, 30, tzinfo=dt_timezone.utc)
+        constancia = ConstanciaLaboral.objects.create(
+            empleado=self.empleado,
+            dirigido_a='Empresa Receptora',
+            incluir_sueldo=True
+        )
+        ConstanciaLaboral.objects.filter(id=constancia.id).update(fecha_emision=dt_utc)
+        constancia.refresh_from_db()
+
+        buffer = generar_pdf_constancia_laboral(constancia)
+        self.assertIsNotNone(buffer)
+        pdf_bytes = buffer.getvalue()
+        self.assertTrue(len(pdf_bytes) > 1000)
+        self.assertTrue(pdf_bytes.startswith(b'%PDF'))

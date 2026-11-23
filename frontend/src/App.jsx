@@ -17,8 +17,20 @@ export default function App() {
   })
 
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [showAuth0ProdWarning, setShowAuth0ProdWarning] = useState(false)
   const { isAuthenticated, user, isRhAdmin, login, isLoading, isAuth0Live } = useAuth()
   const hasAttemptedAutoLogin = useRef(false)
+
+  // Escuchar si el backend en producción rechaza tokens mock con 401
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      if (!isAuth0Live) {
+        setShowAuth0ProdWarning(true)
+      }
+    }
+    window.addEventListener('auth0-prod-unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('auth0-prod-unauthorized', handleUnauthorized)
+  }, [isAuth0Live])
 
   // Aplicar clase .dark en <html>
   useEffect(() => {
@@ -146,14 +158,53 @@ export default function App() {
     )
   }
 
-  return isRhAdmin ? (
-    <AdminDashboard isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
-  ) : (
-    <ColaboradorDashboard
-      refreshTrigger={refreshTrigger}
-      onRefreshData={handleRefreshData}
-      isDarkMode={isDarkMode}
-      toggleDarkMode={toggleDarkMode}
-    />
+  return (
+    <>
+      {showAuth0ProdWarning && (
+        <div style={{
+          background: '#991b1b',
+          color: '#fef2f2',
+          padding: '0.65rem 1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '0.84rem',
+          zIndex: 9999,
+          position: 'sticky',
+          top: 0,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+        }}>
+          <div>
+            <strong>Aviso de Autenticación en Producción:</strong> El servidor backend se encuentra en modo producción (<code>DEBUG=False</code>) y requiere autenticación institucional con Auth0. Para pruebas locales sin Auth0, ejecute con <code>DEBUG=True</code> en su archivo <code>.env</code>.
+          </div>
+          <button
+            onClick={() => setShowAuth0ProdWarning(false)}
+            aria-label="Cerrar aviso"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#fef2f2',
+              cursor: 'pointer',
+              fontSize: '1.2rem',
+              fontWeight: 700,
+              marginLeft: '1rem',
+              lineHeight: 1
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+      {isRhAdmin ? (
+        <AdminDashboard isDarkMode={isDarkMode} toggleDarkMode={toggleDarkMode} />
+      ) : (
+        <ColaboradorDashboard
+          refreshTrigger={refreshTrigger}
+          onRefreshData={handleRefreshData}
+          isDarkMode={isDarkMode}
+          toggleDarkMode={toggleDarkMode}
+        />
+      )}
+    </>
   )
 }

@@ -5,6 +5,26 @@ from django.contrib.auth.models import User
 from rest_framework import authentication, exceptions
 from hr_services.models import Empleado
 
+# Cache en memoria para instancias de PyJWKClient por dominio.
+# Evita realizar una petición HTTP a /.well-known/jwks.json en cada llamada autenticada.
+_JWKS_CLIENTS = {}
+
+def get_jwks_client(domain: str) -> jwt.PyJWKClient:
+    """
+    Obtiene o reutiliza una instancia de PyJWKClient en memoria con almacenamiento en caché
+    de llaves públicas (24 horas) para optimizar el rendimiento y evitar rate-limits de Auth0.
+    """
+    if domain not in _JWKS_CLIENTS:
+        jwks_url = f'https://{domain}/.well-known/jwks.json'
+        _JWKS_CLIENTS[domain] = jwt.PyJWKClient(
+            jwks_url,
+            cache_keys=True,
+            max_cached_keys=16,
+            cache_jwk_set=True,
+            lifespan=86400  # 24 horas de vigencia de llaves en memoria
+        )
+    return _JWKS_CLIENTS[domain]
+
 class Auth0JSONWebTokenAuthentication(authentication.BaseAuthentication):
     """
     Autenticación personalizada de Django REST Framework para validar tokens JWT de Auth0
@@ -93,8 +113,7 @@ class Auth0JSONWebTokenAuthentication(authentication.BaseAuthentication):
         audience = getattr(settings, 'AUTH0_AUDIENCE', '')
 
         try:
-            jwks_url = f'https://{domain}/.well-known/jwks.json'
-            jwks_client = jwt.PyJWKClient(jwks_url)
+            jwks_client = get_jwks_client(domain)
             signing_key = jwks_client.get_signing_key_from_jwt(token)
 
             decode_options = {"verify_signature": True}

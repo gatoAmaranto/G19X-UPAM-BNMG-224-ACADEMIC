@@ -600,9 +600,9 @@ export default function ColaboradorDashboard({ refreshTrigger, onRefreshData, is
                   {activeTab === 'constancia' && 'Emisión de Constancia Laboral Membretada'}
                 </span>
                 <span className="mobile-only">
-                  {activeTab === 'chat' && 'Asistente Virtual'}
+                  {activeTab === 'chat' && 'Asistente'}
                   {activeTab === 'perfil' && 'Mi Perfil'}
-                  {activeTab === 'calendario' && 'Horario y Calendario'}
+                  {activeTab === 'calendario' && 'Calendario'}
                   {activeTab === 'tickets' && 'Mis Tickets'}
                   {activeTab === 'constancia' && 'Constancia'}
                 </span>

@@ -148,7 +148,7 @@ Para la etapa actual del sistema (MVP), la arquitectura de **Recuperacion y Gene
 - **Docker Engine** (v24 o superior)
 - **Docker Compose** (v2 o superior)
 - Clave de API de **Google AI Studio** (`GEMINI_API_KEY`, opcional: si se deja vacia o se agotan las cuotas, el agente opera de forma 100% autonoma mediante el motor determinista de respaldo local)
-- Cuenta de **Auth0** (opcional: sin variables de Auth0 configuradas, la app abre directamente en Modo Demo local con perfiles simulados)
+- Cuenta de **Auth0** (Obligatoria en producción para autenticación corporativa SSO; en desarrollo con `DEBUG=True` es opcional, ya que la aplicación abre directamente en Modo Demo local con perfiles simulados)
 
 ---
 
@@ -325,7 +325,7 @@ docker compose exec backend python manage.py createsuperuser
 ```
 
 ### Ejecutar suite completa de pruebas automatizadas
-El backend cuenta con 52 pruebas unitarias y de integracion que verifican autenticacion, roles, llamadas a herramientas de IA, reglas de vacaciones, tickets, RAG, generacion de constancias y persistencia cronologica de mensajes:
+El backend cuenta con 55 pruebas unitarias y de integracion hermeticas (aisladas de la red y de cuotas de API) que verifican autenticacion, roles, llamadas a herramientas de IA, reglas de vacaciones, tickets, RAG Top-K, emision de constancias con fecha local y persistencia cronologica:
 ```bash
 docker compose exec backend python manage.py test
 ```
@@ -362,16 +362,16 @@ El sistema desacopla el almacenamiento de datos del ciclo de vida de los contene
 ### 4. Servidor WSGI y Proxy Inverso Nginx
 - **Backend:** En produccion se ejecuta con **Gunicorn** (`core.wsgi:application`) utilizando 3 procesos worker independientes para atender multiples solicitudes concurrentes sin bloqueos (`--timeout 120`).
 - **Frontend:** Construccion multi-etapa en [`frontend/Dockerfile.prod`](file:///home/benjamin/Documentos/%20Sistema%20de%20Autoservicio%20para%20Colaboradores%20mediante%20Agentes%20Conversacionales/proyecto/frontend/Dockerfile.prod) (etapa 1 con `node:22-alpine` para `npm run build` y etapa 2 con `nginx:alpine`). Los argumentos de construccion `ARG` se reciben desde `docker-compose.prod.yml` y se incrustan en tiempo de compilacion en los bundles estaticos de React.
-- **Nginx:** Escucha en el contenedor en el puerto `80`, sirve la aplicacion SPA con fallback a `index.html`, y actua como proxy inverso hacia `http://backend:8000/api/` y `http://backend:8000/media/avatares/`. En el anfitrion se mapea mediante `${FRONTEND_PORT:-80}:80`, permitiendo alternar el puerto externo (ej. a `8080`) si el puerto 80 esta ocupado por Apache u otro servidor web local.
+- **Nginx:** Escucha en el contenedor en el puerto `80`, sirve la aplicacion SPA con fallback a `index.html`, y actua como proxy inverso hacia `http://backend:8000/api/`, `http://backend:8000/admin/`, `http://backend:8000/static/` y `http://backend:8000/media/avatares/`. En el anfitrion se mapea mediante `${FRONTEND_PORT:-80}:80`, permitiendo alternar el puerto externo (ej. a `8080`) si el puerto 80 esta ocupado por Apache u otro servidor web local.
 - **Seguridad de Red:** Los puertos de PostgreSQL (`5432`) y Redis (`6379`) no se exponen al exterior en produccion, manteniendose estrictamente en la red interna aislada de Docker.
 
 ### 5. Estado de la Cache de Redis
-Respecto a la memoria cache de Redis (`REDIS_URL`): se encuentra configurada en [`core/settings.py`](file:///home/benjamin/Documentos/%20Sistema%20de%20Autoservicio%20para%20Colaboradores%20mediante%20Agentes%20Conversacionales/proyecto/backend/core/settings.py) como infraestructura para sesiones y almacenamiento en memoria (`django.core.cache.backends.redis.RedisCache`). En la version actual del codigo, ninguna vista ni servicio realiza llamadas directas a `cache.get()` o `cache.set()`, por lo que opera actualmente como soporte de infraestructura preparado para futuras politicas de almacenamiento en cache y colas asincronas.
+Respecto a la memoria cache de Redis (`REDIS_URL`): se encuentra configurada en [`core/settings.py`](file:///home/benjamin/Documentos/%20Sistema%20de%20Autoservicio%20para%20Colaboradores%20mediante%20Agentes%20Conversacionales/proyecto/backend/core/settings.py) como infraestructura para sesiones y almacenamiento en memoria (`django.core.cache.backends.redis.RedisCache`). En la version actual del codigo, opera como soporte de infraestructura preparado para politicas de almacenamiento en cache y colas asincronas de escalado.
 
 ### 6. Protecciones de Concurrencia y Seguridad en Backend
 - **Creacion Segura de Vacaciones:** En [`hr_services/services.py`](file:///home/benjamin/Documentos/%20Sistema%20de%20Autoservicio%20para%20Colaboradores%20mediante%20Agentes%20Conversacionales/proyecto/backend/hr_services/services.py), la funcion `crear_solicitud_vacaciones` implementa `transaction.atomic()` y bloqueo pesimista con `select_for_update()` sobre el registro del empleado, evitando condiciones de carrera por solicitudes simultaneas (ej. solicitud via chat y via formulario web al mismo instante).
-- **Filtro Estricto de Roles en Auth0:** En [`authentication/auth0.py`](file:///home/benjamin/Documentos/%20Sistema%20de%20Autoservicio%20para%20Colaboradores%20mediante%20Agentes%20Conversacionales/proyecto/backend/authentication/auth0.py), la extraccion de roles verifica con exactitud `key.endswith('/roles')` o `key == 'roles'`, impidiendo la inyeccion indebida de claims arbitrarios que contengan la subcadena 'role'.
-- **Modularizacion de Vistas de Recursos Humanos:** El modulo de vistas fue dividido en dos controladores especializados: `views_colaborador.py` (portal de autoservicio) y `views_rh.py` (administracion y backoffice de RH), manteniendo una fachada en `views.py` que re-exporta los simbolos para total compatibilidad.
+- **Filtro Estricto de Roles en Auth0 y Cache JWKS:** En [`authentication/auth0.py`](file:///home/benjamin/Documentos/%20Sistema%20de%20Autoservicio%20para%20Colaboradores%20mediante%20Agentes%20Conversacionales/proyecto/backend/authentication/auth0.py), la extraccion de roles verifica con exactitud `key.endswith('/roles')` o `key == 'roles'`. Asimismo, las llaves publicas de Auth0 se almacenan en cache local (`PyJWKClient`) para reutilizarse sin descargas repetitivas por peticion.
+- **Modularizacion de Vistas de Recursos Humanos:** El modulo de vistas se estructuro en dos controladores especializados: `views_colaborador.py` (portal de autoservicio) y `views_rh.py` (administracion y backoffice de RH), manteniendo una fachada en `views.py` que re-exporta los simbolos para total compatibilidad.
 - **Seguridad en Constancias y Archivos Multimedia:** En [`core/urls.py`](file:///home/benjamin/Documentos/%20Sistema%20de%20Autoservicio%20para%20Colaboradores%20mediante%20Agentes%20Conversacionales/proyecto/backend/core/urls.py) unicamente se sirve de manera publica la ruta `/media/avatares/` para visualizar fotos de perfil. El directorio de constancias laborales (`/media/constancias/`) esta protegido: Nginx bloquea cualquier acceso directo fuera de avatares con `403 Forbidden` y Django no lo rutea (`404 Not Found`). La emision, previsualizacion y descarga de constancias se realiza exclusivamente a traves de `/api/hr/constancia/`, que requiere sesion autenticada obligatoria y valida la identidad del colaborador para prevenir filtracion de sueldos o datos personales.
 - **Ergonomia del Asistente Virtual y Modales:** La vista del chat cuenta con bloqueo de altura a `100vh` en escritorio y `calc(100dvh - 56px)` en movil, con scrollbar interno en el contenedor de mensajes, manteniendo el formulario de entrada permanentemente anclado en pantalla sin desplazar la ventana principal del navegador. El modal de previsualizacion de PDF se renderiza mediante `createPortal` en `document.body` para garantizar centrado y seguimiento exacto en el viewport visible.
 
@@ -384,6 +384,7 @@ Para compilar, inicializar y ejecutar el stack completo con las configuraciones 
    cp .env.prod.example .env
    ```
    - Define tu `GEMINI_API_KEY`, asigna una `SECRET_KEY` aleatoria de produccion y configura tus credenciales de Auth0 si vas a utilizar tu tenant en vivo. Asegurate de que `DEBUG=False` y `VITE_API_BASE_URL=/api`.
+   - **Nota de autenticación en producción:** En producción (`DEBUG=False`), los tokens de prueba locales son rechazados estrictamente (HTTP 401). Si vas a probar localmente sin credenciales de Auth0, ejecuta la aplicación con `docker-compose.yml` (modo desarrollo con `DEBUG=True`), el cual activa automáticamente el modo de demostración.
    - **Puerto del frontend (`FRONTEND_PORT`):** Por defecto se enlaza al puerto `80`. Si en tu equipo anfitrion el puerto 80 se encuentra ocupado por Apache u otro servicio local, define `FRONTEND_PORT=8080` en tu archivo `.env`.
    - *Nota de seguridad con Auth0:* Si cambias el puerto a `8080` y utilizas Auth0, recuerda registrar `http://localhost:8080` dentro de **Allowed Callback URLs**, **Allowed Logout URLs** y **Allowed Web Origins** en tu aplicacion de Auth0, y agregarlo a `CORS_ALLOWED_ORIGINS` si aplica.
 
@@ -392,9 +393,10 @@ Para compilar, inicializar y ejecutar el stack completo con las configuraciones 
    docker compose -f docker-compose.prod.yml up --build -d
    ```
 
-3. **Ejecutar migraciones en la base de datos PostgreSQL:**
+3. **Ejecutar migraciones y recolección de estáticos en la base de datos PostgreSQL:**
    ```bash
    docker compose -f docker-compose.prod.yml exec backend python manage.py migrate
+   docker compose -f docker-compose.prod.yml exec backend python manage.py collectstatic --noinput
    ```
 
 4. **Poblar datos iniciales y base de conocimiento RAG:**
@@ -407,5 +409,7 @@ Para compilar, inicializar y ejecutar el stack completo con las configuraciones 
    docker compose -f docker-compose.prod.yml exec backend python manage.py test
    ```
 
-6. **Acceder a la aplicacion:**
-   Ingresa desde tu navegador a [http://localhost](http://localhost) (o a `http://localhost:8080` si configuraste `FRONTEND_PORT=8080`). El trafico entrante se distribuira internamente entre el frontend estatico y el proxy inverso de la API en `/api/`.
+6. **Acceder a la aplicacion y al panel de administración:**
+   - **Portal de Autoservicio:** Ingresa desde tu navegador a [http://localhost](http://localhost) (o a `http://localhost:8080` si configuraste `FRONTEND_PORT=8080`).
+   - **Panel Administrativo de Django:** Ingresa a [http://localhost/admin/](http://localhost/admin/) (o a `http://localhost:8080/admin/`).
+
